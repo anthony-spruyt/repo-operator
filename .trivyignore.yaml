@@ -1,0 +1,6 @@
+# Path-specific trivy ignores
+# https://trivy.dev/latest/docs/configuration/filtering
+
+vulnerabilities: null
+secrets: null
+misconfigurations: null
