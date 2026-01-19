@@ -2,27 +2,67 @@
 name: CI
 
 on:
+  pull_request:
+    branches:
+      - main
   push:
     branches:
       - main
-    paths:
-      - "src/config.yaml"
-      - "src/templates/**"
-      - "src/sync-config.sh"
-      - ".github/workflows/ci.yaml"
   workflow_dispatch:
 
-concurrency:
-  group: config-sync
-  cancel-in-progress: false
-
 permissions:
-  contents: read
+  contents: write
+  pull-requests: write
 
 jobs:
+  lint:
+    name: Lint
+    runs-on: ubuntu-latest
+    # Skip for renovate/dependabot bot commits
+    if: |
+      github.actor != 'renovate[bot]' &&
+      github.actor != 'dependabot[bot]'
+    concurrency:
+      group: ${{ github.workflow }}-lint-${{ github.ref }}
+      cancel-in-progress: true
+    steps:
+      - name: Checkout
+        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        with:
+          fetch-depth: 0
+
+      # MEGALINTER_FLAVOR=all bypasses flavor validation (custom flavors aren't recognized)
+      - name: Run MegaLinter
+        env:
+          # TODO: update to default image / default custom flavor
+          MEGALINTER_IMAGE: "ghcr.io/anthony-spruyt/megalinter-container-images@sha256:575587d9caf54235888e3749734aec1ef094bdbd876dd0e0c88f443114a415ee"
+          # MEGALINTER_FLAVOR=all bypasses flavor validation (custom flavors aren't recognized)
+          MEGALINTER_FLAVOR: "all"
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          VALIDATE_ALL_CODEBASE: ${{ github.event_name == 'workflow_dispatch' && 'true' || 'false' }}
+        run: |
+          docker run \
+            -e MEGALINTER_FLAVOR \
+            -e GITHUB_TOKEN \
+            -e VALIDATE_ALL_CODEBASE \
+            -e DEFAULT_WORKSPACE=/tmp/lint \
+            -e GITHUB_REPOSITORY="${{ github.repository }}" \
+            -e GITHUB_SHA="${{ github.sha }}" \
+            -e GITHUB_REF="${{ github.ref }}" \
+            -e GITHUB_RUN_ID="${{ github.run_id }}" \
+            -v "${{ github.workspace }}:/tmp/lint:rw" \
+            --rm \
+            "$MEGALINTER_IMAGE"
+
   sync-config:
     name: Sync Configuration
     runs-on: ubuntu-latest
+    needs: [lint]
+    # Only run on push to main, not on PRs
+    if: github.event_name == 'push' || github.event_name == 'workflow_dispatch'
+    concurrency:
+      group: config-sync
+      cancel-in-progress: false
     steps:
       - name: Checkout
         uses: actions/checkout@v6
@@ -58,3 +98,26 @@ jobs:
         run: |
           chmod +x ./src/sync-config.sh
           ./src/sync-config.sh
+
+  # Summary job provides stable status check name for branch protection
+  summary:
+    name: CI
+    runs-on: ubuntu-latest
+    needs: [lint]
+    if: always()
+    steps:
+      - name: Check results
+        env:
+          LINT_RESULT: ${{ needs.lint.result }}
+        run: |
+          echo "Lint result: $LINT_RESULT"
+
+          # Check for any failures first
+          if [ "$LINT_RESULT" = "failure" ]; then
+            echo "Lint failed"
+            exit 1
+          fi
+
+          # All relevant jobs succeeded or were skipped appropriately
+          echo "All checks passed"
+          exit 0
