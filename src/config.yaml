@@ -11,7 +11,7 @@ repos:
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
 prOptions:
-  merge: manual
+  merge: auto
 
 files:
   .devcontainer/devcontainer.json:
