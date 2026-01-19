@@ -89,6 +89,9 @@ files:
   LICENSE:
     createOnly: true
     content: "@templates/LICENSE"
+  lint.sh:
+    createOnly: true
+    content: "@templates/lint.sh"
   trivy.yaml:
     createOnly: true
     header: https://trivy.dev/latest/docs/references/configuration/config-file/
