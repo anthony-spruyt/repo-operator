@@ -1,0 +1,10 @@
+# actionlint configuration
+# https://github.com/rhysd/actionlint/blob/main/docs/config.md
+
+self-hosted-runner:
+  labels: []
+config-variables: []
+paths:
+  .github/workflows/**/*.{yml,yaml}:
+    ignore:
+      - "shellcheck reported issue in this script: SC2153:.+"
