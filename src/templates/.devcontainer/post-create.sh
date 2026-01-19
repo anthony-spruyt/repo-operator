@@ -5,7 +5,7 @@ set -euo pipefail
 sudo find . -type f -name '*.sh' -exec chmod u+x {} +
 
 # Change to script directory for package.json access
-SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+SCRIPT_DIR="$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"
 cd "$SCRIPT_DIR"
 
 # Install and setup safe-chain FIRST before any other npm installs

@@ -4,7 +4,7 @@ set -euo pipefail
 # Runs mega-linter against the repository.
 # Can be run from any directory.
 
-REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+REPO_ROOT="$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"
 # TODO: update to default image / default custom flavor
 MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-container-images@sha256:575587d9caf54235888e3749734aec1ef094bdbd876dd0e0c88f443114a415ee"
 # MEGALINTER_FLAVOR=all bypasses flavor validation (custom flavors aren't recognized)
