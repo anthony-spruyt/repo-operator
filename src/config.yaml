@@ -1,9 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 repos:
   - git: https://github.com/anthony-spruyt/repo-operator.git
-    files:
-      .github/workflows/dependabot-automerge.yaml: false
-      .github/dependabot.yml: false
   #- git: https://github.com/anthony-spruyt/bai2csv.git
   #- git: https://github.com/anthony-spruyt/claude-config.git
   #- git: https://github.com/anthony-spruyt/container-images.git
@@ -18,16 +15,12 @@ prOptions:
 
 files:
   .devcontainer/devcontainer.json:
-    createOnly: true
     content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/package.json:
-    createOnly: true
     content: "@templates/.devcontainer/package.json"
   .devcontainer/post-create.sh:
-    createOnly: true
     content: "@templates/.devcontainer/post-create.sh"
   .devcontainer/verify-setup.sh:
-    createOnly: true
     content: "@templates/.devcontainer/verify-setup.sh"
   .github/rulesets/pr-rules.json:
     content: "@templates/.github/rulesets/pr-rules.json"
@@ -35,9 +28,8 @@ files:
     content: "@templates/.github/rulesets/push-protection.json"
   .github/workflows/ci.yaml:
     createOnly: true
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
     content: "@templates/.github/workflows/ci.yaml"
-  .github/workflows/dependabot-automerge.yaml:
-    content: "@templates/.github/workflows/dependabot-automerge.yaml"
   .github/renovate.json5:
     createOnly: true
     content: "@templates/.github/renovate.json5"
@@ -49,9 +41,6 @@ files:
       - actionlint configuration
       - https://github.com/rhysd/actionlint/blob/main/docs/config.md
     content: "@templates/.github/actionlint.yaml"
-  .github/dependabot.yml:
-    createOnly: true
-    content: "@templates/.github/dependabot.yml"
   .vscode/settings.json:
     createOnly: true
     content: "@templates/.vscode/settings.json"
@@ -68,14 +57,15 @@ files:
     createOnly: true
     content: "@templates/.markdownlintignore"
   .mega-linter.yml:
-    createOnly: true
+    schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
     content: "@templates/.mega-linter.yml"
   .pre-commit-config.yaml:
-    createOnly: true
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
     content: "@templates/.pre-commit-config.yaml"
   .prettierignore:
     createOnly: true
   .prettierrc.yaml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
     content: "@templates/.prettierrc.yaml"
   .shellcheckrc:
     createOnly: true
@@ -86,15 +76,15 @@ files:
       - https://trivy.dev/latest/docs/configuration/filtering
     content: "@templates/.trivyignore.yaml"
   .yamllint.yml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
     header: https://yamllint.readthedocs.io/en/latest/configuration.html
     content: "@templates/.yamllint.yml"
   LICENSE:
-    createOnly: true
-    content: "@templates/LICENSE"
+    content: "@templates/LICENSE.MIT"
   lint.sh:
     createOnly: true
     content: "@templates/lint.sh"
   trivy.yaml:
-    createOnly: true
+    schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
     header: https://trivy.dev/latest/docs/references/configuration/config-file/
     content: "@templates/trivy.yaml"

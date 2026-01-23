@@ -1,4 +1,5 @@
 ---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
 ENABLE_LINTERS:
   - ACTION_ACTIONLINT
   - BASH_SHELLCHECK
