@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+# This file is automatically updated - do not modify directly
 # https://yamllint.readthedocs.io/en/latest/configuration.html
 
 extends: "default"
