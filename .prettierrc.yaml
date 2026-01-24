@@ -1,4 +1,5 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+# This file is automatically updated - do not modify directly
 
 trailingComma: "es5"
 tabWidth: 2
