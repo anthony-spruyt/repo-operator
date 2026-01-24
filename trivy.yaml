@@ -1,3 +1,4 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
 # https://trivy.dev/latest/docs/references/configuration/config-file/
 
 disable-telemetry: true

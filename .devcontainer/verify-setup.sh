@@ -56,6 +56,7 @@ else
 fi
 
 # 5. SSH agent forwarding
+# shellcheck disable=SC2157 # xfg template syntax $${} appears as literal to shellcheck
 if [[ -n "${SSH_AUTH_SOCK:-}" ]] && ssh-add -l &>/dev/null 2>&1; then
   pass "SSH agent has keys loaded"
 else
