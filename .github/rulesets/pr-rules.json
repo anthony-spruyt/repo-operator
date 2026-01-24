@@ -1,4 +1,5 @@
 {
+  "$generated": "This file is automatically updated - do not modify directly",
   "name": "pr-rules",
   "target": "branch",
   "enforcement": "active",
@@ -33,7 +34,7 @@
         "do_not_enforce_on_create": false,
         "required_status_checks": [
           {
-            "context": "CI"
+            "context": "summary / Check Results"
           }
         ]
       }
