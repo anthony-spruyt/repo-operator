@@ -56,7 +56,7 @@ else
 fi
 
 # 5. SSH agent forwarding
-if [[ -n "${SSH_AUTH_SOCK:-}" ]] && ssh-add -l &>/dev/null 2>&1; then
+if [[ -n "" ]] && ssh-add -l &>/dev/null 2>&1; then
   pass "SSH agent has keys loaded"
 else
   fail "SSH agent not available or no keys loaded"
