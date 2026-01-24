@@ -1,0 +1,21 @@
+{
+  "version": 1,
+  "managedFiles": [
+    ".devcontainer/devcontainer.json",
+    ".devcontainer/package.json",
+    ".devcontainer/post-create.sh",
+    ".devcontainer/verify-setup.sh",
+    ".editorconfig",
+    ".github/apply-rulesets.sh",
+    ".github/rulesets/pr-rules.json",
+    ".github/rulesets/push-protection.json",
+    ".github/workflows/trivy-scan.yaml",
+    ".markdownlint.json",
+    ".mega-linter-base.yml",
+    ".pre-commit-config.yaml",
+    ".prettierrc.yaml",
+    ".yamllint.yml",
+    "LICENSE",
+    "trivy.yaml"
+  ]
+}
