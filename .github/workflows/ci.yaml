@@ -50,7 +50,7 @@ jobs:
           git config --global user.email "${{ steps.import-gpg.outputs.email }}"
 
       - name: Sync config
-        uses: anthony-spruyt/xfg@v1.10.5
+        uses: anthony-spruyt/xfg@v1.10.7
         with:
           config: ./src/config.yaml
           github-token: ${{ secrets.CONFIG_SYNC_PAT }}
