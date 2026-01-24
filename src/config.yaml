@@ -56,7 +56,11 @@ files:
   .markdownlintignore:
     createOnly: true
     content: "@templates/.markdownlintignore"
+  .mega-linter-base.yml:
+    schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
+    content: "@templates/.mega-linter-base.yml"
   .mega-linter.yml:
+    createOnly: true
     schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
     content: "@templates/.mega-linter.yml"
   .pre-commit-config.yaml:

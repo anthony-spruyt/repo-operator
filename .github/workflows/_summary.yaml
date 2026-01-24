@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: CI Summary (Reusable)
+
+on:
+  workflow_call:
+
+jobs:
+  check:
+    name: CI
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check job results
+        env:
+          GH_TOKEN: ${{ github.token }}
+          REPO: ${{ github.repository }}
+          RUN_ID: ${{ github.run_id }}
+        run: |
+          # Fetch all jobs in this workflow run
+          results=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+            --jq '.jobs[] | select(.name != "CI" and .name != "check") | .conclusion')
+
+          echo "Job results:"
+          echo "$results"
+
+          if echo "$results" | grep -qE "^(failure|cancelled)$"; then
+            echo "One or more jobs failed or were cancelled"
+            exit 1
+          fi
+
+          echo "All jobs passed"
