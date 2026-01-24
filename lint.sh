@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
+# This file is automatically updated - do not modify directly
+
 # Runs MegaLinter against the repository.
 # Usage:
 #   ./lint.sh       - Local mode (with fixes, user permissions)

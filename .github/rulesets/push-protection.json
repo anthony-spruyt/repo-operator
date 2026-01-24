@@ -1,4 +1,5 @@
 {
+  "$generated": "This file is automatically updated - do not modify directly",
   "name": "push-protection",
   "target": "branch",
   "enforcement": "active",
