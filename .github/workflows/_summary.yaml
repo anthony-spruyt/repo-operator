@@ -17,7 +17,7 @@ jobs:
         run: |
           # Fetch all jobs in this workflow run
           results=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
-            --jq '.jobs[] | select(.name | startswith("summary") | not) | .conclusion')
+            --jq '.jobs[] | select(.name != "summary") | .conclusion')
 
           echo "Job results:"
           echo "$results"
