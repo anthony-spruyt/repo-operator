@@ -1,13 +1,12 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-name: Lint (Reusable)
+name: Lint Template
 
 on:
   workflow_call:
 
 jobs:
   lint:
-    name: Lint
     runs-on: ubuntu-latest
     concurrency:
       group: ${{ github.workflow }}-lint-${{ github.ref }}

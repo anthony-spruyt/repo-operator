@@ -57,7 +57,6 @@ jobs:
 
   # Summary job for branch protection - add jobs to 'needs' array
   summary:
-    name: CI
     needs: [lint, sync-config]
     if: always()
     uses: anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main

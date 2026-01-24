@@ -1,13 +1,12 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-name: CI Summary (Reusable)
+name: CI Summary Template
 
 on:
   workflow_call:
 
 jobs:
-  check:
-    name: CI
+  summary:
     runs-on: ubuntu-latest
     steps:
       - name: Check job results
@@ -18,7 +17,7 @@ jobs:
         run: |
           # Fetch all jobs in this workflow run
           results=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
-            --jq '.jobs[] | select(.name != "CI" and .name != "check") | .conclusion')
+            --jq '.jobs[] | select(.name != "summary") | .conclusion')
 
           echo "Job results:"
           echo "$results"
