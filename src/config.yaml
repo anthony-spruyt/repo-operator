@@ -1,4 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+id: repo-operator
+
 repos:
   - git: https://github.com/anthony-spruyt/repo-operator.git
   #- git: https://github.com/anthony-spruyt/bai2csv.git
