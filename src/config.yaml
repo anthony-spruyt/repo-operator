@@ -10,6 +10,8 @@ repos:
   #- git: https://github.com/anthony-spruyt/spruyt-labs.git
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
+deleteOrphaned: true
+
 prOptions:
   merge: manual
 
@@ -30,6 +32,10 @@ files:
     createOnly: true
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
     content: "@templates/.github/workflows/ci.yaml"
+  .github/workflows/trivy-scan.yaml:
+    createOnly: true
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+    content: "@templates/.github/workflows/trivy-scan.yaml"
   .github/renovate.json5:
     createOnly: true
     content: "@templates/.github/renovate.json5"

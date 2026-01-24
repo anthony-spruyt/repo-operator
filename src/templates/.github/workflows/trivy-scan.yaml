@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Trivy Vulnerability Scan
+
+on:
+  schedule:
+    # Every day at 6:00 AM UTC
+    - cron: "0 6 * * *"
+  workflow_dispatch: {}
+
+jobs:
+  scan:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-scan.yaml@main
+    # with:
+    #   scan-type: "fs"
+    #   trivy-config: "trivy.yaml"
