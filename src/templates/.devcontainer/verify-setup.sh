@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
 set -uo pipefail
 
+# This file is automatically updated - do not modify directly
+
 # Devcontainer setup verification tests
 
 PASSED=0

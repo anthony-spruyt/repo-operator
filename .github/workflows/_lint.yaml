@@ -4,27 +4,6 @@ name: Lint (Reusable)
 
 on:
   workflow_call:
-    inputs:
-      megalinter-image:
-        description: "Custom MegaLinter Docker image"
-        type: string
-        required: false
-        default: ""
-      megalinter-flavor:
-        description: "MegaLinter flavor (all, javascript, python, etc.)"
-        type: string
-        required: false
-        default: "all"
-      validate-all-codebase:
-        description: "Validate entire codebase (not just changed files)"
-        type: boolean
-        required: false
-        default: false
-      skip-bot-commits:
-        description: "Skip linting for renovate/dependabot commits"
-        type: boolean
-        required: false
-        default: true
 
 jobs:
   lint:
@@ -34,56 +13,12 @@ jobs:
       group: ${{ github.workflow }}-lint-${{ github.ref }}
       cancel-in-progress: true
     steps:
-      - name: Check if should skip
-        id: check-skip
-        env:
-          SKIP_BOT_COMMITS: ${{ inputs.skip-bot-commits }}
-          ACTOR: ${{ github.actor }}
-        run: |
-          if [[ "$SKIP_BOT_COMMITS" == "true" && ("$ACTOR" == "renovate[bot]" || "$ACTOR" == "dependabot[bot]") ]]; then
-            echo "skip=true" >> "$GITHUB_OUTPUT"
-            echo "::notice::Skipping lint for bot commit"
-          else
-            echo "skip=false" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Checkout
-        if: steps.check-skip.outputs.skip != 'true'
         uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
         with:
           fetch-depth: 0
 
-      - name: Set MegaLinter image
-        if: steps.check-skip.outputs.skip != 'true'
-        id: set-image
-        env:
-          CUSTOM_IMAGE: ${{ inputs.megalinter-image }}
-          FLAVOR: ${{ inputs.megalinter-flavor }}
-        run: |
-          if [ -n "$CUSTOM_IMAGE" ]; then
-            echo "image=$CUSTOM_IMAGE" >> "$GITHUB_OUTPUT"
-          else
-            echo "image=oxsecurity/megalinter-$FLAVOR:v8" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Run MegaLinter
-        if: steps.check-skip.outputs.skip != 'true'
-        id: megalinter
         env:
-          MEGALINTER_IMAGE: ${{ steps.set-image.outputs.image }}
-          MEGALINTER_FLAVOR: ${{ inputs.megalinter-flavor }}
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: ${{ inputs.validate-all-codebase && 'true' || 'false' }}
-        run: |
-          docker run \
-            -e MEGALINTER_FLAVOR \
-            -e GITHUB_TOKEN \
-            -e VALIDATE_ALL_CODEBASE \
-            -e DEFAULT_WORKSPACE=/tmp/lint \
-            -e GITHUB_REPOSITORY="${{ github.repository }}" \
-            -e GITHUB_SHA="${{ github.sha }}" \
-            -e GITHUB_REF="${{ github.ref }}" \
-            -e GITHUB_RUN_ID="${{ github.run_id }}" \
-            -v "${{ github.workspace }}:/tmp/lint:rw" \
-            --rm \
-            "$MEGALINTER_IMAGE"
+        run: ./lint.sh --ci

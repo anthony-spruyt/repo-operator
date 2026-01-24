@@ -76,6 +76,10 @@ files:
       - Project-specific MegaLinter configuration
       - Extends the base config from repo-operator
       - Add custom linters or overrides below
+      - "Add project-specific linters below:"
+      - "ENABLE_LINTERS:"
+      - "  - TYPESCRIPT_ES"
+      - "  - PYTHON_PYLINT"
     content: "@templates/.mega-linter.yml"
   .pre-commit-config.yaml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
@@ -84,6 +88,7 @@ files:
     createOnly: true
   .prettierrc.yaml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+    header: This file is automatically updated - do not modify directly
     content: "@templates/.prettierrc.yaml"
   .shellcheckrc:
     createOnly: true
@@ -95,14 +100,20 @@ files:
     content: "@templates/.trivyignore.yaml"
   .yamllint.yml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-    header: https://yamllint.readthedocs.io/en/latest/configuration.html
+    header:
+      - This file is automatically updated - do not modify directly
+      - https://yamllint.readthedocs.io/en/latest/configuration.html
     content: "@templates/.yamllint.yml"
   LICENSE:
     content: "@templates/LICENSE.MIT"
-  lint.sh:
+  lint-config.sh:
     createOnly: true
+    content: "@templates/lint-config.sh"
+  lint.sh:
     content: "@templates/lint.sh"
   trivy.yaml:
     schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-    header: https://trivy.dev/latest/docs/references/configuration/config-file/
+    header:
+      - This file is automatically updated - do not modify directly
+      - https://trivy.dev/latest/docs/references/configuration/config-file/
     content: "@templates/trivy.yaml"

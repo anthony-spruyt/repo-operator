@@ -1,6 +1,8 @@
 #!/bin/bash
 set -euo pipefail
 
+# This file is automatically updated - do not modify directly
+
 # Make all shell scripts executable (runs from repo root via postCreateCommand)
 find . -type f -name '*.sh' -exec chmod +x {} +
 

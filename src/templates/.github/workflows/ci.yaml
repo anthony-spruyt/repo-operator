@@ -18,12 +18,6 @@ permissions:
 jobs:
   lint:
     uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
-    with:
-      # Customize MegaLinter options per repository:
-      # megalinter-image: "ghcr.io/your-org/your-megalinter-image:tag"
-      # megalinter-flavor: "javascript"
-      # validate-all-codebase: false
-      skip-bot-commits: true
     secrets: inherit
 
   # Add your repository-specific jobs here:
@@ -34,7 +28,7 @@ jobs:
   #     - run: npm ci && npm run build
 
   # security:
-  #   uses: anthony-spruyt/repo-operator/.github/workflows/_security.yaml@main
+  #   uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
   #   secrets: inherit
 
   # Summary job for branch protection - add jobs to 'needs' array
