@@ -36,7 +36,7 @@ repos:
           echo "Installing Python test dependencies..."
           pip3 install --quiet pathspec pyyaml
           echo "✅ Python dependencies installed"
-      .lint-config.sh:
+      lint-config.sh:
         content: |-
           #!/usr/bin/env bash
           # shellcheck disable=SC2034 # Variables used by sourcing script (lint.sh)
