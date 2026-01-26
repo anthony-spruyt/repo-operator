@@ -9,7 +9,8 @@
   "mounts": [
     "source=$${localEnv:HOME}/.ssh/agent.sock,target=/ssh-agent,type=bind",
     "source=$${localEnv:HOME}/.claude,target=/home/vscode/.claude,type=bind",
-    "source=$${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly"
+    "source=$${localEnv:HOME}/.gitconfig,target=/home/vscode/.gitconfig,type=bind,readonly",
+    "source=${localEnv:HOME}/.ssh/allowed_signers,target=/home/vscode/.ssh/allowed_signers,type=bind,readonly"
   ],
   "containerEnv": {
     "SSH_AUTH_SOCK": "/ssh-agent"

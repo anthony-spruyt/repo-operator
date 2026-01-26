@@ -3,8 +3,14 @@ id: repo-operator
 
 repos:
   - git: https://github.com/anthony-spruyt/repo-operator.git
+    prOptions:
+      merge: direct
   #- git: https://github.com/anthony-spruyt/bai2csv.git
   - git: https://github.com/anthony-spruyt/claude-config.git
+    prOptions:
+      merge: auto
+      mergeStrategy: squash
+      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
         content:
