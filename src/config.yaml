@@ -80,11 +80,19 @@ repos:
       .github/rulesets/pr-rules.json:
         content:
           bypass_actors:
-            - actor_id: 2719952,
+            - actor_id: 2719952
               actor_type: "Integration"
               bypass_mode: "always"
       .github/workflows/trivy-scan.yaml:
         createOnly: false
+      .vscode:
+        createOnly: false
+        content:
+          "files.exclude":
+            "dist/": true
+            "node_modules/": true
+            "site/": true
+            "tmp/": true
       .hadolint.yaml: false
       .mega-linter.yml:
         createOnly: false
