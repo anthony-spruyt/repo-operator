@@ -43,6 +43,83 @@ repos:
   - git: https://github.com/anthony-spruyt/xfg.git
     prOptions:
       merge: manual
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers/features/azure-cli": {}
+      .devcontainer/setup-devcontainer.sh:
+        content: |-
+          #!/bin/bash
+          set -euo pipefail
+
+          # Implement custom devcontainer setup here. This is run after the devcontainer has been created.
+
+          # Install GitLab CLI (glab) via WakeMeOps repository
+          echo "Installing GitLab CLI..."
+          curl -sSL "https://raw.githubusercontent.com/upciti/wakemeops/main/assets/install_repository" | sudo bash
+          sudo apt-get install -y glab
+
+          # Install Azure DevOps CLI extension
+          echo "Installing Azure DevOps CLI extension..."
+          az extension add --name azure-devops --yes
+
+          # Install Git Credential Manager for Azure DevOps git auth
+          echo "Installing Git Credential Manager..."
+          curl -sL -o /tmp/gcm.deb https://github.com/git-ecosystem/git-credential-manager/releases/download/v2.6.1/gcm-linux_amd64.2.6.1.deb
+          sudo dpkg -i /tmp/gcm.deb
+          rm /tmp/gcm.deb
+
+          # Install and build the project
+          echo "Installing project dependencies..."
+          cd "${containerWorkspaceFolder:-/workspaces/xfg}"
+          npm install
+
+          echo "Building project..."
+          npm run build
+      .github/rulesets/pr-rules.json:
+        content:
+          bypass_actors:
+            - actor_id: 2719952,
+              actor_type: "Integration"
+              bypass_mode: "always"
+      .github/workflows/trivy-scan.yaml:
+        createOnly: false
+      .hadolint.yaml: false
+      .mega-linter.yml:
+        createOnly: false
+        schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
+        header:
+          - "Project-specific MegaLinter configuration"
+          - "Extends the base config from repo-operator"
+          - "Add custom linters or overrides below"
+          - "Add project-specific linters below:"
+          - "ENABLE_LINTERS:"
+          - "  - TYPESCRIPT_ES"
+          - "  - PYTHON_PYLINT"
+        content:
+          EXTENDS:
+            - ".mega-linter-base.yml"
+          CONFIG_PROPERTIES_TO_APPEND:
+            - "ENABLE_LINTERS"
+      .pylintrc: false
+      lint-config.sh:
+        createOnly: false
+        content: |-
+          #!/usr/bin/env bash
+          # shellcheck disable=SC2034 # Variables used by sourcing script (lint.sh)
+          # Lint configuration - customize per repository
+          # This file is sourced by lint.sh for both local and CI runs
+
+          # MegaLinter Docker image (use digest for reproducibility)
+          # renovate: TODO
+          MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-container-images@sha256:575587d9caf54235888e3749734aec1ef094bdbd876dd0e0c88f443114a415ee"
+
+          # Skip linting for renovate/dependabot commits in CI
+          SKIP_BOT_COMMITS=true
+
+          # MegaLinter flavor (use "all" for custom images to bypass flavor validation)
+          MEGALINTER_FLAVOR="all"
 
 files:
   .devcontainer/devcontainer.json:
