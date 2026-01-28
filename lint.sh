@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2193 # $$ is xfg template escaping, becomes $ after processing
+# shellcheck disable=SC2193,SC2157 # $$ is xfg template escaping, becomes $ after processing
 set -euo pipefail
 
 # This file is automatically updated - do not modify directly
