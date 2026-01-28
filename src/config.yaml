@@ -44,6 +44,10 @@ repos:
   #- git: https://github.com/anthony-spruyt/spruyt-labs.git
   #  prOptions:
   #    merge: manual
+  #  files:
+  #    .github/renovate/base.json5:
+  #      content:
+  #        ignorePaths: ["talos/helmfile"]
 
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
@@ -87,6 +91,24 @@ files:
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .github/renovate/custom-managers/annotated.json5:
+    content: "@templates/.github/renovate/custom-managers/annotated.json5"
+  .github/renovate/custom-managers/infrastructure.json5:
+    content: "@templates/.github/renovate/custom-managers/infrastructure.json5"
+  .github/renovate/automerge.json5:
+    content: "@templates/.github/renovate/automerge.json5"
+  .github/renovate/base.json5:
+    content: "@templates/.github/renovate/base.json5"
+  .github/renovate/custom-datasources.json5:
+    content: "@templates/.github/renovate/custom-datasources.json5"
+  .github/renovate/disabled.json5:
+    content: "@templates/.github/renovate/disabled.json5"
+  .github/renovate/groups.json5:
+    content: "@templates/.github/renovate/groups.json5"
+  .github/renovate/managers.json5:
+    content: "@templates/.github/renovate/managers.json5"
+  .github/renovate/package-rules.json5:
+    content: "@templates/.github/renovate/package-rules.json5"
   .github/rulesets/pr-rules.json:
     content: "@templates/.github/rulesets/pr-rules.json"
   .github/rulesets/push-protection.json:
@@ -102,7 +124,6 @@ files:
     header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
     content: "@templates/.github/workflows/trivy-scan.yaml"
   .github/renovate.json5:
-    createOnly: true
     content: "@templates/.github/renovate.json5"
   .github/apply-rulesets.sh:
     content: "@templates/.github/apply-rulesets.sh"
