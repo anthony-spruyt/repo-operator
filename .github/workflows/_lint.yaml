@@ -36,6 +36,8 @@ jobs:
         if: steps.sarif-upload.outcome == 'failure'
         run: |
           echo "::notice::SARIF upload skipped (requires security-events: write permission)"
-          echo "## Code Scanning" >> "$GITHUB_STEP_SUMMARY"
-          echo "" >> "$GITHUB_STEP_SUMMARY"
-          echo "> **Note:** SARIF upload skipped. Add \`security-events: write\` permission to enable Code Scanning." >> "$GITHUB_STEP_SUMMARY"
+          {
+            echo "## Code Scanning"
+            echo ""
+            echo "> **Note:** SARIF upload skipped. Add \`security-events: write\` permission to enable Code Scanning."
+          } >> "$GITHUB_STEP_SUMMARY"
