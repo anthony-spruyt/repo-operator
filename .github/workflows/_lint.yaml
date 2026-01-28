@@ -23,3 +23,19 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: ${{ github.event_name != 'pull_request' }}
         run: ./lint.sh --ci
+
+      - name: Upload SARIF to GitHub Security
+        if: success() || failure()
+        continue-on-error: true
+        id: sarif-upload
+        uses: github/codeql-action/upload-sarif@439137e1b50c27ba9e2f9befc93e43091b449c34
+        with:
+          sarif_file: megalinter-reports/megalinter-report.sarif
+
+      - name: SARIF upload status
+        if: steps.sarif-upload.outcome == 'failure'
+        run: |
+          echo "::notice::SARIF upload skipped (requires security-events: write permission)"
+          echo "## Code Scanning" >> "$GITHUB_STEP_SUMMARY"
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+          echo "> **Note:** SARIF upload skipped. Add \`security-events: write\` permission to enable Code Scanning." >> "$GITHUB_STEP_SUMMARY"
