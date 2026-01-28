@@ -4,16 +4,14 @@ id: repo-operator
 deleteOrphaned: true
 
 prOptions:
-  merge: manual
+  merge: auto
+  mergeStrategy: squash
+  deleteBranch: true
 
 repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
 
   - git: https://github.com/anthony-spruyt/claude-config.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -22,16 +20,14 @@ repos:
               $arrayMerge: append
               extensions:
                 - "jetmartin.bats"
+      .eslintrc.json: false
       .hadolint.yaml: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
+      .eslintrc.json: false
 
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
@@ -41,18 +37,17 @@ repos:
     prOptions:
       merge: direct
     files:
+      .eslintrc.json: false
       .hadolint.yaml: false
       .pylintrc: false
 
   #- git: https://github.com/anthony-spruyt/spruyt-labs.git
+  #  prOptions:
+  #    merge: manual
 
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
   - git: https://github.com/anthony-spruyt/xfg.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -181,6 +176,8 @@ files:
       - This file is automatically updated - do not modify directly
       - https://yamllint.readthedocs.io/en/latest/configuration.html
     content: "@templates/.yamllint.yml"
+  .eslintrc.json:
+    content: "@templates/.eslintrc.json"
   LICENSE:
     content: "@templates/LICENSE.MIT"
   lint-config.sh:
