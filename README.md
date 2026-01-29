@@ -8,6 +8,7 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 ## What It Does
 
 - Syncs standardized configuration files (linting, CI/CD, devcontainer, editor settings) to target repositories
+- Includes security scanning templates (Trivy vulnerability scanner)
 - Creates PRs automatically when templates are updated
 - Auto-merges PRs when all checks pass
 - Future: Create and fully configure new repositories
@@ -39,7 +40,7 @@ repos:
 ./lint.sh
 
 # Run config sync manually
-GH_TOKEN=<your-token> ./src/sync-config.sh
+GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src/config.yaml
 ```
 
 ## Related Projects
