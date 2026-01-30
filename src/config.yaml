@@ -22,14 +22,12 @@ repos:
                 - "jetmartin.bats"
       .eslintrc.json: false
       .hadolint.yaml: false
-      .xfg-test: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
       .eslintrc.json: false
-      .xfg-test: false
 
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
@@ -75,7 +73,6 @@ repos:
             "tmp/": true
       .hadolint.yaml: false
       .pylintrc: false
-      .xfg-test: false
       trivy.yaml:
         content:
           scan:
@@ -85,8 +82,6 @@ repos:
               - secret
 
 files:
-  .xfg-test:
-    content: "@templates/.xfg-test"
   .devcontainer/devcontainer.json:
     content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/package.json:
