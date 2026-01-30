@@ -26,6 +26,7 @@
       ".shellcheckrc",
       ".trivyignore.yaml",
       ".vscode/settings.json",
+      ".xfg-test",
       ".yamllint.yml",
       "LICENSE",
       "lint-config.sh",
