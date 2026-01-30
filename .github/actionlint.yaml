@@ -4,7 +4,8 @@
 # SC2034: Variables used in heredocs appear unused
 self-hosted-runner:
   labels: []
-config-variables: []
+config-variables:
+  - APP_ID
 paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
