@@ -32,12 +32,27 @@ jobs:
     if: "github.event_name == 'push'"
     concurrency:
       group: "config-sync"
+      # IMPORTANT: Must be false - canceling a run with src/ changes
+      # followed by a run without changes would skip the sync
       cancel-in-progress: false
     steps:
       - name: "Checkout"
         uses: "actions/checkout@v6"
+        with:
+          fetch-depth: 2
+
+      - name: "Check for src/ changes"
+        id: "changes"
+        run: |
+          if git diff --quiet HEAD~1 HEAD -- src/; then
+            echo "::notice::No changes in src/, skipping sync"
+            echo "run_sync=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_sync=true" >> "$GITHUB_OUTPUT"
+          fi
 
       - name: "Generate GitHub App token"
+        if: "steps.changes.outputs.run_sync == 'true'"
         id: "app-token"
         uses: "actions/create-github-app-token@v2"
         with:
@@ -45,6 +60,7 @@ jobs:
           private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Sync config"
+        if: "steps.changes.outputs.run_sync == 'true'"
         uses: "anthony-spruyt/xfg@v2.2.1"
         with:
           config: "./src/config.yaml"
