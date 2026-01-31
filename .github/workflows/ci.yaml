@@ -51,24 +51,13 @@ jobs:
             echo "run_sync=true" >> "$GITHUB_OUTPUT"
           fi
 
-      - name: "Generate GitHub App token"
-        if: "steps.changes.outputs.run_sync == 'true'"
-        id: "app-token"
-        uses: "actions/create-github-app-token@v2"
-        with:
-          app-id: "${{ vars.APP_ID }}"
-          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
-          owner: "${{ github.repository_owner }}"
-
       - name: "Sync config"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@v2.2.1"
+        uses: "anthony-spruyt/xfg@v3.0.0"
         with:
           config: "./src/config.yaml"
-          github-app-token: "${{ steps.app-token.outputs.token }}"
-        env:
-          # Workaround: xfg sets GH_INSTALLATION_TOKEN but gh CLI needs GH_TOKEN for PR creation
-          GH_TOKEN: "${{ steps.app-token.outputs.token }}"
+          github-app-id: "${{ vars.APP_ID }}"
+          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
   # Summary job for branch protection - add jobs to 'needs' array
   summary:

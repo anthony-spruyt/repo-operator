@@ -72,6 +72,9 @@ repos:
             "node_modules/": true
             "site/": true
             "tmp/": true
+          "search.exclude":
+            "coverage": true
+            ".output": true
       .hadolint.yaml: false
       .pylintrc: false
       trivy.yaml:
@@ -126,6 +129,9 @@ files:
   .gitignore:
     createOnly: true
     content: "@templates/.gitignore"
+  .gitleaks.toml:
+    createOnly: true
+    content: "@templates/.gitleaks.toml"
   .hadolint.yaml:
     createOnly: true
     content: "@templates/.hadolint.yaml"
