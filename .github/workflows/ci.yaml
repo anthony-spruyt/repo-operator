@@ -81,6 +81,6 @@ jobs:
   summary:
     needs:
       - "lint"
-      - "sync-config"
+      - "xfg"
     if: "always()"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"
