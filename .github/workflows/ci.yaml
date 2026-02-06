@@ -92,7 +92,9 @@ jobs:
     needs:
       - "xfg-plan"
     # Run only on push or manual dispatch (not PRs), and only if plan succeeded
+    # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply
     if: >-
+      !cancelled() &&
       needs.xfg-plan.result == 'success' &&
       needs.xfg-plan.outputs.run_sync == 'true' &&
       github.event_name != 'pull_request'
