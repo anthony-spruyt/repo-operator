@@ -240,7 +240,7 @@ settings:
         - type: required_signatures
         - type: required_status_checks
           parameters:
-            doNotEnforceOnCreate: true
+            doNotEnforceOnCreate: false
             requiredStatusChecks:
               - context: "summary / Check Results"
             strictRequiredStatusChecksPolicy: true
@@ -264,7 +264,7 @@ settings:
       conditions:
         refName:
           include:
-            - "v*"
+            - "refs/tags/v*"
           exclude: []
       enforcement: active
       rules:
