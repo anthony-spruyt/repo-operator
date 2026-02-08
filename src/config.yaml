@@ -94,6 +94,11 @@ repos:
             - actorId: 2719952
               actorType: Integration
               bypassMode: always
+        tag-rules:
+          bypassActors:
+            - actorId: 2719952
+              actorType: Integration
+              bypassMode: always
 
 files:
   .devcontainer/devcontainer.json:
@@ -260,7 +265,6 @@ settings:
         - type: required_linear_history
       target: branch
     tag-rules:
-      bypassActors: []
       conditions:
         refName:
           include:

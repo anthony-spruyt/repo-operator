@@ -68,7 +68,7 @@ jobs:
 
       - name: "Plan: Sync Files"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@v3.5.6"
+        uses: "anthony-spruyt/xfg@v3"
         with:
           command: sync
           config: "./src/config.yaml"
@@ -78,7 +78,7 @@ jobs:
 
       - name: "Plan: Apply Settings"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@v3.5.6"
+        uses: "anthony-spruyt/xfg@v3"
         with:
           command: settings
           config: "./src/config.yaml"
@@ -109,7 +109,7 @@ jobs:
           fetch-depth: 2
 
       - name: "Sync Files"
-        uses: "anthony-spruyt/xfg@v3.5.6"
+        uses: "anthony-spruyt/xfg@v3"
         with:
           command: sync
           config: "./src/config.yaml"
@@ -117,7 +117,7 @@ jobs:
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Apply Settings"
-        uses: "anthony-spruyt/xfg@v3.5.6"
+        uses: "anthony-spruyt/xfg@v3"
         with:
           command: settings
           config: "./src/config.yaml"
