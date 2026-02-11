@@ -36,6 +36,8 @@ repos:
       rulesets:
         inherit: false
 
+  #- git: https://github.com/anthony-spruyt/esphome.git
+
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
   #- git: https://github.com/anthony-spruyt/gastown-dev.git
@@ -48,7 +50,6 @@ repos:
     prOptions:
       merge: direct
     settings:
-      repo: false
       rulesets:
         inherit: false
 
