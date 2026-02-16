@@ -21,20 +21,12 @@ repos:
                 - "jetmartin.bats"
       .eslintrc.json: false
       .hadolint.yaml: false
-    settings:
-      repo: false
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
       .eslintrc.json: false
-    settings:
-      repo: false
-      rulesets:
-        inherit: false
 
   #- git: https://github.com/anthony-spruyt/esphome.git
 
