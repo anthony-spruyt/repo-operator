@@ -49,10 +49,9 @@ repos:
     prOptions:
       merge: manual
     files:
-      inherit: false
-    #  .github/renovate/base.json5:
-    #    content:
-    #      ignorePaths: ["talos/helmfile"]
+      .github/renovate/base.json5:
+        content:
+          ignorePaths: ["talos/helmfile"]
     settings:
       repo:
         privateVulnerabilityReporting: false
