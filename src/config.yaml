@@ -45,18 +45,19 @@ repos:
       rulesets:
         inherit: false
 
-  #- git: https://github.com/anthony-spruyt/spruyt-labs.git
-  #  prOptions:
-  #    merge: manual
-  #  files:
-  #    .github/renovate/base.json5:
-  #      content:
-  #        ignorePaths: ["talos/helmfile"]
-  #  settings:
-  #    repo:
-  #
-  #    rulesets:
-  #      inherit: false
+  - git: https://github.com/anthony-spruyt/spruyt-labs.git
+    prOptions:
+      merge: manual
+    files:
+      inherit: false
+    #  .github/renovate/base.json5:
+    #    content:
+    #      ignorePaths: ["talos/helmfile"]
+    settings:
+      repo:
+        visibility: private
+      rulesets:
+        inherit: false
 
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
