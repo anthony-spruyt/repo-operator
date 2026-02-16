@@ -49,7 +49,7 @@ repos:
     prOptions:
       merge: manual
     files:
-      .github/renovate/base.json5:
+      .github/renovate.json5:
         content:
           ignorePaths: ["talos/helmfile"]
     settings:
