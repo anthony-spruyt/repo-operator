@@ -55,6 +55,9 @@ repos:
     #      ignorePaths: ["talos/helmfile"]
     settings:
       repo:
+        privateVulnerabilityReporting: false
+        secretScanning: false
+        secretScanningPushProtection: false
         visibility: private
       rulesets:
         inherit: false
