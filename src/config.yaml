@@ -110,6 +110,8 @@ files:
     content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/package.json:
     content: "@templates/.devcontainer/package.json"
+  .devcontainer/initialize.sh:
+    content: "@templates/.devcontainer/initialize.sh"
   .devcontainer/post-create.sh:
     content: "@templates/.devcontainer/post-create.sh"
   .devcontainer/setup-devcontainer.sh:
@@ -294,6 +296,7 @@ settings:
         - type: deletion
         - type: non_fast_forward
         - type: required_linear_history
+        - type: required_signatures
       target: branch
     tag-rules:
       conditions:
