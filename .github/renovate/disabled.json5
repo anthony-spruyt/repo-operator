@@ -1,0 +1,12 @@
+// This file is automatically updated - do not modify directly
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  packageRules: [
+    {
+      description: "Disable kubernetes-api datasource (noisy, not useful)",
+      matchManagers: ["kubernetes"],
+      matchDatasources: ["kubernetes-api"],
+      enabled: false
+    }
+  ]
+}

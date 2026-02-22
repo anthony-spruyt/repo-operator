@@ -1,0 +1,146 @@
+// This file is automatically updated - do not modify directly
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json",
+  packageRules: [
+    // ============ High-frequency packages ============
+    {
+      description: "Limit renovate CLI updates to weekly (releases multiple times daily)",
+      matchPackageNames: ["renovate"],
+      matchDatasources: ["npm", "docker"],
+      schedule: ["before 9am on monday"],
+      labels: ["renovate/renovate-cli"]
+    },
+    {
+      description: "Limit GitHub Actions digest updates to weekly and group them",
+      matchManagers: ["github-actions"],
+      matchUpdateTypes: ["digest"],
+      schedule: ["before 9am on monday"],
+      groupName: "github-actions-digest",
+      group: { commitMessageTopic: "GitHub Actions digest updates" }
+    },
+
+    // ============ Repo-specific throttling ============
+    {
+      description: "Weekly batch for all non-major updates in container-images",
+      matchRepositories: ["anthony-spruyt/container-images"],
+      matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"],
+      schedule: ["before 9am on monday"],
+      groupName: "weekly-dependencies",
+      group: { commitMessageTopic: "weekly dependency updates" }
+    },
+
+    // ============ Docker/OCI ============
+    {
+      matchDatasources: ["docker", "oci"],
+      enabled: true,
+      commitMessageTopic: "container image {{depName}}",
+      commitMessageExtra: "to {{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}",
+      pinDigests: false
+    },
+    {
+      matchDatasources: ["docker", "oci"],
+      matchUpdateTypes: ["major"],
+      labels: ["renovate/image", "dep/major"]
+    },
+    {
+      matchDatasources: ["docker", "oci"],
+      matchUpdateTypes: ["minor"],
+      labels: ["renovate/image", "dep/minor"]
+    },
+    {
+      matchDatasources: ["docker", "oci"],
+      matchUpdateTypes: ["patch"],
+      labels: ["renovate/image", "dep/patch"]
+    },
+
+    // ============ Helm ============
+    {
+      matchDatasources: ["helm"],
+      separateMinorPatch: true,
+      ignoreDeprecated: true
+    },
+    {
+      matchDatasources: ["helm"],
+      matchUpdateTypes: ["major"],
+      labels: ["renovate/helm", "dep/major"]
+    },
+    {
+      matchDatasources: ["helm"],
+      matchUpdateTypes: ["minor"],
+      labels: ["renovate/helm", "dep/minor"]
+    },
+    {
+      matchDatasources: ["helm"],
+      matchUpdateTypes: ["patch"],
+      labels: ["renovate/helm", "dep/patch"]
+    },
+
+    // ============ Managers ============
+    {
+      matchManagers: ["github-actions"],
+      labels: ["renovate/github-actions"],
+      minimumReleaseAge: "2 days"
+    },
+    {
+      matchManagers: ["terraform"],
+      labels: ["renovate/terraform"],
+      separateMinorPatch: true
+    },
+    {
+      matchManagers: ["devcontainer"],
+      labels: ["renovate/devcontainer"]
+    },
+    {
+      matchManagers: ["npm"],
+      labels: ["renovate/npm"]
+    },
+    {
+      matchManagers: ["pip_requirements"],
+      labels: ["renovate/python"]
+    },
+    {
+      matchManagers: ["pre-commit"],
+      labels: ["renovate/pre-commit"]
+    },
+    {
+      matchManagers: ["flux"],
+      labels: ["renovate/flux"]
+    },
+    {
+      matchManagers: ["kubernetes"],
+      labels: ["renovate/kubernetes"]
+    },
+    {
+      matchManagers: ["helm-values"],
+      labels: ["renovate/helm-values"]
+    },
+
+    // ============ Custom regex by path ============
+    {
+      matchManagers: ["custom.regex"],
+      labels: ["renovate/script"]
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["**/flavor.yaml"],
+      labels: ["renovate/megalinter-flavor"]
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["**/metadata.yaml"],
+      labels: ["renovate/upstream"]
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: [".taskfiles/**"],
+      labels: ["renovate/taskfile"],
+      pinDigests: false
+    },
+    {
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["talos/**"],
+      labels: ["renovate/talos"],
+      minimumReleaseAge: "3 days"
+    }
+  ]
+}

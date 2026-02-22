@@ -33,7 +33,7 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src/config.yaml
 ```
 
-Pre-commit hooks run automatically and include: yamllint, gitleaks, prettier, trailing-whitespace fixes.
+Pre-commit hooks run automatically for linting (yamllint, prettier), security (gitleaks), and file hygiene (whitespace, line endings, merge conflicts, smart quotes).
 
 ## Architecture
 
@@ -53,12 +53,21 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 **Templates directory**: `src/templates/`
 Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
 
+### Renovate Configuration
+
+Modular config in `.github/renovate/` is NOT synced to repos - other repos reference it directly via `github>anthony-spruyt/repo-operator//...` extends. Changes here affect all repos immediately.
+
+- For repo-specific rules, use `matchRepositories: ["owner/repo"]` in `package-rules.json5`
+- Don't use xfg overrides for Renovate array merging (YAML syntax limitation with `$arrayMerge`)
+
 ### CI/CD Pipeline
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
 1. **lint** - MegaLinter validation (skipped for renovate/dependabot commits)
-2. **sync-config** - Uses the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) to sync templates to target repos (on push/dispatch only)
+2. **sync-config** - Uses the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) via GitHub App (on push only, skipped if no `src/` changes)
 3. **summary** - Aggregates results for branch protection
 
 The sync-config job creates PRs in target repositories with the updated configuration files.
+
+Additional workflows distributed to target repos include Trivy vulnerability scanning.

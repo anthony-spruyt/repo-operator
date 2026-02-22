@@ -1,19 +1,16 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+# Configuration for repo-operator - syncs files to target repositories
 id: repo-operator
-
 deleteOrphaned: true
-
 prOptions:
-  merge: manual
+  merge: auto
+  mergeStrategy: squash
+  deleteBranch: true
 
 repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
 
   - git: https://github.com/anthony-spruyt/claude-config.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -22,48 +19,57 @@ repos:
               $arrayMerge: append
               extensions:
                 - "jetmartin.bats"
+      .eslintrc.json: false
       .hadolint.yaml: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
+      .eslintrc.json: false
+
+  #- git: https://github.com/anthony-spruyt/esphome.git
 
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
   #- git: https://github.com/anthony-spruyt/gastown-dev.git
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
-    prOptions:
-      merge: direct
     files:
+      .eslintrc.json: false
       .hadolint.yaml: false
       .pylintrc: false
+    prOptions:
+      merge: direct
+    settings:
+      rulesets:
+        inherit: false
 
-  #- git: https://github.com/anthony-spruyt/spruyt-labs.git
+  - git: https://github.com/anthony-spruyt/spruyt-labs.git
+    prOptions:
+      merge: manual
+    files:
+      .github/renovate.json5:
+        content:
+          ignorePaths: ["talos/helmfile"]
+    settings:
+      repo:
+        allowAutoMerge: false
+        privateVulnerabilityReporting: false
+        secretScanning: false
+        secretScanningPushProtection: false
+        visibility: private
+      rulesets:
+        inherit: false
 
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
   - git: https://github.com/anthony-spruyt/xfg.git
-    prOptions:
-      merge: auto
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
         content:
           features:
             "ghcr.io/devcontainers/features/azure-cli": {}
-      .github/rulesets/pr-rules.json:
-        content:
-          bypass_actors:
-            - actor_id: 2719952
-              actor_type: "Integration"
-              bypass_mode: "always"
       .vscode/settings.json:
         createOnly: false
         content:
@@ -72,6 +78,9 @@ repos:
             "node_modules/": true
             "site/": true
             "tmp/": true
+          "search.exclude":
+            "coverage": true
+            ".output": true
       .hadolint.yaml: false
       .pylintrc: false
       trivy.yaml:
@@ -81,21 +90,33 @@ repos:
             scanners:
               - vuln
               - secret
+    settings:
+      repo:
+        hasDiscussions: true
+      rulesets:
+        pr-rules:
+          bypassActors:
+            - actorId: 2719952
+              actorType: Integration
+              bypassMode: always
+        tag-rules:
+          bypassActors:
+            - actorId: 2719952
+              actorType: Integration
+              bypassMode: always
 
 files:
   .devcontainer/devcontainer.json:
     content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/package.json:
     content: "@templates/.devcontainer/package.json"
+  .devcontainer/initialize.sh:
+    content: "@templates/.devcontainer/initialize.sh"
   .devcontainer/post-create.sh:
     content: "@templates/.devcontainer/post-create.sh"
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
-  .github/rulesets/pr-rules.json:
-    content: "@templates/.github/rulesets/pr-rules.json"
-  .github/rulesets/push-protection.json:
-    content: "@templates/.github/rulesets/push-protection.json"
   .github/workflows/ci.yaml:
     createOnly: true
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
@@ -107,10 +128,7 @@ files:
     header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
     content: "@templates/.github/workflows/trivy-scan.yaml"
   .github/renovate.json5:
-    createOnly: true
     content: "@templates/.github/renovate.json5"
-  .github/apply-rulesets.sh:
-    content: "@templates/.github/apply-rulesets.sh"
   .github/actionlint.yaml:
     createOnly: true
     header:
@@ -127,6 +145,9 @@ files:
   .gitignore:
     createOnly: true
     content: "@templates/.gitignore"
+  .gitleaks.toml:
+    createOnly: true
+    content: "@templates/.gitleaks.toml"
   .hadolint.yaml:
     createOnly: true
     content: "@templates/.hadolint.yaml"
@@ -181,6 +202,8 @@ files:
       - This file is automatically updated - do not modify directly
       - https://yamllint.readthedocs.io/en/latest/configuration.html
     content: "@templates/.yamllint.yml"
+  .eslintrc.json:
+    content: "@templates/.eslintrc.json"
   LICENSE:
     content: "@templates/LICENSE.MIT"
   lint-config.sh:
@@ -194,3 +217,96 @@ files:
       - This file is automatically updated - do not modify directly
       - https://trivy.dev/latest/docs/references/configuration/config-file/
     content: "@templates/trivy.yaml"
+
+settings:
+  deleteOrphaned: true
+  repo:
+    allowAutoMerge: true
+    allowForking: true
+    allowMergeCommit: false
+    allowRebaseMerge: false
+    allowSquashMerge: true
+    allowUpdateBranch: true
+    archived: false
+    automatedSecurityFixes: false
+    defaultBranch: main
+    deleteBranchOnMerge: true
+    hasDiscussions: false
+    hasIssues: true
+    hasProjects: false
+    hasWiki: false
+    isTemplate: false
+    mergeCommitMessage: PR_TITLE
+    mergeCommitTitle: MERGE_MESSAGE
+    privateVulnerabilityReporting: true
+    secretScanning: true
+    secretScanningPushProtection: true
+    squashMergeCommitMessage: COMMIT_MESSAGES
+    squashMergeCommitTitle: COMMIT_OR_PR_TITLE
+    visibility: public
+    vulnerabilityAlerts: false
+    webCommitSignoffRequired: true
+  rulesets:
+    pr-rules:
+      bypassActors: []
+      conditions:
+        refName:
+          include:
+            - "refs/heads/main"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: code_quality
+          parameters:
+            severity: errors
+        - type: code_scanning
+          parameters:
+            codeScanningTools:
+              - tool: CodeQL
+                alertsThreshold: errors
+                securityAlertsThreshold: high_or_higher
+        - type: pull_request
+          parameters:
+            allowedMergeMethods:
+              - squash
+            dismissStaleReviewsOnPush: true
+            requireCodeOwnerReview: false
+            requiredApprovingReviewCount: 0
+            requiredReviewers: []
+            requiredReviewThreadResolution: true
+            requireLastPushApproval: false
+        - type: required_signatures
+        - type: required_status_checks
+          parameters:
+            doNotEnforceOnCreate: false
+            requiredStatusChecks:
+              - context: "summary / Check Results"
+            strictRequiredStatusChecksPolicy: true
+      target: branch
+    push-protection:
+      bypassActors: []
+      conditions:
+        refName:
+          include:
+            - "refs/heads/main"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: creation
+        - type: deletion
+        - type: non_fast_forward
+        - type: required_linear_history
+        - type: required_signatures
+      target: branch
+    tag-rules:
+      conditions:
+        refName:
+          include:
+            - "refs/tags/v*"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: deletion
+        - type: non_fast_forward
+        - type: required_signatures
+      target: tag

@@ -1,0 +1,2 @@
+exclude_files:
+  - "hookify.common-block-base64-decode.local.md"

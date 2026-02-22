@@ -16,16 +16,35 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          # Fetch all jobs in this workflow run
-          results=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
-            --jq '.jobs[] | select(.name != "summary / Check Results") | .conclusion')
+          # Fetch all jobs in this workflow run (exclude this summary job)
+          jobs_json=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
+            --jq '[.jobs[] | select(.name != "summary / Check Results") | {name: .name, conclusion: .conclusion}]')
 
-          echo "Job results:"
-          echo "$results"
+          # Build summary table
+          {
+            echo "## CI Results"
+            echo ""
+            echo "| Job | Status |"
+            echo "|-----|--------|"
+          } >> "$GITHUB_STEP_SUMMARY"
 
-          if echo "$results" | grep -qE "^(failure|cancelled)$"; then
-            echo "One or more jobs failed or were cancelled"
+          echo "$jobs_json" | jq -r '.[] | "\(.name)|\(.conclusion)"' | while IFS='|' read -r name conclusion; do
+            case "$conclusion" in
+              success)   icon="✅" ;;
+              failure)   icon="❌" ;;
+              cancelled) icon="⚪" ;;
+              skipped)   icon="⏭️" ;;
+              *)         icon="❓" ;;
+            esac
+            echo "| $name | $icon ${conclusion:-pending} |" >> "$GITHUB_STEP_SUMMARY"
+          done
+
+          echo "" >> "$GITHUB_STEP_SUMMARY"
+
+          # Check for failures
+          if echo "$jobs_json" | jq -e '.[] | select(.conclusion == "failure" or .conclusion == "cancelled")' > /dev/null 2>&1; then
+            echo "::error::One or more jobs failed or were cancelled"
             exit 1
           fi
 
-          echo "All jobs passed"
+          echo "::notice::All jobs passed"
