@@ -49,9 +49,10 @@ repos:
     prOptions:
       merge: manual
     files:
-      .github/renovate.json5:
-        content:
-          ignorePaths: ["talos/helmfile"]
+      inherit: false
+    #   .github/renovate.json5:
+    #     content:
+    #       ignorePaths: ["talos/helmfile"]
     settings:
       repo:
         allowAutoMerge: false
