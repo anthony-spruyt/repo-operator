@@ -220,6 +220,106 @@ files:
 
 settings:
   deleteOrphaned: true
+  labels:
+    blocked:
+      color: "#B60205"
+      description: "Waiting on upstream fix or external dependency"
+    bug:
+      color: "#d73a4a"
+      description: "Something isn't working"
+    chore:
+      color: "#FEF2C0"
+      description: "Maintenance, refactoring, configs"
+    critical:
+      color: "#b60205"
+      description: "Critical severity"
+    "dep/major":
+      color: "#ededed"
+      description: ""
+    "dep/minor":
+      color: "#ededed"
+      description: ""
+    "dep/patch":
+      color: "#ededed"
+      description: ""
+    dependencies:
+      color: "#0366d6"
+      description: "Pull requests that update a dependency file"
+    docker:
+      color: "#21ceff"
+      description: "Pull requests that update docker code"
+    documentation:
+      color: "#0075ca"
+      description: "Improvements or additions to documentation"
+    duplicate:
+      color: "#cfd3d7"
+      description: "This issue or pull request already exists"
+    enhancement:
+      color: "#a2eeef"
+      description: "New feature or request"
+    "github actions":
+      color: "#000000"
+      description: "Pull requests that update GitHub Actions code"
+    "good first issue":
+      color: "#7057ff"
+      description: "Good for newcomers"
+    "help wanted":
+      color: "#008672"
+      description: "Extra attention is needed"
+    high:
+      color: "#d93f0b"
+      description: "High severity"
+    invalid:
+      color: "#e4e669"
+      description: "This doesn't seem right"
+    medium:
+      color: "#fbca04"
+      description: "Medium severity"
+    question:
+      color: "#d876e3"
+      description: "Further information is requested"
+    "renovate/devcontainer":
+      color: "#ededed"
+      description: ""
+    "renovate/github-actions":
+      color: "#ededed"
+      description: ""
+    "renovate/helm":
+      color: "#ededed"
+      description: ""
+    "renovate/image":
+      color: "#ededed"
+      description: ""
+    "renovate/megalinter-flavor":
+      color: "#ededed"
+      description: ""
+    "renovate/npm":
+      color: "#ededed"
+      description: ""
+    "renovate/pre-commit":
+      color: "#ededed"
+      description: ""
+    "renovate/script":
+      color: "#ededed"
+      description: ""
+    "renovate/talos":
+      color: "#ededed"
+      description: ""
+    "renovate/taskfile":
+      color: "#ededed"
+      description: ""
+    "renovate/terraform":
+      color: "#ededed"
+      description: ""
+    security:
+      color: "#d73a4a"
+      description: "Security vulnerability"
+    trivy:
+      color: "#0052cc"
+      description: "Trivy scan finding"
+    wontfix:
+      color: "#ffffff"
+      description: "This will not be worked on"
   repo:
     allowAutoMerge: true
     allowForking: true
