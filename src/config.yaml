@@ -375,7 +375,6 @@ settings:
             requiredReviewers: []
             requiredReviewThreadResolution: true
             requireLastPushApproval: false
-        - type: required_signatures
         - type: required_status_checks
           parameters:
             doNotEnforceOnCreate: false
@@ -396,13 +395,23 @@ settings:
         - type: deletion
         - type: non_fast_forward
         - type: required_linear_history
+      target: branch
+    branch-signatures:
+      bypassActors: []
+      conditions:
+        refName:
+          include:
+            - "refs/heads/**"
+          exclude: []
+      enforcement: active
+      rules:
         - type: required_signatures
       target: branch
     tag-rules:
       conditions:
         refName:
           include:
-            - "refs/tags/v*"
+            - "refs/tags/**"
           exclude: []
       enforcement: active
       rules:
