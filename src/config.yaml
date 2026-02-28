@@ -22,6 +22,26 @@ repos:
       .eslintrc.json: false
       .hadolint.yaml: false
 
+  - git: https://github.com/anthony-spruyt/claude-plugins.git
+    prOptions:
+      merge: direct
+    files:
+      inherit: false
+      .devcontainer/devcontainer.json:
+        content: "@templates/.devcontainer/devcontainer.json"
+      .devcontainer/package.json:
+        content: "@templates/.devcontainer/package.json"
+      .devcontainer/initialize.sh:
+        content: "@templates/.devcontainer/initialize.sh"
+      .devcontainer/post-create.sh:
+        content: "@templates/.devcontainer/post-create.sh"
+      .devcontainer/setup-devcontainer.sh:
+        createOnly: true
+        content: "@templates/.devcontainer/setup-devcontainer.sh"
+    settings:
+      rulesets:
+        inherit: false
+
   - git: https://github.com/anthony-spruyt/container-images.git
     files:
       .github/workflows/trivy-scan.yaml:
