@@ -199,7 +199,7 @@ groups:
           - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
           - "SC2034: Variables used in heredocs appear unused"
         content: "@templates/.github/actionlint.yaml"
-  trivy:
+  github-trivy:
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
