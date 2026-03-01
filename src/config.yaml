@@ -11,6 +11,14 @@ repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
 
   - git: https://github.com/anthony-spruyt/claude-config.git
+    groups:
+      - devcontainer
+      - github-ci
+      - github-trivy
+      - renovate
+      - pre-commit
+      - megalinter
+      - protected-main-branch
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -23,26 +31,24 @@ repos:
       .hadolint.yaml: false
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
+    groups:
+      - devcontainer
+      - pre-commit
     prOptions:
       merge: direct
-    files:
-      inherit: false
-      .devcontainer/devcontainer.json:
-        content: "@templates/.devcontainer/devcontainer.json"
-      .devcontainer/package.json:
-        content: "@templates/.devcontainer/package.json"
-      .devcontainer/initialize.sh:
-        content: "@templates/.devcontainer/initialize.sh"
-      .devcontainer/post-create.sh:
-        content: "@templates/.devcontainer/post-create.sh"
-      .devcontainer/setup-devcontainer.sh:
-        createOnly: true
-        content: "@templates/.devcontainer/setup-devcontainer.sh"
     settings:
       rulesets:
         inherit: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
+    groups:
+      - devcontainer
+      - github-ci
+      - github-trivy
+      - renovate
+      - pre-commit
+      - megalinter
+      - protected-main-branch
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
@@ -55,6 +61,13 @@ repos:
   #- git: https://github.com/anthony-spruyt/gastown-dev.git
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
+    groups:
+      - devcontainer
+      - github-ci
+      - github-trivy
+      - renovate
+      - pre-commit
+      - megalinter
     files:
       .eslintrc.json: false
       .hadolint.yaml: false
@@ -66,25 +79,39 @@ repos:
         inherit: false
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
-    prOptions:
-      merge: manual
+    groups:
+      # - devcontainer
+      # - github-ci
+      # - github-trivy
+      # - renovate
+      # - pre-commit
+      # - megalinter
+      - private-repo
+    # prOptions:
+    #   merge: manual
+    # files:
+    #   .github/renovate.json5:
+    #     content:
+    #       ignorePaths: ["talos/helmfile"]
     files:
-      .github/renovate.json5:
-        content:
-          ignorePaths: ["talos/helmfile"]
+      inherit: false
     settings:
       repo:
         allowAutoMerge: false
-        privateVulnerabilityReporting: false
-        secretScanning: false
-        secretScanningPushProtection: false
-        visibility: private
       rulesets:
         inherit: false
 
   #- git: https://github.com/anthony-spruyt/SunGather.git
 
   - git: https://github.com/anthony-spruyt/xfg.git
+    groups:
+      - devcontainer
+      - github-ci
+      - github-trivy
+      - renovate
+      - pre-commit
+      - megalinter
+      - protected-main-branch
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -125,118 +152,296 @@ repos:
               actorType: Integration
               bypassMode: always
 
+groups:
+  devcontainer:
+    files:
+      .devcontainer/devcontainer.json:
+        content: "@templates/.devcontainer/devcontainer.json"
+      .devcontainer/package.json:
+        content: "@templates/.devcontainer/package.json"
+      .devcontainer/initialize.sh:
+        content: "@templates/.devcontainer/initialize.sh"
+      .devcontainer/post-create.sh:
+        content: "@templates/.devcontainer/post-create.sh"
+      .devcontainer/setup-devcontainer.sh:
+        createOnly: true
+        content: "@templates/.devcontainer/setup-devcontainer.sh"
+      .pre-commit-config.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
+        content: "@templates/.pre-commit-config.yaml"
+      .yamllint.yml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://yamllint.readthedocs.io/en/latest/configuration.html
+        content: "@templates/.yamllint.yml"
+      .gitleaks.toml:
+        createOnly: true
+        content: "@templates/.gitleaks.toml"
+      .prettierignore:
+        createOnly: true
+      .prettierrc.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.prettierrc.yaml"
+  github-ci:
+    files:
+      .github/workflows/ci.yaml:
+        createOnly: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
+        content: "@templates/.github/workflows/ci.yaml"
+      .github/actionlint.yaml:
+        createOnly: true
+        header:
+          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+          - Ignore shellcheck warnings in all workflows
+          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
+          - "SC2034: Variables used in heredocs appear unused"
+        content: "@templates/.github/actionlint.yaml"
+  trivy:
+    files:
+      .github/workflows/trivy-scan.yaml:
+        createOnly: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
+        content: "@templates/.github/workflows/trivy-scan.yaml"
+      .github/actionlint.yaml:
+        createOnly: true
+        header:
+          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+          - Ignore shellcheck warnings in all workflows
+          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
+          - "SC2034: Variables used in heredocs appear unused"
+        content: "@templates/.github/actionlint.yaml"
+      .trivyignore.yaml:
+        createOnly: true
+        header:
+          - Path-specific trivy ignores
+          - https://trivy.dev/latest/docs/configuration/filtering
+        content: "@templates/.trivyignore.yaml"
+      trivy.yaml:
+        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://trivy.dev/latest/docs/references/configuration/config-file/
+        content: "@templates/trivy.yaml"
+    settings:
+      labels:
+        critical:
+          color: "#b60205"
+          description: "Critical severity"
+        high:
+          color: "#d93f0b"
+          description: "High severity"
+        medium:
+          color: "#fbca04"
+          description: "Medium severity"
+        trivy:
+          color: "#0052cc"
+          description: "Trivy scan finding"
+  renovate:
+    files:
+      .github/renovate.json5:
+        content: "@templates/.github/renovate.json5"
+    settings:
+      labels:
+        "renovate/devcontainer":
+          color: "#ededed"
+          description: ""
+        "renovate/github-actions":
+          color: "#ededed"
+          description: ""
+        "renovate/helm":
+          color: "#ededed"
+          description: ""
+        "renovate/image":
+          color: "#ededed"
+          description: ""
+        "renovate/megalinter-flavor":
+          color: "#ededed"
+          description: ""
+        "renovate/npm":
+          color: "#ededed"
+          description: ""
+        "renovate/pre-commit":
+          color: "#ededed"
+          description: ""
+        "renovate/script":
+          color: "#ededed"
+          description: ""
+        "renovate/talos":
+          color: "#ededed"
+          description: ""
+        "renovate/taskfile":
+          color: "#ededed"
+          description: ""
+        "renovate/terraform":
+          color: "#ededed"
+          description: ""
+  pre-commit:
+    files:
+      .pre-commit-config.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
+        content: "@templates/.pre-commit-config.yaml"
+      .yamllint.yml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://yamllint.readthedocs.io/en/latest/configuration.html
+        content: "@templates/.yamllint.yml"
+      .gitleaks.toml:
+        createOnly: true
+        content: "@templates/.gitleaks.toml"
+      .prettierignore:
+        createOnly: true
+      .prettierrc.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.prettierrc.yaml"
+  megalinter:
+    files:
+      .trivyignore.yaml:
+        createOnly: true
+        header:
+          - Path-specific trivy ignores
+          - https://trivy.dev/latest/docs/configuration/filtering
+        content: "@templates/.trivyignore.yaml"
+      trivy.yaml:
+        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://trivy.dev/latest/docs/references/configuration/config-file/
+        content: "@templates/trivy.yaml"
+      .yamllint.yml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://yamllint.readthedocs.io/en/latest/configuration.html
+        content: "@templates/.yamllint.yml"
+      .gitleaks.toml:
+        createOnly: true
+        content: "@templates/.gitleaks.toml"
+      .prettierignore:
+        createOnly: true
+      .prettierrc.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.prettierrc.yaml"
+      .hadolint.yaml:
+        createOnly: true
+        content: "@templates/.hadolint.yaml"
+      .lycheeignore:
+        createOnly: true
+      .markdownlint.json:
+        content: "@templates/.markdownlint.json"
+      .markdownlintignore:
+        createOnly: true
+        content: "@templates/.markdownlintignore"
+      .mega-linter-base.yml:
+        schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
+        header:
+          - Base MegaLinter configuration synced from repo-operator
+          - This file is automatically updated - do not modify directly
+          - To add custom linters, modify .mega-linter.yml instead
+        content: "@templates/.mega-linter-base.yml"
+      .mega-linter.yml:
+        createOnly: true
+        schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
+        header:
+          - Project-specific MegaLinter configuration
+          - Extends the base config from repo-operator
+          - Add custom linters or overrides below
+          - "Add project-specific linters below:"
+          - "ENABLE_LINTERS:"
+          - "  - TYPESCRIPT_ES"
+          - "  - PYTHON_PYLINT"
+        content: "@templates/.mega-linter.yml"
+      .pylintrc:
+        createOnly: true
+      .shellcheckrc:
+        createOnly: true
+      .eslintrc.json:
+        content: "@templates/.eslintrc.json"
+      LICENSE:
+        createOnly: true
+        content: "@templates/LICENSE.MIT"
+      lint-config.sh:
+        createOnly: true
+        content: "@templates/lint-config.sh"
+      lint.sh:
+        content: "@templates/lint.sh"
+  protected-main-branch:
+    settings:
+      rulesets:
+        pr-rules:
+          bypassActors: []
+          conditions:
+            refName:
+              include:
+                - "refs/heads/main"
+              exclude: []
+          enforcement: active
+          rules:
+            - type: code_quality
+              parameters:
+                severity: errors
+            - type: code_scanning
+              parameters:
+                codeScanningTools:
+                  - tool: CodeQL
+                    alertsThreshold: errors
+                    securityAlertsThreshold: high_or_higher
+            - type: pull_request
+              parameters:
+                allowedMergeMethods:
+                  - squash
+                dismissStaleReviewsOnPush: true
+                requireCodeOwnerReview: false
+                requiredApprovingReviewCount: 0
+                requiredReviewers: []
+                requiredReviewThreadResolution: true
+                requireLastPushApproval: false
+            - type: required_status_checks
+              parameters:
+                doNotEnforceOnCreate: false
+                requiredStatusChecks:
+                  - context: "summary / Check Results"
+                strictRequiredStatusChecksPolicy: true
+          target: branch
+  private-repo:
+    settings:
+      repo:
+        privateVulnerabilityReporting: false
+        secretScanning: false
+        secretScanningPushProtection: false
+        visibility: private
+
+  # typescript:
+  #   files:
+  #     TODO
+  # docker:
+  #   files:
+  #     TODO
+
 files:
-  .devcontainer/devcontainer.json:
-    content: "@templates/.devcontainer/devcontainer.json"
-  .devcontainer/package.json:
-    content: "@templates/.devcontainer/package.json"
-  .devcontainer/initialize.sh:
-    content: "@templates/.devcontainer/initialize.sh"
-  .devcontainer/post-create.sh:
-    content: "@templates/.devcontainer/post-create.sh"
-  .devcontainer/setup-devcontainer.sh:
-    createOnly: true
-    content: "@templates/.devcontainer/setup-devcontainer.sh"
-  .github/workflows/ci.yaml:
-    createOnly: true
-    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-    header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
-    content: "@templates/.github/workflows/ci.yaml"
-  .github/workflows/trivy-scan.yaml:
-    createOnly: true
-    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-    header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
-    content: "@templates/.github/workflows/trivy-scan.yaml"
-  .github/renovate.json5:
-    content: "@templates/.github/renovate.json5"
-  .github/actionlint.yaml:
-    createOnly: true
-    header:
-      - https://github.com/rhysd/actionlint/blob/main/docs/config.md
-      - Ignore shellcheck warnings in all workflows
-      - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
-      - "SC2034: Variables used in heredocs appear unused"
-    content: "@templates/.github/actionlint.yaml"
   .vscode/settings.json:
     createOnly: true
     content: "@templates/.vscode/settings.json"
-  .editorconfig:
-    content: "@templates/.editorconfig"
-  .gitignore:
-    createOnly: true
-    content: "@templates/.gitignore"
-  .gitleaks.toml:
-    createOnly: true
-    content: "@templates/.gitleaks.toml"
-  .hadolint.yaml:
-    createOnly: true
-    content: "@templates/.hadolint.yaml"
-  .lycheeignore:
-    createOnly: true
-  .markdownlint.json:
-    content: "@templates/.markdownlint.json"
-  .markdownlintignore:
-    createOnly: true
-    content: "@templates/.markdownlintignore"
-  .mega-linter-base.yml:
-    schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
-    header:
-      - Base MegaLinter configuration synced from repo-operator
-      - This file is automatically updated - do not modify directly
-      - To add custom linters, modify .mega-linter.yml instead
-    content: "@templates/.mega-linter-base.yml"
-  .mega-linter.yml:
-    createOnly: true
-    schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
-    header:
-      - Project-specific MegaLinter configuration
-      - Extends the base config from repo-operator
-      - Add custom linters or overrides below
-      - "Add project-specific linters below:"
-      - "ENABLE_LINTERS:"
-      - "  - TYPESCRIPT_ES"
-      - "  - PYTHON_PYLINT"
-    content: "@templates/.mega-linter.yml"
-  .pre-commit-config.yaml:
-    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
-    content: "@templates/.pre-commit-config.yaml"
   .prettierignore:
     createOnly: true
   .prettierrc.yaml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
     header: This file is automatically updated - do not modify directly
     content: "@templates/.prettierrc.yaml"
-  .pylintrc:
+  .editorconfig:
+    content: "@templates/.editorconfig"
+  .gitignore:
     createOnly: true
-  .shellcheckrc:
-    createOnly: true
-  .trivyignore.yaml:
-    createOnly: true
-    header:
-      - Path-specific trivy ignores
-      - https://trivy.dev/latest/docs/configuration/filtering
-    content: "@templates/.trivyignore.yaml"
-  .yamllint.yml:
-    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-    header:
-      - This file is automatically updated - do not modify directly
-      - https://yamllint.readthedocs.io/en/latest/configuration.html
-    content: "@templates/.yamllint.yml"
-  .eslintrc.json:
-    content: "@templates/.eslintrc.json"
+    content: "@templates/.gitignore"
   LICENSE:
-    content: "@templates/LICENSE.MIT"
-  lint-config.sh:
     createOnly: true
-    content: "@templates/lint-config.sh"
-  lint.sh:
-    content: "@templates/lint.sh"
-  trivy.yaml:
-    schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-    header:
-      - This file is automatically updated - do not modify directly
-      - https://trivy.dev/latest/docs/references/configuration/config-file/
-    content: "@templates/trivy.yaml"
+    content: "@templates/LICENSE.MIT"
 
 settings:
   deleteOrphaned: true
@@ -250,9 +455,6 @@ settings:
     chore:
       color: "#FEF2C0"
       description: "Maintenance, refactoring, configs"
-    critical:
-      color: "#b60205"
-      description: "Critical severity"
     "dep/major":
       color: "#ededed"
       description: ""
@@ -286,57 +488,15 @@ settings:
     "help wanted":
       color: "#008672"
       description: "Extra attention is needed"
-    high:
-      color: "#d93f0b"
-      description: "High severity"
     invalid:
       color: "#e4e669"
       description: "This doesn't seem right"
-    medium:
-      color: "#fbca04"
-      description: "Medium severity"
     question:
       color: "#d876e3"
       description: "Further information is requested"
-    "renovate/devcontainer":
-      color: "#ededed"
-      description: ""
-    "renovate/github-actions":
-      color: "#ededed"
-      description: ""
-    "renovate/helm":
-      color: "#ededed"
-      description: ""
-    "renovate/image":
-      color: "#ededed"
-      description: ""
-    "renovate/megalinter-flavor":
-      color: "#ededed"
-      description: ""
-    "renovate/npm":
-      color: "#ededed"
-      description: ""
-    "renovate/pre-commit":
-      color: "#ededed"
-      description: ""
-    "renovate/script":
-      color: "#ededed"
-      description: ""
-    "renovate/talos":
-      color: "#ededed"
-      description: ""
-    "renovate/taskfile":
-      color: "#ededed"
-      description: ""
-    "renovate/terraform":
-      color: "#ededed"
-      description: ""
     security:
       color: "#d73a4a"
       description: "Security vulnerability"
-    trivy:
-      color: "#0052cc"
-      description: "Trivy scan finding"
     wontfix:
       color: "#ffffff"
       description: "This will not be worked on"
@@ -367,41 +527,6 @@ settings:
     vulnerabilityAlerts: false
     webCommitSignoffRequired: true
   rulesets:
-    pr-rules:
-      bypassActors: []
-      conditions:
-        refName:
-          include:
-            - "refs/heads/main"
-          exclude: []
-      enforcement: active
-      rules:
-        - type: code_quality
-          parameters:
-            severity: errors
-        - type: code_scanning
-          parameters:
-            codeScanningTools:
-              - tool: CodeQL
-                alertsThreshold: errors
-                securityAlertsThreshold: high_or_higher
-        - type: pull_request
-          parameters:
-            allowedMergeMethods:
-              - squash
-            dismissStaleReviewsOnPush: true
-            requireCodeOwnerReview: false
-            requiredApprovingReviewCount: 0
-            requiredReviewers: []
-            requiredReviewThreadResolution: true
-            requireLastPushApproval: false
-        - type: required_status_checks
-          parameters:
-            doNotEnforceOnCreate: false
-            requiredStatusChecks:
-              - context: "summary / Check Results"
-            strictRequiredStatusChecksPolicy: true
-      target: branch
     push-protection:
       bypassActors: []
       conditions:
