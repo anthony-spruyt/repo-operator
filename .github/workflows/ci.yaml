@@ -70,7 +70,6 @@ jobs:
         if: "steps.changes.outputs.run_sync == 'true'"
         uses: "anthony-spruyt/xfg@v4"
         with:
-          command: sync
           config: "./src/config.yaml"
           dry-run: true
           github-app-id: "${{ vars.APP_ID }}"
@@ -101,7 +100,6 @@ jobs:
       - name: "Apply Sync"
         uses: "anthony-spruyt/xfg@v4"
         with:
-          command: sync
           config: "./src/config.yaml"
           github-app-id: "${{ vars.APP_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
