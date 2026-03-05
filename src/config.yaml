@@ -116,6 +116,8 @@ repos:
       .devcontainer/devcontainer.json:
         content:
           features:
+            "ghcr.io/devcontainers/features/python":
+              "version": "latest"
             "ghcr.io/devcontainers/features/azure-cli": {}
       .vscode/settings.json:
         createOnly: false
