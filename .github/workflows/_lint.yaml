@@ -28,7 +28,7 @@ jobs:
         if: (success() || failure()) && hashFiles('megalinter-reports/megalinter-report.sarif') != ''
         continue-on-error: true
         id: sarif-upload
-        uses: github/codeql-action/upload-sarif@b6dfacb528092ed900ca0cfec2957487685c3bfd
+        uses: github/codeql-action/upload-sarif@1dbebad653b49a8cce7da97e33aa7a9e33a82651
         with:
           sarif_file: megalinter-reports/megalinter-report.sarif
 
