@@ -335,6 +335,7 @@ groups:
         content: "@templates/.hadolint.yaml"
       .lycheeignore:
         createOnly: true
+        content: "@templates/.lycheeignore"
       .markdownlint.json:
         content: "@templates/.markdownlint.json"
       .markdownlintignore:
