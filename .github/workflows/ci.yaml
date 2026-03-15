@@ -68,19 +68,8 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@v3"
+        uses: "anthony-spruyt/xfg@v4"
         with:
-          command: sync
-          config: "./src/config.yaml"
-          dry-run: true
-          github-app-id: "${{ vars.APP_ID }}"
-          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
-
-      - name: "Plan Settings"
-        if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@v3"
-        with:
-          command: settings
           config: "./src/config.yaml"
           dry-run: true
           github-app-id: "${{ vars.APP_ID }}"
@@ -109,17 +98,8 @@ jobs:
           fetch-depth: 2
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@v3"
+        uses: "anthony-spruyt/xfg@v4"
         with:
-          command: sync
-          config: "./src/config.yaml"
-          github-app-id: "${{ vars.APP_ID }}"
-          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
-
-      - name: "Apply Settings"
-        uses: "anthony-spruyt/xfg@v3"
-        with:
-          command: settings
           config: "./src/config.yaml"
           github-app-id: "${{ vars.APP_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
