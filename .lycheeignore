@@ -1,5 +1,3 @@
-# Private repo
-https://github.com/anthony-spruyt/spruyt-labs.git
-
-# Trivy schema URL (repo was emptied, schema no longer accessible)
-https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+# GitHub rate-limits unauthenticated requests (429 Too Many Requests)
+https://github.com/.*
+https://raw.githubusercontent.com/.*
