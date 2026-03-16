@@ -104,6 +104,18 @@ repos:
         alert:
           color: "#e11d48"
           description: "Auto-created alert triage issue"
+        "renovate/github-actions":
+          color: "#ededed"
+          description: ""
+        "renovate/helm":
+          color: "#ededed"
+          description: ""
+        "renovate/image":
+          color: "#ededed"
+          description: ""
+        "renovate/taskfile":
+          color: "#ededed"
+          description: ""
         sre:
           color: "#7c3aed"
           description: "SRE investigation or triage"
