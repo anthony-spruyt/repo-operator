@@ -322,33 +322,11 @@ groups:
         content: "@templates/.prettierrc.yaml"
   megalinter:
     files:
-      .trivyignore.yaml:
-        createOnly: true
-        header:
-          - Path-specific trivy ignores
-          - https://trivy.dev/latest/docs/configuration/filtering
-        content: "@templates/.trivyignore.yaml"
-      trivy.yaml:
-        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://trivy.dev/latest/docs/references/configuration/config-file/
-        content: "@templates/trivy.yaml"
-      .yamllint.yml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://yamllint.readthedocs.io/en/latest/configuration.html
-        content: "@templates/.yamllint.yml"
+      .eslintrc.json:
+        content: "@templates/.eslintrc.json"
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .prettierignore:
-        createOnly: true
-      .prettierrc.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
-        header: This file is automatically updated - do not modify directly
-        content: "@templates/.prettierrc.yaml"
       .hadolint.yaml:
         createOnly: true
         content: "@templates/.hadolint.yaml"
@@ -360,13 +338,6 @@ groups:
       .markdownlintignore:
         createOnly: true
         content: "@templates/.markdownlintignore"
-      .mega-linter-base.yml:
-        schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
-        header:
-          - Base MegaLinter configuration synced from repo-operator
-          - This file is automatically updated - do not modify directly
-          - To add custom linters, modify .mega-linter.yml instead
-        content: "@templates/.mega-linter-base.yml"
       .mega-linter.yml:
         createOnly: true
         schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
@@ -379,12 +350,44 @@ groups:
           - "  - TYPESCRIPT_ES"
           - "  - PYTHON_PYLINT"
         content: "@templates/.mega-linter.yml"
+      .mega-linter-base.yml:
+        schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
+        header:
+          - Base MegaLinter configuration synced from repo-operator
+          - This file is automatically updated - do not modify directly
+          - To add custom linters, modify .mega-linter.yml instead
+        content: "@templates/.mega-linter-base.yml"
+      .prettierignore:
+        createOnly: true
+      .prettierrc.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.prettierrc.yaml"
       .pylintrc:
         createOnly: true
+      .secretlintignore:
+        createOnly: true
+        content: "@templates/.secretlintignore"
       .shellcheckrc:
         createOnly: true
-      .eslintrc.json:
-        content: "@templates/.eslintrc.json"
+      trivy.yaml:
+        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://trivy.dev/latest/docs/references/configuration/config-file/
+        content: "@templates/trivy.yaml"
+      .trivyignore.yaml:
+        createOnly: true
+        header:
+          - Path-specific trivy ignores
+          - https://trivy.dev/latest/docs/configuration/filtering
+        content: "@templates/.trivyignore.yaml"
+      .yamllint.yml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://yamllint.readthedocs.io/en/latest/configuration.html
+        content: "@templates/.yamllint.yml"
       LICENSE:
         createOnly: true
         content: "@templates/LICENSE.MIT"
