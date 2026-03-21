@@ -141,6 +141,14 @@
       matchFileNames: ["talos/**"],
       labels: ["renovate/talos"],
       minimumReleaseAge: "3 days"
+    },
+
+    // ============ Repo-specific overrides ============
+    {
+      description: "Disable automerge for openclaw",
+      matchRepositories: ["anthony-spruyt/spruyt-labs"],
+      matchPackagePatterns: ["^(ghcr\\.io/)?openclaw"],
+      automerge: false
     }
   ]
 }
