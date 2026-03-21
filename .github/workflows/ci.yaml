@@ -18,9 +18,10 @@ on:
         default: false
 
 permissions:
+  actions: "read"
   contents: "write"
   pull-requests: "write"
-  security-events: write
+  security-events: "write"
   statuses: "write"
 
 jobs:
