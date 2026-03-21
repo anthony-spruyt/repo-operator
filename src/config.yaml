@@ -80,21 +80,102 @@ repos:
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
-      # - devcontainer
-      # - github-ci
-      # - github-trivy
-      # - renovate
-      # - pre-commit
-      # - megalinter
+      - devcontainer
+      - github-ci
+      - github-trivy
+      - renovate
+      - pre-commit
+      - megalinter
       - private-repo
-    # prOptions:
-    #   merge: manual
-    # files:
-    #   .github/renovate.json5:
-    #     content:
-    #       ignorePaths: ["talos/helmfile"]
+    prOptions:
+      merge: manual
     files:
-      inherit: false
+      # Devcontainer - extra features, mounts, extensions
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers-extra/features/sops": {}
+            "ghcr.io/eitsupi/devcontainer-features/jq-likes":
+              yqVersion: "latest"
+            "ghcr.io/devcontainers/features/terraform": {}
+            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
+          mounts:
+            $arrayMerge: append
+            values:
+              - "source=${localEnv:HOME}/.secrets/.terraform.d,target=/home/vscode/.terraform.d,type=bind,readonly"
+              - "source=${localEnv:HOME}/.secrets,target=/home/vscode/.secrets,type=bind,readonly"
+              - "source=${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                values:
+                  - "task.vscode-task"
+                  - "tim-koehler.helm-intellisense"
+                  - "hashicorp.terraform"
+                  - "github.vscode-github-actions"
+          portsAttributes:
+            "3333":
+              label: "Capacitor"
+              onAutoForward: "openBrowser"
+
+      # VSCode - repo-specific search excludes + formatters
+      .vscode/settings.json:
+        createOnly: false
+        content:
+          "search.exclude":
+            "**/*.secret.*": true
+            "**/temp/**": true
+          "editor.defaultFormatter": "esbenp.prettier-vscode"
+          "[terraform]":
+            "editor.defaultFormatter": "hashicorp.terraform"
+
+      # Yamllint - extra ignores (string replaces template value)
+      .yamllint.yml:
+        content:
+          ignore: |
+            *.sops.*
+            talos/
+            clusterconfig/
+            legacy/
+            .taskfiles/talos/scripts/
+
+      # Trivy - add skip-dirs
+      trivy.yaml:
+        content:
+          scan:
+            skip-dirs:
+              - talos/clusterconfig
+
+      # Pre-commit - add sops + terraform hooks
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            values:
+              - repo: https://github.com/k8s-at-home/sops-pre-commit
+                rev: v2.1.1
+                hooks:
+                  - id: forbid-secrets
+              - repo: https://github.com/antonbabenko/pre-commit-terraform
+                rev: v1.105.0
+                hooks:
+                  - id: terraform_fmt
+                    files: ^infra/terraform/
+                  - id: terraform_tflint
+                    files: ^infra/terraform/
+
+      # Renovate - add ignorePaths
+      .github/renovate.json5:
+        content:
+          ignorePaths:
+            - "talos/helmfile"
+
+      # Not needed for this repo
+      .eslintrc.json: false
+      .hadolint.yaml: false
+      .pylintrc: false
+
     settings:
       repo:
         allowAutoMerge: false
