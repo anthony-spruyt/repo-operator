@@ -323,6 +323,16 @@ After the xfg sync PR lands but before cleanup issues are completed, both old an
 - **Renovate**: The new `renovate.json5` (extending repo-operator's shared configs) will coexist with the old `.github/renovate/` modular configs. Since the new file replaces the old one (same path), Renovate will use the new config immediately. The old modular config directory becomes dead code until Issue 4 deletes it.
 - **MegaLinter**: The new `.mega-linter-base.yml` will be created, but the existing `.mega-linter.yml` won't reference it until Issue 2 is completed. MegaLinter will continue using the existing `.mega-linter.yml` standalone config, so no disruption.
 
+### Implicit behavioral changes from adopting standard templates
+
+The template introduces standardizations that spruyt-labs did not previously have:
+
+- **Devcontainer mounts**: Template adds `~/.ssh/allowed_signers` and `~/.ssh/known_hosts` bind mounts. These files must exist on the host machine or the devcontainer will fail to start. Verify these exist before merging.
+- **Pre-commit `remove-tabs`**: Template adds `--whitespaces-count 2` arg. Minor formatting change.
+- **Pre-commit `gitleaks`**: Template adds `--config .gitleaks.toml` arg. The `.gitleaks.toml` file will be created by the devcontainer group (`createOnly: true`), so this is safe.
+
+These are all caught during the manual PR review (enabled by `prOptions.merge: manual`).
+
 ## Execution order
 
 1. Make repo-operator changes (config.yaml, automerge.json5, package-rules.json5)

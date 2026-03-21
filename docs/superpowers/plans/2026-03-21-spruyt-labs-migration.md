@@ -526,3 +526,11 @@ Expected: 6 open issues
 
 Run: `yamllint -d relaxed src/config.yaml`
 Expected: No errors
+
+- [ ] **Step 4: Note implicit behavioral changes for PR review**
+
+When reviewing the xfg sync PR in spruyt-labs, verify:
+
+- `~/.ssh/allowed_signers` and `~/.ssh/known_hosts` exist on the host (template adds bind mounts for these)
+- Pre-commit `remove-tabs` hook will gain `--whitespaces-count 2` arg (standardization)
+- Pre-commit `gitleaks` hook will gain `--config .gitleaks.toml` arg (file is synced by devcontainer group)
