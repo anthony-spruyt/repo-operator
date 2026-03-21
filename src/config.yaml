@@ -100,7 +100,7 @@ repos:
             "ghcr.io/devcontainers-extra/features/renovate-cli": {}
           mounts:
             $arrayMerge: append
-            values:
+            $values:
               - "source=${localEnv:HOME}/.secrets/.terraform.d,target=/home/vscode/.terraform.d,type=bind,readonly"
               - "source=${localEnv:HOME}/.secrets,target=/home/vscode/.secrets,type=bind,readonly"
               - "source=${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
@@ -108,7 +108,7 @@ repos:
             vscode:
               extensions:
                 $arrayMerge: append
-                values:
+                $values:
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
                   - "hashicorp.terraform"
@@ -143,7 +143,7 @@ repos:
         content:
           repos:
             $arrayMerge: append
-            values:
+            $values:
               - repo: https://github.com/k8s-at-home/sops-pre-commit
                 rev: v2.1.1
                 hooks:
