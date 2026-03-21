@@ -113,6 +113,12 @@ repos:
         "renovate/image":
           color: "#ededed"
           description: ""
+        "renovate/talos":
+          color: "#ededed"
+          description: ""
+        "renovate/terraform":
+          color: "#ededed"
+          description: ""
         "renovate/taskfile":
           color: "#ededed"
           description: ""
