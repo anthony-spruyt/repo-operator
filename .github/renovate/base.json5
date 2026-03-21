@@ -4,6 +4,7 @@
   extends: [
     "config:recommended",
     "docker:enableMajor",
+    "helpers:pinGitHubActionDigests",
     ":dependencyDashboard",
     ":disableRateLimiting",
     ":semanticCommits",
