@@ -48,6 +48,11 @@
 
     // ============ Package-specific overrides ============
     {
+      description: "Disable automerge for calver packages (date-based versions are not true semver patches)",
+      matchCurrentVersion: "/^20\\d{2}\\./",
+      automerge: false
+    },
+    {
       description: "Disable automerge for rook-ceph (critical storage component)",
       matchPackagePatterns: ["^(ghcr\\.io/)?rook(/|-)ceph"],
       automerge: false
