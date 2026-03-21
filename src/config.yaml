@@ -403,7 +403,10 @@ groups:
     settings:
       rulesets:
         pr-rules:
-          bypassActors: []
+          bypassActors:
+            - actorId: 2740
+              actorType: Integration
+              bypassMode: always
           conditions:
             refName:
               include:
@@ -425,7 +428,7 @@ groups:
                 allowedMergeMethods:
                   - squash
                 dismissStaleReviewsOnPush: true
-                requireCodeOwnerReview: false
+                requireCodeOwnerReview: true
                 requiredApprovingReviewCount: 0
                 requiredReviewers: []
                 requiredReviewThreadResolution: true
