@@ -16,6 +16,10 @@ on:
         required: false
         default: "fs"
 
+permissions:
+  contents: read
+  issues: write
+
 jobs:
   scan:
     name: Scan for vulnerabilities

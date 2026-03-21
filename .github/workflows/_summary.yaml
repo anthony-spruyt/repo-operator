@@ -5,6 +5,9 @@ name: CI Summary
 on:
   workflow_call:
 
+permissions:
+  contents: read
+
 jobs:
   summary:
     name: Check Results
