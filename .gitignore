@@ -19,3 +19,6 @@ agent.sock
 
 # MegaLinter
 .output
+
+# Git worktrees
+.worktrees/
