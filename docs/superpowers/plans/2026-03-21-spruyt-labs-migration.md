@@ -20,9 +20,11 @@
 
 - [ ] **Step 1: Add calver rule to automerge.json5**
 
-Add the calver automerge disable rule to the package-specific overrides section, before the closing of the rook-ceph rule. This is a global rule — it applies to all repos.
+Add the calver automerge disable rule to the package-specific overrides section, before the rook-ceph rule. This is a global rule — it applies to all repos.
 
-In `.github/renovate/automerge.json5`, replace:
+**Note:** Code blocks below may be reformatted by prettier. Match the indentation of the actual file (4-space indent for rules inside `packageRules` array). Read the file first to confirm exact indentation.
+
+In `.github/renovate/automerge.json5`, replace the package-specific overrides section (lines 49-55):
 
 ```json5
 // ============ Package-specific overrides ============
@@ -76,7 +78,9 @@ patches but may contain breaking changes. Applies globally to all repos."
 
 Add the openclaw automerge disable rule at the end of the packageRules array, scoped to spruyt-labs only.
 
-In `.github/renovate/package-rules.json5`, replace:
+**Note:** Read the file first to confirm exact indentation. Match the 4-space indent of existing rules.
+
+In `.github/renovate/package-rules.json5`, replace the last rule + closing (lines 139-147):
 
 ```json5
     {
@@ -131,6 +135,8 @@ git commit -m "feat(renovate): disable automerge for openclaw in spruyt-labs"
 - Modify: `src/config.yaml:81-127`
 
 - [ ] **Step 1: Replace the spruyt-labs entry**
+
+**Note:** The spruyt-labs block is nested under `repos:` with 2-space indentation. Read the file first to confirm. All content below should be indented 2 spaces from the left margin in the actual file.
 
 In `src/config.yaml`, replace the entire spruyt-labs block (lines 81-127):
 
@@ -393,6 +399,8 @@ Update `.mega-linter.yml` to:
 - Keep repo-specific settings: `FILTER_REGEX_EXCLUDE`, `EXCLUDED_DIRECTORIES`, `REPOSITORY_SECRETLINT_ARGUMENTS`, `IGNORE_GITIGNORED_FILES`
 
 Base provides: ACTION_ACTIONLINT, BASH_SHELLCHECK, BASH_SHFMT, JSON_JSONLINT, MARKDOWN_MARKDOWNLINT, REPOSITORY_GITLEAKS, REPOSITORY_SECRETLINT, REPOSITORY_TRIVY, SPELL_LYCHEE, YAML_YAMLLINT
+
+**Note:** BASH_SHFMT and JSON_JSONLINT are NEW linters that spruyt-labs did not previously run. They may surface new lint failures that need to be addressed.
 EOF
 )"
 ```
@@ -534,3 +542,5 @@ When reviewing the xfg sync PR in spruyt-labs, verify:
 - `~/.ssh/allowed_signers` and `~/.ssh/known_hosts` exist on the host (template adds bind mounts for these)
 - Pre-commit `remove-tabs` hook will gain `--whitespaces-count 2` arg (standardization)
 - Pre-commit `gitleaks` hook will gain `--config .gitleaks.toml` arg (file is synced by devcontainer group)
+- Renovate `rebaseWhen` changes from `"conflicted"` to `"behind-base-branch"` (more aggressive rebasing)
+- MegaLinter gains `BASH_SHFMT` and `JSON_JSONLINT` linters (may surface new lint failures)

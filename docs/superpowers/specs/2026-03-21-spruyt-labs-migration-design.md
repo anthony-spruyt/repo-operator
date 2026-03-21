@@ -330,6 +330,8 @@ The template introduces standardizations that spruyt-labs did not previously hav
 - **Devcontainer mounts**: Template adds `~/.ssh/allowed_signers` and `~/.ssh/known_hosts` bind mounts. These files must exist on the host machine or the devcontainer will fail to start. Verify these exist before merging.
 - **Pre-commit `remove-tabs`**: Template adds `--whitespaces-count 2` arg. Minor formatting change.
 - **Pre-commit `gitleaks`**: Template adds `--config .gitleaks.toml` arg. The `.gitleaks.toml` file will be created by the devcontainer group (`createOnly: true`), so this is safe.
+- **Renovate `rebaseWhen`**: Changes from `"conflicted"` (rebase only on merge conflicts) to `"behind-base-branch"` (rebase whenever base branch updates). This is more aggressive and may increase CI load with more frequent Renovate PR rebases.
+- **MegaLinter new linters**: The base config adds `BASH_SHFMT` (shell formatting) and `JSON_JSONLINT` (JSON validation) which spruyt-labs did not previously run. These could surface new lint failures on first run.
 
 These are all caught during the manual PR review (enabled by `prOptions.merge: manual`).
 
