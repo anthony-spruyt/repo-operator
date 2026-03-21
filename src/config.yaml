@@ -177,6 +177,9 @@ repos:
         "renovate/helm":
           color: "#ededed"
           description: ""
+        "renovate/helm-values":
+          color: "#ededed"
+          description: ""
         "renovate/image":
           color: "#ededed"
           description: ""
