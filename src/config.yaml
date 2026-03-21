@@ -90,7 +90,6 @@ repos:
     prOptions:
       merge: manual
     files:
-      # Devcontainer - extra features, mounts, extensions
       .devcontainer/devcontainer.json:
         content:
           features:
@@ -118,8 +117,6 @@ repos:
             "3333":
               label: "Capacitor"
               onAutoForward: "openBrowser"
-
-      # VSCode - repo-specific search excludes + formatters
       .vscode/settings.json:
         createOnly: false
         content:
@@ -129,8 +126,6 @@ repos:
           "editor.defaultFormatter": "esbenp.prettier-vscode"
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
-
-      # Yamllint - extra ignores (string replaces template value)
       .yamllint.yml:
         content:
           ignore: |
@@ -139,15 +134,11 @@ repos:
             clusterconfig/
             legacy/
             .taskfiles/talos/scripts/
-
-      # Trivy - add skip-dirs
       trivy.yaml:
         content:
           scan:
             skip-dirs:
               - talos/clusterconfig
-
-      # Pre-commit - add sops + terraform hooks
       .pre-commit-config.yaml:
         content:
           repos:
@@ -164,18 +155,13 @@ repos:
                     files: ^infra/terraform/
                   - id: terraform_tflint
                     files: ^infra/terraform/
-
-      # Renovate - add ignorePaths
       .github/renovate.json5:
         content:
           ignorePaths:
             - "talos/helmfile"
-
-      # Not needed for this repo
       .eslintrc.json: false
       .hadolint.yaml: false
       .pylintrc: false
-
     settings:
       repo:
         allowAutoMerge: false
