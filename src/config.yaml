@@ -173,6 +173,9 @@ repos:
             - actorId: 2719952
               actorType: Integration
               bypassMode: always
+            - actorId: 2740
+              actorType: Integration
+              bypassMode: always
         tag-rules:
           bypassActors:
             - actorId: 2719952
