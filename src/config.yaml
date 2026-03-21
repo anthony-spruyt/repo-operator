@@ -397,6 +397,9 @@ groups:
       lint.sh:
         content: "@templates/lint.sh"
   protected-main-branch:
+    files:
+      .github/CODEOWNERS:
+        content: "@templates/.github/CODEOWNERS"
     settings:
       rulesets:
         pr-rules:
