@@ -19,7 +19,13 @@
       group: { commitMessageTopic: "GitHub Actions digest updates" }
     },
 
-    // ============ Repo-specific throttling ============
+    // ============ Repo-specific rules ============
+    {
+      description: "Only allow even minor versions for n8n (odd minors are pre-releases)",
+      matchRepositories: ["anthony-spruyt/spruyt-labs"],
+      matchPackageNames: ["n8nio/n8n"],
+      allowedVersions: "/^\\d+\\.\\d*[02468]\\.\\d+$/"
+    },
     {
       description: "Weekly batch for all non-major updates in container-images",
       matchRepositories: ["anthony-spruyt/container-images"],
