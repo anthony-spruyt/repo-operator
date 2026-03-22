@@ -50,6 +50,8 @@ else
   rm -rf "$REPO_ROOT/.output"
   mkdir "$REPO_ROOT/.output"
 
+  LINT_EXIT_CODE=0
+
   docker run \
     -a STDOUT \
     -a STDERR \
@@ -71,5 +73,5 @@ else
     cp -r "$REPO_ROOT/.output/updated_sources"/* "$REPO_ROOT/"
   fi
 
-  exit "${LINT_EXIT_CODE:-0}"
+  exit "$LINT_EXIT_CODE"
 fi
