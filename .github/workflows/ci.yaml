@@ -43,8 +43,7 @@ jobs:
       (github.event_name == 'push' && needs.lint.result == 'success'))
     concurrency:
       group: "xfg"
-      # IMPORTANT: Must be false - canceling a run with src/ changes
-      # followed by a run without changes would skip the sync
+      # IMPORTANT: Must be false to serialize deploys and avoid redundant syncs
       cancel-in-progress: false
     outputs:
       run_sync: "${{ steps.changes.outputs.run_sync }}"
@@ -57,16 +56,22 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
-      - name: "Check for src/ changes"
+      - name: "Check for src/ changes since last deploy"
         id: "changes"
         run: |
           if [ "${{ github.event_name }}" = "workflow_dispatch" ]; then
             echo "::notice::Manual dispatch - forcing sync"
             echo "run_sync=true" >> "$GITHUB_OUTPUT"
-          elif git diff --quiet HEAD~1 HEAD -- src/; then
-            echo "::notice::No changes in src/, skipping sync"
+          elif [ -z "${{ vars.LAST_XFG_DEPLOY_SHA }}" ]; then
+            echo "::notice::No prior deploy recorded - forcing sync"
+            echo "run_sync=true" >> "$GITHUB_OUTPUT"
+          elif ! git cat-file -e "${{ vars.LAST_XFG_DEPLOY_SHA }}" 2>/dev/null; then
+            echo "::notice::Prior deploy SHA not found in history - forcing sync"
+            echo "run_sync=true" >> "$GITHUB_OUTPUT"
+          elif git diff --quiet "${{ vars.LAST_XFG_DEPLOY_SHA }}" HEAD -- src/; then
+            echo "::notice::No changes in src/ since last deploy, skipping sync"
             echo "run_sync=false" >> "$GITHUB_OUTPUT"
           else
             echo "run_sync=true" >> "$GITHUB_OUTPUT"
@@ -106,7 +111,7 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd" # v6
         with:
-          fetch-depth: 2
+          fetch-depth: 0
 
       - name: "Apply Sync"
         uses: "anthony-spruyt/xfg@6210fa7b56993232feffef5365f6a946cff7d3f6" # v5.0.1
