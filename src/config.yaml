@@ -89,7 +89,7 @@ repos:
       - megalinter
       - private-repo
     prOptions:
-      merge: manual
+      merge: direct
     files:
       .devcontainer/devcontainer.json:
         content:
