@@ -124,7 +124,6 @@ repos:
           "search.exclude":
             "**/*.secret.*": true
             "**/temp/**": true
-          "editor.defaultFormatter": "esbenp.prettier-vscode"
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
       .yamllint.yml:
