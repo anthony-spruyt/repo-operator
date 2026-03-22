@@ -6,6 +6,7 @@ self-hosted-runner:
   labels: []
 config-variables:
   - APP_ID
+  - LAST_XFG_DEPLOY_SHA
 paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
