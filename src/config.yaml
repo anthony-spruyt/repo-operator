@@ -281,12 +281,19 @@ groups:
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .prettierignore:
+      .markdownlint.json:
+        content: "@templates/.markdownlint.json"
+      .markdownlintignore:
         createOnly: true
-      .prettierrc.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
-        header: This file is automatically updated - do not modify directly
-        content: "@templates/.prettierrc.yaml"
+        content: "@templates/.markdownlintignore"
+      .github/actionlint.yaml:
+        createOnly: true
+        header:
+          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+          - Ignore shellcheck warnings in all workflows
+          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
+          - "SC2034: Variables used in heredocs appear unused"
+        content: "@templates/.github/actionlint.yaml"
   github-ci:
     files:
       .github/workflows/ci.yaml:
@@ -396,12 +403,19 @@ groups:
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .prettierignore:
+      .markdownlint.json:
+        content: "@templates/.markdownlint.json"
+      .markdownlintignore:
         createOnly: true
-      .prettierrc.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
-        header: This file is automatically updated - do not modify directly
-        content: "@templates/.prettierrc.yaml"
+        content: "@templates/.markdownlintignore"
+      .github/actionlint.yaml:
+        createOnly: true
+        header:
+          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+          - Ignore shellcheck warnings in all workflows
+          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
+          - "SC2034: Variables used in heredocs appear unused"
+        content: "@templates/.github/actionlint.yaml"
   megalinter:
     files:
       .eslintrc.json:
@@ -439,12 +453,6 @@ groups:
           - This file is automatically updated - do not modify directly
           - To add custom linters, modify .mega-linter.yml instead
         content: "@templates/.mega-linter-base.yml"
-      .prettierignore:
-        createOnly: true
-      .prettierrc.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
-        header: This file is automatically updated - do not modify directly
-        content: "@templates/.prettierrc.yaml"
       .pylintrc:
         createOnly: true
       .secretlintignore:
@@ -470,9 +478,6 @@ groups:
           - This file is automatically updated - do not modify directly
           - https://yamllint.readthedocs.io/en/latest/configuration.html
         content: "@templates/.yamllint.yml"
-      LICENSE:
-        createOnly: true
-        content: "@templates/LICENSE.MIT"
       lint-config.sh:
         createOnly: true
         content: "@templates/lint-config.sh"
@@ -542,7 +547,7 @@ files:
     createOnly: true
     content: "@templates/.vscode/settings.json"
   .prettierignore:
-    createOnly: true
+    content: "@templates/.prettierignore"
   .prettierrc.yaml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
     header: This file is automatically updated - do not modify directly

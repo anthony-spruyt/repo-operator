@@ -11,7 +11,9 @@
         "quay.io/ceph/ceph"
       ],
       matchDatasources: ["docker", "helm", "oci"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -19,7 +21,9 @@
       groupName: "Traefik",
       matchPackageNames: ["traefik", "traefik-crd-source"],
       matchDatasources: ["helm", "regex", "github-tags"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -43,7 +47,9 @@
         "ghcr.io/victoriametrics/helm-charts"
       ],
       matchDatasources: ["helm", "docker", "oci"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -51,7 +57,9 @@
       groupName: "External Secrets",
       matchPackageNames: ["external-secrets"],
       matchDatasources: ["helm"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true,
       minimumReleaseAge: "7 days"
     },
@@ -60,7 +68,9 @@
       groupName: "CloudNativePG",
       matchPackageNames: ["cloudnative-pg", "cnpg"],
       matchDatasources: ["helm", "docker"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -68,7 +78,9 @@
       groupName: "Flux",
       matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*"],
       matchDatasources: ["docker", "helm", "github-releases"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true,
       minimumReleaseAge: "7 days"
     },
@@ -77,7 +89,9 @@
       groupName: "Authentik",
       matchPackageNames: ["goauthentik/*", "ghcr.io/goauthentik/*"],
       matchDatasources: ["docker", "helm"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -85,7 +99,9 @@
       groupName: "Cert-Manager",
       matchPackageNames: ["cert-manager", "jetstack/cert-manager"],
       matchDatasources: ["helm", "docker"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true,
       minimumReleaseAge: "7 days"
     },
@@ -94,7 +110,9 @@
       groupName: "External-DNS",
       matchPackageNames: ["external-dns", "kubernetes-sigs/external-dns"],
       matchDatasources: ["helm", "docker"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -105,7 +123,9 @@
         "kubernetes-csi/external-snapshotter"
       ],
       matchDatasources: ["helm", "docker"],
-      group: { commitMessageTopic: "{{{groupName}}} group" },
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      },
       separateMinorPatch: true
     },
     {
@@ -113,14 +133,18 @@
       groupName: "CI/CD Actions",
       matchManagers: ["github-actions"],
       matchPackageNames: ["actions/*", "docker/*"],
-      group: { commitMessageTopic: "{{{groupName}}} group" }
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      }
     },
     {
       description: "BJW-S App Template",
       groupName: "App Template",
       matchPackageNames: ["ghcr.io/bjw-s-labs/helm/app-template"],
       matchDatasources: ["helm"],
-      group: { commitMessageTopic: "{{{groupName}}} group" }
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      }
     },
     {
       description: "Kubernetes and Talos (core versions, kubelet, kubectl sidecars, talosctl)",
@@ -134,7 +158,9 @@
         "alpine/k8s"
       ],
       matchDatasources: ["docker", "github-releases", "custom.regex"],
-      group: { commitMessageTopic: "{{{groupName}}} group" }
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      }
     }
   ]
 }

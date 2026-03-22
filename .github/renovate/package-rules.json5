@@ -16,7 +16,9 @@
       matchUpdateTypes: ["digest"],
       schedule: ["before 9am on monday"],
       groupName: "github-actions-digest",
-      group: { commitMessageTopic: "GitHub Actions digest updates" }
+      group: {
+        commitMessageTopic: "GitHub Actions digest updates"
+      }
     },
 
     // ============ Repo-specific rules ============
@@ -32,7 +34,9 @@
       matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"],
       schedule: ["before 9am on monday"],
       groupName: "weekly-dependencies",
-      group: { commitMessageTopic: "weekly dependency updates" }
+      group: {
+        commitMessageTopic: "weekly dependency updates"
+      }
     },
 
     // ============ Docker/OCI ============
