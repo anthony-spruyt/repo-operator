@@ -171,6 +171,9 @@ repos:
         alert:
           color: "#e11d48"
           description: "Auto-created alert triage issue"
+        "renovate/flux":
+          color: "#ededed"
+          description: ""
         "renovate/github-actions":
           color: "#ededed"
           description: ""
