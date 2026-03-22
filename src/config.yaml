@@ -24,9 +24,10 @@ repos:
         content:
           customizations:
             vscode:
-              $arrayMerge: append
               extensions:
-                - "jetmartin.bats"
+                $arrayMerge: append
+                $values:
+                  - "jetmartin.bats"
       .eslintrc.json: false
       .hadolint.yaml: false
 
