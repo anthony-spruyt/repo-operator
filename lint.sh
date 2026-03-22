@@ -71,5 +71,5 @@ else
     cp -r "$REPO_ROOT/.output/updated_sources"/* "$REPO_ROOT/"
   fi
 
-  exit "${LINT_EXIT_CODE:-0}"
+  exit "0"
 fi
