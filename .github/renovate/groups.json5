@@ -123,9 +123,16 @@
       group: { commitMessageTopic: "{{{groupName}}} group" }
     },
     {
-      description: "Kubernetes and Talos",
+      description: "Kubernetes and Talos (core versions, kubelet, kubectl sidecars, talosctl)",
       groupName: "Kubernetes/Talos",
-      matchPackageNames: ["kubernetes", "siderolabs/talos"],
+      matchPackageNames: [
+        "kubernetes",
+        "siderolabs/talos",
+        "ghcr.io/siderolabs/kubelet",
+        "bitnami/kubectl",
+        "public.ecr.aws/bitnami/kubectl",
+        "alpine/k8s"
+      ],
       matchDatasources: ["docker", "github-releases", "custom.regex"],
       group: { commitMessageTopic: "{{{groupName}}} group" }
     }

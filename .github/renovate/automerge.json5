@@ -56,6 +56,19 @@
       description: "Disable automerge for rook-ceph (critical storage component)",
       matchPackagePatterns: ["^(ghcr\\.io/)?rook(/|-)ceph"],
       automerge: false
+    },
+    {
+      description: "Disable automerge for Kubernetes/Talos group in spruyt-labs (must stay aligned)",
+      matchRepositories: ["anthony-spruyt/spruyt-labs"],
+      matchPackageNames: [
+        "kubernetes",
+        "siderolabs/talos",
+        "ghcr.io/siderolabs/kubelet",
+        "bitnami/kubectl",
+        "public.ecr.aws/bitnami/kubectl",
+        "alpine/k8s"
+      ],
+      automerge: false
     }
   ]
 }
