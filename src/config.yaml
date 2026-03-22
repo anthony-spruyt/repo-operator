@@ -281,11 +281,6 @@ groups:
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .markdownlint.json:
-        content: "@templates/.markdownlint.json"
-      .markdownlintignore:
-        createOnly: true
-        content: "@templates/.markdownlintignore"
       .github/actionlint.yaml:
         createOnly: true
         header:
@@ -403,11 +398,6 @@ groups:
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .markdownlint.json:
-        content: "@templates/.markdownlint.json"
-      .markdownlintignore:
-        createOnly: true
-        content: "@templates/.markdownlintignore"
       .github/actionlint.yaml:
         createOnly: true
         header:
@@ -429,11 +419,6 @@ groups:
       .lycheeignore:
         createOnly: true
         content: "@templates/.lycheeignore"
-      .markdownlint.json:
-        content: "@templates/.markdownlint.json"
-      .markdownlintignore:
-        createOnly: true
-        content: "@templates/.markdownlintignore"
       .mega-linter.yml:
         createOnly: true
         schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
@@ -552,6 +537,11 @@ files:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
     header: This file is automatically updated - do not modify directly
     content: "@templates/.prettierrc.yaml"
+  .markdownlint.json:
+    content: "@templates/.markdownlint.json"
+  .markdownlintignore:
+    createOnly: true
+    content: "@templates/.markdownlintignore"
   .editorconfig:
     content: "@templates/.editorconfig"
   .gitignore:
