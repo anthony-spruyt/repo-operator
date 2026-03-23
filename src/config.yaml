@@ -94,11 +94,12 @@ repos:
       .devcontainer/devcontainer.json:
         content:
           features:
+            "ghcr.io/devcontainers/features/go": {}
+            "ghcr.io/devcontainers/features/terraform": {}
+            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
             "ghcr.io/devcontainers-extra/features/sops": {}
             "ghcr.io/eitsupi/devcontainer-features/jq-likes":
               yqVersion: "latest"
-            "ghcr.io/devcontainers/features/terraform": {}
-            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
           mounts:
             $arrayMerge: append
             $values:
