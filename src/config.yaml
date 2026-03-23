@@ -87,7 +87,6 @@ repos:
       - renovate
       - pre-commit
       - megalinter
-      - private-repo
     prOptions:
       merge: direct
     files:
