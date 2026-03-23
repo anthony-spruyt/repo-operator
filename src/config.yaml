@@ -110,10 +110,11 @@ repos:
               extensions:
                 $arrayMerge: append
                 $values:
+                  - "github.vscode-github-actions"
+                  - "golang.go"
+                  - "hashicorp.terraform"
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
-                  - "hashicorp.terraform"
-                  - "github.vscode-github-actions"
           portsAttributes:
             "3333":
               label: "Capacitor"
