@@ -7,6 +7,7 @@
     "dockerfile",
     "flux",
     "github-actions",
+    "gomod",
     "helm-values",
     "kubernetes",
     "npm",
