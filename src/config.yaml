@@ -242,15 +242,18 @@ repos:
       rulesets:
         pr-rules:
           bypassActors:
-            - actorId: 2719952
+            - actorId: 2719952 # xfg release bot
               actorType: Integration
               bypassMode: always
-            - actorId: 2740
+            - actorId: 2740 # renovate
+              actorType: Integration
+              bypassMode: always
+            - actorId: 2758555 # repo-operator
               actorType: Integration
               bypassMode: always
         tag-rules:
           bypassActors:
-            - actorId: 2719952
+            - actorId: 2719952 # xfg release bot
               actorType: Integration
               bypassMode: always
 
@@ -475,7 +478,10 @@ groups:
       rulesets:
         pr-rules:
           bypassActors:
-            - actorId: 2740
+            - actorId: 2740 # renovate
+              actorType: Integration
+              bypassMode: always
+            - actorId: 2758555 # repo-operator
               actorType: Integration
               bypassMode: always
           conditions:
