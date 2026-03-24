@@ -13,10 +13,11 @@ repos:
       - devcontainer
       - github-ci
       - github-trivy
-      - renovate
-      - pre-commit
       - megalinter
+      - pre-commit
       - protected-main-branch
+      - python
+      - renovate
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -27,7 +28,6 @@ repos:
                 $values:
                   - "jetmartin.bats"
       .eslintrc.json: false
-      .hadolint.yaml: false
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
@@ -37,12 +37,14 @@ repos:
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
       - devcontainer
+      - docker
       - github-ci
       - github-trivy
-      - renovate
-      - pre-commit
       - megalinter
+      - pre-commit
       - protected-main-branch
+      - python
+      - renovate
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
@@ -59,22 +61,21 @@ repos:
       - devcontainer
       - github-ci
       - github-trivy
-      - renovate
-      - pre-commit
       - megalinter
+      - pre-commit
+      - renovate
     files:
       .eslintrc.json: false
-      .hadolint.yaml: false
-      .pylintrc: false
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
       - devcontainer
+      - docker
       - github-ci
       - github-trivy
-      - renovate
-      - pre-commit
       - megalinter
+      - pre-commit
+      - renovate
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -147,8 +148,6 @@ repos:
           ignorePaths:
             - "talos/helmfile"
       .eslintrc.json: false
-      .hadolint.yaml: false
-      .pylintrc: false
     settings:
       repo:
         allowAutoMerge: false
@@ -187,17 +186,30 @@ repos:
           color: "#7c3aed"
           description: "SRE investigation or triage"
 
-  #- git: https://github.com/anthony-spruyt/SunGather.git
+  - git: https://github.com/anthony-spruyt/SunGather.git
+    groups:
+      - devcontainer
+      - docker
+      - github-ci
+      - megalinter
+      - pre-commit
+      - protected-main-branch
+      - python
+      - renovate
+    prOptions:
+      merge: manual
+      mergeStrategy: squash
+      deleteBranch: true
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
       - devcontainer
       - github-ci
       - github-trivy
-      - renovate
-      - pre-commit
       - megalinter
+      - pre-commit
       - protected-main-branch
+      - renovate
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -216,8 +228,6 @@ repos:
           "search.exclude":
             "coverage": true
             ".output": true
-      .hadolint.yaml: false
-      .pylintrc: false
       trivy.yaml:
         content:
           scan:
@@ -247,6 +257,15 @@ repos:
               bypassMode: always
 
 groups:
+  # c:
+  #   files:
+  #     TODO
+  # "c++":
+  #   files:
+  #     TODO
+  # "c#":
+  #   files:
+  #     TODO
   devcontainer:
     files:
       .devcontainer/devcontainer.json:
@@ -280,6 +299,11 @@ groups:
           - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
           - "SC2034: Variables used in heredocs appear unused"
         content: "@templates/.github/actionlint.yaml"
+  docker:
+    files:
+      .hadolint.yaml:
+        createOnly: true
+        content: "@templates/.hadolint.yaml"
   github-ci:
     files:
       .github/workflows/ci.yaml:
@@ -336,67 +360,9 @@ groups:
         trivy:
           color: "#0052cc"
           description: "Trivy scan finding"
-  renovate:
-    files:
-      .github/renovate.json5:
-        content: "@templates/.github/renovate.json5"
-    settings:
-      labels:
-        "renovate/devcontainer":
-          color: "#ededed"
-          description: ""
-        "renovate/github-actions":
-          color: "#ededed"
-          description: ""
-        "renovate/helm":
-          color: "#ededed"
-          description: ""
-        "renovate/image":
-          color: "#ededed"
-          description: ""
-        "renovate/megalinter-flavor":
-          color: "#ededed"
-          description: ""
-        "renovate/npm":
-          color: "#ededed"
-          description: ""
-        "renovate/pre-commit":
-          color: "#ededed"
-          description: ""
-        "renovate/script":
-          color: "#ededed"
-          description: ""
-        "renovate/talos":
-          color: "#ededed"
-          description: ""
-        "renovate/taskfile":
-          color: "#ededed"
-          description: ""
-        "renovate/terraform":
-          color: "#ededed"
-          description: ""
-  pre-commit:
-    files:
-      .pre-commit-config.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
-        content: "@templates/.pre-commit-config.yaml"
-      .yamllint.yml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://yamllint.readthedocs.io/en/latest/configuration.html
-        content: "@templates/.yamllint.yml"
-      .gitleaks.toml:
-        createOnly: true
-        content: "@templates/.gitleaks.toml"
-      .github/actionlint.yaml:
-        createOnly: true
-        header:
-          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
-          - Ignore shellcheck warnings in all workflows
-          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
-          - "SC2034: Variables used in heredocs appear unused"
-        content: "@templates/.github/actionlint.yaml"
+  # go:
+  #   files:
+  #     TODO
   megalinter:
     files:
       .eslintrc.json:
@@ -404,9 +370,6 @@ groups:
       .gitleaks.toml:
         createOnly: true
         content: "@templates/.gitleaks.toml"
-      .hadolint.yaml:
-        createOnly: true
-        content: "@templates/.hadolint.yaml"
       .lycheeignore:
         createOnly: true
         content: "@templates/.lycheeignore"
@@ -429,8 +392,6 @@ groups:
           - This file is automatically updated - do not modify directly
           - To add custom linters, modify .mega-linter.yml instead
         content: "@templates/.mega-linter-base.yml"
-      .pylintrc:
-        createOnly: true
       .secretlintignore:
         createOnly: true
         content: "@templates/.secretlintignore"
@@ -459,6 +420,37 @@ groups:
         content: "@templates/lint-config.sh"
       lint.sh:
         content: "@templates/lint.sh"
+  pre-commit:
+    files:
+      .pre-commit-config.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
+        content: "@templates/.pre-commit-config.yaml"
+      .yamllint.yml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://yamllint.readthedocs.io/en/latest/configuration.html
+        content: "@templates/.yamllint.yml"
+      .gitleaks.toml:
+        createOnly: true
+        content: "@templates/.gitleaks.toml"
+      .github/actionlint.yaml:
+        createOnly: true
+        header:
+          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
+          - Ignore shellcheck warnings in all workflows
+          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
+          - "SC2034: Variables used in heredocs appear unused"
+        content: "@templates/.github/actionlint.yaml"
+  private-repo:
+    settings:
+      repo:
+        privateVulnerabilityReporting: false
+        secretScanning: false
+        secretScanningPushProtection: false
+        visibility: private
+      rulesets:
+        inherit: false
   protected-main-branch:
     files:
       .github/CODEOWNERS:
@@ -506,20 +498,53 @@ groups:
                   - context: "summary / Check Results"
                 strictRequiredStatusChecksPolicy: true
           target: branch
-  private-repo:
+  python:
+    files:
+      .pylintrc:
+        createOnly: true
+  renovate:
+    files:
+      .github/renovate.json5:
+        content: "@templates/.github/renovate.json5"
     settings:
-      repo:
-        privateVulnerabilityReporting: false
-        secretScanning: false
-        secretScanningPushProtection: false
-        visibility: private
-      rulesets:
-        inherit: false
-
-  # typescript:
+      labels:
+        "renovate/devcontainer":
+          color: "#ededed"
+          description: ""
+        "renovate/github-actions":
+          color: "#ededed"
+          description: ""
+        "renovate/helm":
+          color: "#ededed"
+          description: ""
+        "renovate/image":
+          color: "#ededed"
+          description: ""
+        "renovate/megalinter-flavor":
+          color: "#ededed"
+          description: ""
+        "renovate/npm":
+          color: "#ededed"
+          description: ""
+        "renovate/pre-commit":
+          color: "#ededed"
+          description: ""
+        "renovate/script":
+          color: "#ededed"
+          description: ""
+        "renovate/talos":
+          color: "#ededed"
+          description: ""
+        "renovate/taskfile":
+          color: "#ededed"
+          description: ""
+        "renovate/terraform":
+          color: "#ededed"
+          description: ""
+  # terraform:
   #   files:
   #     TODO
-  # docker:
+  # typescript:
   #   files:
   #     TODO
 
