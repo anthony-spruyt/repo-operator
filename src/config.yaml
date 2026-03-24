@@ -75,9 +75,6 @@ repos:
       .pylintrc: false
     prOptions:
       merge: direct
-    settings:
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
@@ -166,8 +163,6 @@ repos:
     settings:
       repo:
         allowAutoMerge: false
-      rulesets:
-        inherit: false
       labels:
         alert:
           color: "#e11d48"
@@ -523,6 +518,8 @@ groups:
         secretScanning: false
         secretScanningPushProtection: false
         visibility: private
+      rulesets:
+        inherit: false
 
   # typescript:
   #   files:
