@@ -3,9 +3,7 @@
 id: repo-operator
 deleteOrphaned: true
 prOptions:
-  merge: auto
-  mergeStrategy: squash
-  deleteBranch: true
+  merge: direct
 
 repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
@@ -35,11 +33,6 @@ repos:
     groups:
       - devcontainer
       - pre-commit
-    prOptions:
-      merge: direct
-    settings:
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
@@ -73,8 +66,6 @@ repos:
       .eslintrc.json: false
       .hadolint.yaml: false
       .pylintrc: false
-    prOptions:
-      merge: direct
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
@@ -84,8 +75,6 @@ repos:
       - renovate
       - pre-commit
       - megalinter
-    prOptions:
-      merge: direct
     files:
       .devcontainer/devcontainer.json:
         content:
