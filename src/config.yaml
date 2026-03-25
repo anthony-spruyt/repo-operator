@@ -129,27 +129,6 @@ repos:
         alert:
           color: "#e11d48"
           description: "Auto-created alert triage issue"
-        "renovate/flux":
-          color: "#ededed"
-          description: ""
-        "renovate/helm":
-          color: "#ededed"
-          description: ""
-        "renovate/helm-values":
-          color: "#ededed"
-          description: ""
-        "renovate/kubernetes":
-          color: "#ededed"
-          description: ""
-        "renovate/talos":
-          color: "#ededed"
-          description: ""
-        "renovate/taskfile":
-          color: "#ededed"
-          description: ""
-        "renovate/terraform":
-          color: "#ededed"
-          description: ""
         sre:
           color: "#7c3aed"
           description: "SRE investigation or triage"
@@ -436,13 +415,22 @@ groups:
         "renovate/devcontainer":
           color: "#ededed"
           description: ""
+        "renovate/flux":
+          color: "#ededed"
+          description: ""
         "renovate/github-actions":
           color: "#ededed"
           description: ""
         "renovate/helm":
           color: "#ededed"
           description: ""
+        "renovate/helm-values":
+          color: "#ededed"
+          description: ""
         "renovate/image":
+          color: "#ededed"
+          description: ""
+        "renovate/kubernetes":
           color: "#ededed"
           description: ""
         "renovate/megalinter-flavor":
@@ -457,7 +445,13 @@ groups:
         "renovate/script":
           color: "#ededed"
           description: ""
+        "renovate/talos":
+          color: "#ededed"
+          description: ""
         "renovate/taskfile":
+          color: "#ededed"
+          description: ""
+        "renovate/terraform":
           color: "#ededed"
           description: ""
   terraform:
