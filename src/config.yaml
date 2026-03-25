@@ -10,11 +10,10 @@ repos:
 
   - git: https://github.com/anthony-spruyt/claude-config.git
     groups:
-      - devcontainer
+      - github
       - github-ci
       - github-trivy
       - megalinter
-      - pre-commit
       - protected-main-branch
       - python
       - renovate
@@ -27,28 +26,22 @@ repos:
                 $arrayMerge: append
                 $values:
                   - "jetmartin.bats"
-      .eslintrc.json: false
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
-    groups:
-      - devcontainer
-      - pre-commit
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
-      - devcontainer
       - docker
+      - github
       - github-ci
       - github-trivy
       - megalinter
-      - pre-commit
       - protected-main-branch
       - python
       - renovate
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
-      .eslintrc.json: false
 
   #- git: https://github.com/anthony-spruyt/esphome.git
 
@@ -58,38 +51,32 @@ repos:
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
-      - devcontainer
+      - github
       - github-ci
       - github-trivy
       - megalinter
-      - pre-commit
       - renovate
-    files:
-      .eslintrc.json: false
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
-      - devcontainer
       - docker
+      - github
       - github-ci
       - github-trivy
+      - go
       - megalinter
-      - pre-commit
       - renovate
+      - terraform
     files:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers/features/go": {}
-            "ghcr.io/devcontainers/features/terraform": {}
-            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
             "ghcr.io/devcontainers-extra/features/sops": {}
             "ghcr.io/eitsupi/devcontainer-features/jq-likes":
               yqVersion: "latest"
           mounts:
             $arrayMerge: append
             $values:
-              - "source=${localEnv:HOME}/.secrets/.terraform.d,target=/home/vscode/.terraform.d,type=bind,readonly"
               - "source=${localEnv:HOME}/.secrets,target=/home/vscode/.secrets,type=bind,readonly"
               - "source=${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
           customizations:
@@ -97,9 +84,6 @@ repos:
               extensions:
                 $arrayMerge: append
                 $values:
-                  - "github.vscode-github-actions"
-                  - "golang.go"
-                  - "hashicorp.terraform"
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
           portsAttributes:
@@ -112,8 +96,6 @@ repos:
           "search.exclude":
             "**/*.secret.*": true
             "**/temp/**": true
-          "[terraform]":
-            "editor.defaultFormatter": "hashicorp.terraform"
       .yamllint.yml:
         content:
           ignore: |
@@ -136,18 +118,10 @@ repos:
                 rev: v2.1.1
                 hooks:
                   - id: forbid-secrets
-              - repo: https://github.com/antonbabenko/pre-commit-terraform
-                rev: v1.105.0
-                hooks:
-                  - id: terraform_fmt
-                    files: ^infra/terraform/
-                  - id: terraform_tflint
-                    files: ^infra/terraform/
       .github/renovate.json5:
         content:
           ignorePaths:
             - "talos/helmfile"
-      .eslintrc.json: false
     settings:
       repo:
         allowAutoMerge: false
@@ -170,9 +144,6 @@ repos:
         "renovate/talos":
           color: "#ededed"
           description: ""
-        "renovate/terraform":
-          color: "#ededed"
-          description: ""
         "renovate/taskfile":
           color: "#ededed"
           description: ""
@@ -182,11 +153,11 @@ repos:
 
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
-      - devcontainer
       - docker
+      - github
       # - github-ci
+      # - github-trivy
       - megalinter
-      - pre-commit
       # - protected-main-branch
       - python
       - renovate
@@ -197,19 +168,18 @@ repos:
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
-      - devcontainer
+      - github
       - github-ci
       - github-trivy
       - megalinter
-      - pre-commit
       - protected-main-branch
+      - python
       - renovate
+      - typescript
     files:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers/features/python":
-              "version": "latest"
             "ghcr.io/devcontainers/features/azure-cli": {}
       .vscode/settings.json:
         createOnly: false
@@ -260,51 +230,13 @@ groups:
   # "c#":
   #   files:
   #     TODO
-  devcontainer:
-    files:
-      .devcontainer/devcontainer.json:
-        content: "@templates/.devcontainer/devcontainer.json"
-      .devcontainer/package.json:
-        content: "@templates/.devcontainer/package.json"
-      .devcontainer/initialize.sh:
-        content: "@templates/.devcontainer/initialize.sh"
-      .devcontainer/post-create.sh:
-        content: "@templates/.devcontainer/post-create.sh"
-      .devcontainer/setup-devcontainer.sh:
-        createOnly: true
-        content: "@templates/.devcontainer/setup-devcontainer.sh"
-      .pre-commit-config.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
-        content: "@templates/.pre-commit-config.yaml"
-      .yamllint.yml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://yamllint.readthedocs.io/en/latest/configuration.html
-        content: "@templates/.yamllint.yml"
-      .gitleaks.toml:
-        createOnly: true
-        content: "@templates/.gitleaks.toml"
-      .github/actionlint.yaml:
-        createOnly: true
-        header:
-          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
-          - Ignore shellcheck warnings in all workflows
-          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
-          - "SC2034: Variables used in heredocs appear unused"
-        content: "@templates/.github/actionlint.yaml"
   docker:
     files:
       .hadolint.yaml:
         createOnly: true
         content: "@templates/.hadolint.yaml"
-  github-ci:
+  github:
     files:
-      .github/workflows/ci.yaml:
-        createOnly: true
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
-        content: "@templates/.github/workflows/ci.yaml"
       .github/actionlint.yaml:
         createOnly: true
         header:
@@ -313,6 +245,30 @@ groups:
           - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
           - "SC2034: Variables used in heredocs appear unused"
         content: "@templates/.github/actionlint.yaml"
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            $values:
+              - repo: https://github.com/rhysd/actionlint
+                rev: v1.7.11
+                hooks:
+                  - id: actionlint
+  github-ci:
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "github.vscode-github-actions"
+      .github/workflows/ci.yaml:
+        createOnly: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
+        content: "@templates/.github/workflows/ci.yaml"
   github-trivy:
     files:
       .github/workflows/trivy-scan.yaml:
@@ -320,14 +276,6 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
         content: "@templates/.github/workflows/trivy-scan.yaml"
-      .github/actionlint.yaml:
-        createOnly: true
-        header:
-          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
-          - Ignore shellcheck warnings in all workflows
-          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
-          - "SC2034: Variables used in heredocs appear unused"
-        content: "@templates/.github/actionlint.yaml"
       .trivyignore.yaml:
         createOnly: true
         header:
@@ -354,16 +302,20 @@ groups:
         trivy:
           color: "#0052cc"
           description: "Trivy scan finding"
-  # go:
-  #   files:
-  #     TODO
+  go:
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers/features/go": {}
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "golang.go"
   megalinter:
     files:
-      .eslintrc.json:
-        content: "@templates/.eslintrc.json"
-      .gitleaks.toml:
-        createOnly: true
-        content: "@templates/.gitleaks.toml"
       .lycheeignore:
         createOnly: true
         content: "@templates/.lycheeignore"
@@ -403,39 +355,11 @@ groups:
           - Path-specific trivy ignores
           - https://trivy.dev/latest/docs/configuration/filtering
         content: "@templates/.trivyignore.yaml"
-      .yamllint.yml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://yamllint.readthedocs.io/en/latest/configuration.html
-        content: "@templates/.yamllint.yml"
       lint-config.sh:
         createOnly: true
         content: "@templates/lint-config.sh"
       lint.sh:
         content: "@templates/lint.sh"
-  pre-commit:
-    files:
-      .pre-commit-config.yaml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
-        content: "@templates/.pre-commit-config.yaml"
-      .yamllint.yml:
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://yamllint.readthedocs.io/en/latest/configuration.html
-        content: "@templates/.yamllint.yml"
-      .gitleaks.toml:
-        createOnly: true
-        content: "@templates/.gitleaks.toml"
-      .github/actionlint.yaml:
-        createOnly: true
-        header:
-          - https://github.com/rhysd/actionlint/blob/main/docs/config.md
-          - Ignore shellcheck warnings in all workflows
-          - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
-          - "SC2034: Variables used in heredocs appear unused"
-        content: "@templates/.github/actionlint.yaml"
   private-repo:
     settings:
       repo:
@@ -494,10 +418,19 @@ groups:
           target: branch
   python:
     files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers/features/python":
+              "version": "latest"
       .pylintrc:
         createOnly: true
   renovate:
     files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
       .github/renovate.json5:
         content: "@templates/.github/renovate.json5"
     settings:
@@ -526,23 +459,77 @@ groups:
         "renovate/script":
           color: "#ededed"
           description: ""
-        "renovate/talos":
-          color: "#ededed"
-          description: ""
         "renovate/taskfile":
           color: "#ededed"
           description: ""
+  terraform:
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers/features/terraform": {}
+          mounts:
+            $arrayMerge: append
+            $values:
+              - "source=${localEnv:HOME}/.secrets/.terraform.d,target=/home/vscode/.terraform.d,type=bind,readonly"
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "hashicorp.terraform"
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            $values:
+              # NOTE: files pattern assumes infra/terraform/ directory structure - override per-repo if needed
+              - repo: https://github.com/antonbabenko/pre-commit-terraform
+                rev: v1.105.0
+                hooks:
+                  - id: terraform_fmt
+                    files: ^infra/terraform/
+                  - id: terraform_tflint
+                    files: ^infra/terraform/
+      .vscode/settings.json:
+        createOnly: false
+        content:
+          "[terraform]":
+            "editor.defaultFormatter": "hashicorp.terraform"
+    settings:
+      labels:
         "renovate/terraform":
           color: "#ededed"
           description: ""
-  # terraform:
-  #   files:
-  #     TODO
-  # typescript:
-  #   files:
-  #     TODO
+  typescript:
+    files:
+      .eslintrc.json:
+        content: "@templates/.eslintrc.json"
 
 files:
+  .devcontainer/devcontainer.json:
+    content: "@templates/.devcontainer/devcontainer.json"
+  .devcontainer/package.json:
+    content: "@templates/.devcontainer/package.json"
+  .devcontainer/initialize.sh:
+    content: "@templates/.devcontainer/initialize.sh"
+  .devcontainer/post-create.sh:
+    content: "@templates/.devcontainer/post-create.sh"
+  .devcontainer/setup-devcontainer.sh:
+    createOnly: true
+    content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .pre-commit-config.yaml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
+    content: "@templates/.pre-commit-config.yaml"
+  .yamllint.yml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+    header:
+      - This file is automatically updated - do not modify directly
+      - https://yamllint.readthedocs.io/en/latest/configuration.html
+    content: "@templates/.yamllint.yml"
+  .gitleaks.toml:
+    createOnly: true
+    content: "@templates/.gitleaks.toml"
   .vscode/settings.json:
     createOnly: true
     content: "@templates/.vscode/settings.json"
