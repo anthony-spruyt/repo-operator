@@ -147,6 +147,9 @@ repos:
         "renovate/taskfile":
           color: "#ededed"
           description: ""
+        "renovate/terraform":
+          color: "#ededed"
+          description: ""
         sre:
           color: "#7c3aed"
           description: "SRE investigation or triage"
@@ -418,11 +421,6 @@ groups:
           target: branch
   python:
     files:
-      .devcontainer/devcontainer.json:
-        content:
-          features:
-            "ghcr.io/devcontainers/features/python":
-              "version": "latest"
       .pylintrc:
         createOnly: true
   renovate:
@@ -496,11 +494,6 @@ groups:
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
-    settings:
-      labels:
-        "renovate/terraform":
-          color: "#ededed"
-          description: ""
   typescript:
     files:
       .eslintrc.json:

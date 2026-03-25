@@ -21,7 +21,9 @@
     "ghcr.io/devcontainers/features/github-cli": {},
     "ghcr.io/devcontainers/features/docker-in-docker": {},
     "ghcr.io/devcontainers/features/node": {},
-    "ghcr.io/devcontainers/features/python": {}
+    "ghcr.io/devcontainers/features/python": {
+      "version": "latest"
+    }
   },
   "initializeCommand": "bash $${localWorkspaceFolder}/.devcontainer/initialize.sh",
   "postCreateCommand": "bash -lc \"cd $${containerWorkspaceFolder} && ./.devcontainer/post-create.sh\"",
