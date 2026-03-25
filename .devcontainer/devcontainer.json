@@ -21,7 +21,10 @@
     "ghcr.io/devcontainers/features/github-cli": {},
     "ghcr.io/devcontainers/features/docker-in-docker": {},
     "ghcr.io/devcontainers/features/node": {},
-    "ghcr.io/devcontainers/features/python": {}
+    "ghcr.io/devcontainers/features/python": {
+      "version": "latest"
+    },
+    "ghcr.io/devcontainers-extra/features/renovate-cli": {}
   },
   "initializeCommand": "bash ${localWorkspaceFolder}/.devcontainer/initialize.sh",
   "postCreateCommand": "bash -lc \"cd ${containerWorkspaceFolder} && ./.devcontainer/post-create.sh\"",
@@ -33,7 +36,8 @@
         "blueglassblock.better-json5",
         "esbenp.prettier-vscode",
         "mhutchie.git-graph",
-        "redhat.vscode-yaml"
+        "redhat.vscode-yaml",
+        "github.vscode-github-actions"
       ]
     }
   }
