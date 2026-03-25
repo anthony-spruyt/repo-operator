@@ -158,16 +158,10 @@ repos:
         "renovate/flux":
           color: "#ededed"
           description: ""
-        "renovate/github-actions":
-          color: "#ededed"
-          description: ""
         "renovate/helm":
           color: "#ededed"
           description: ""
         "renovate/helm-values":
-          color: "#ededed"
-          description: ""
-        "renovate/image":
           color: "#ededed"
           description: ""
         "renovate/kubernetes":
@@ -195,7 +189,7 @@ repos:
       - pre-commit
       # - protected-main-branch
       - python
-      # - renovate
+      - renovate
     prOptions:
       merge: manual
       mergeStrategy: squash
