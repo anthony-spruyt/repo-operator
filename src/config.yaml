@@ -190,12 +190,12 @@ repos:
     groups:
       - devcontainer
       - docker
-      - github-ci
+      # - github-ci
       - megalinter
       - pre-commit
-      - protected-main-branch
+      # - protected-main-branch
       - python
-      - renovate
+      # - renovate
     prOptions:
       merge: manual
       mergeStrategy: squash
