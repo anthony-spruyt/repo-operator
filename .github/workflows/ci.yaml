@@ -27,7 +27,7 @@ permissions:
 jobs:
   lint:
     if: "github.event_name != 'workflow_dispatch'"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@605fcdfab864797e519666120966a1e2b999eb0b" # main
     secrets: "inherit"
 
   xfg-plan:
@@ -139,4 +139,4 @@ jobs:
       - "xfg-plan"
       - "xfg-apply"
     if: "always()"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@605fcdfab864797e519666120966a1e2b999eb0b" # main
