@@ -79,7 +79,7 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@a66eb6553e7414c964b91f6c21031eaf2f897334" # v5.3.1
+        uses: "anthony-spruyt/xfg@514e0a563aecee2a1f48d9ce30a72351c8c2cc47" # v5.4.0
         with:
           config: "./src/config.yaml"
           dry-run: true
@@ -114,7 +114,7 @@ jobs:
           fetch-depth: 2
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@a66eb6553e7414c964b91f6c21031eaf2f897334" # v5.3.1
+        uses: "anthony-spruyt/xfg@514e0a563aecee2a1f48d9ce30a72351c8c2cc47" # v5.4.0
         with:
           config: "./src/config.yaml"
           github-app-id: "${{ vars.APP_ID }}"

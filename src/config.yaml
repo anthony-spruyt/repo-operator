@@ -180,23 +180,25 @@ repos:
     settings:
       repo:
         hasDiscussions: true
+      labels:
+        "run-integration":
+          color: "#0E8A16"
+          description: "Trigger integration tests on this PR"
       rulesets:
         pr-rules:
           bypassActors:
-            - actorId: 2719952 # xfg release bot
-              actorType: Integration
-              bypassMode: always
-            - actorId: 2740 # renovate
-              actorType: Integration
-              bypassMode: always
-            - actorId: 2758555 # repo-operator
-              actorType: Integration
-              bypassMode: always
+            $arrayMerge: append
+            $values:
+              - actorId: 2719952 # xfg release bot
+                actorType: Integration
+                bypassMode: always
         tag-rules:
           bypassActors:
-            - actorId: 2719952 # xfg release bot
-              actorType: Integration
-              bypassMode: always
+            $arrayMerge: append
+            $values:
+              - actorId: 2719952 # xfg release bot
+                actorType: Integration
+                bypassMode: always
 
 groups:
   # c:
@@ -477,12 +479,14 @@ conditionalGroups:
       rulesets:
         pr-rules:
           rules:
-            - type: required_status_checks
-              parameters:
-                doNotEnforceOnCreate: false
-                requiredStatusChecks:
-                  - context: "summary / Check Results"
-                strictRequiredStatusChecksPolicy: true
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "summary / Check Results"
+                  strictRequiredStatusChecksPolicy: true
   - when:
       allOf: [renovate]
       anyOf: [github, github-ci, github-trivy]
