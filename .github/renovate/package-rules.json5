@@ -21,6 +21,13 @@
       }
     },
 
+    // ============ Disable digest pinning ============
+    {
+      description: "Skip digest pinning for self-hosted reusable workflows",
+      matchPackageNames: ["anthony-spruyt/repo-operator"],
+      pinDigests: false
+    },
+
     // ============ Repo-specific rules ============
     {
       description: "Wait for n8n releases to stabilize (pre-release .0/.1 patches become stable at .2+)",
