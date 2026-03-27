@@ -140,7 +140,7 @@ repos:
       # - github-ci
       # - github-trivy
       - megalinter
-      # - protected-main-branch
+      - protected-main-branch
       - python
       - renovate
     prOptions:
