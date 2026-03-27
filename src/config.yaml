@@ -10,7 +10,6 @@ repos:
 
   - git: https://github.com/anthony-spruyt/claude-config.git
     groups:
-      - github
       - github-ci
       - github-trivy
       - megalinter
@@ -32,7 +31,6 @@ repos:
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
       - docker
-      - github
       - github-ci
       - github-trivy
       - megalinter
@@ -42,6 +40,11 @@ repos:
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
+    settings:
+      labels:
+        "renovate/upstream":
+          color: "#ededed"
+          description: ""
 
   #- git: https://github.com/anthony-spruyt/esphome.git
 
@@ -51,7 +54,6 @@ repos:
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
-      - github
       - github-ci
       - github-trivy
       - megalinter
@@ -60,7 +62,6 @@ repos:
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
       - docker
-      - github
       - github-ci
       - github-trivy
       - go
@@ -146,7 +147,6 @@ repos:
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
-      - github
       - github-ci
       - github-trivy
       - megalinter
@@ -233,6 +233,7 @@ groups:
                 hooks:
                   - id: actionlint
   github-ci:
+    extends: github
     files:
       .devcontainer/devcontainer.json:
         content:
@@ -248,24 +249,13 @@ groups:
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
         content: "@templates/.github/workflows/ci.yaml"
   github-trivy:
+    extends: github
     files:
       .github/workflows/trivy-scan.yaml:
         createOnly: true
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/trivy-scan.yaml for template comments
         content: "@templates/.github/workflows/trivy-scan.yaml"
-      .trivyignore.yaml:
-        createOnly: true
-        header:
-          - Path-specific trivy ignores
-          - https://trivy.dev/latest/docs/configuration/filtering
-        content: "@templates/.trivyignore.yaml"
-      trivy.yaml:
-        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://trivy.dev/latest/docs/references/configuration/config-file/
-        content: "@templates/trivy.yaml"
     settings:
       labels:
         critical:
@@ -321,18 +311,6 @@ groups:
         content: "@templates/.secretlintignore"
       .shellcheckrc:
         createOnly: true
-      trivy.yaml:
-        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://trivy.dev/latest/docs/references/configuration/config-file/
-        content: "@templates/trivy.yaml"
-      .trivyignore.yaml:
-        createOnly: true
-        header:
-          - Path-specific trivy ignores
-          - https://trivy.dev/latest/docs/configuration/filtering
-        content: "@templates/.trivyignore.yaml"
       lint-config.sh:
         createOnly: true
         content: "@templates/lint-config.sh"
@@ -414,9 +392,6 @@ groups:
         "renovate/flux":
           color: "#ededed"
           description: ""
-        "renovate/github-actions":
-          color: "#ededed"
-          description: ""
         "renovate/helm":
           color: "#ededed"
           description: ""
@@ -429,13 +404,13 @@ groups:
         "renovate/kubernetes":
           color: "#ededed"
           description: ""
-        "renovate/megalinter-flavor":
-          color: "#ededed"
-          description: ""
         "renovate/npm":
           color: "#ededed"
           description: ""
         "renovate/pre-commit":
+          color: "#ededed"
+          description: ""
+        "renovate/renovate-cli":
           color: "#ededed"
           description: ""
         "renovate/script":
@@ -445,9 +420,6 @@ groups:
           color: "#ededed"
           description: ""
         "renovate/taskfile":
-          color: "#ededed"
-          description: ""
-        "renovate/terraform":
           color: "#ededed"
           description: ""
   terraform:
@@ -488,6 +460,52 @@ groups:
     files:
       .eslintrc.json:
         content: "@templates/.eslintrc.json"
+
+conditionalGroups:
+  - when:
+      anyOf: [megalinter, github-trivy]
+    files:
+      trivy.yaml:
+        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://trivy.dev/latest/docs/references/configuration/config-file/
+        content: "@templates/trivy.yaml"
+      .trivyignore.yaml:
+        createOnly: true
+        header:
+          - Path-specific trivy ignores
+          - https://trivy.dev/latest/docs/configuration/filtering
+        content: "@templates/.trivyignore.yaml"
+  - when:
+      allOf: [renovate]
+      anyOf: [github, github-ci, github-trivy]
+    settings:
+      labels:
+        "renovate/github-actions":
+          color: "#ededed"
+          description: ""
+  - when:
+      allOf: [renovate, megalinter]
+    settings:
+      labels:
+        "renovate/megalinter-flavor":
+          color: "#ededed"
+          description: ""
+  - when:
+      allOf: [renovate, python]
+    settings:
+      labels:
+        "renovate/python":
+          color: "#ededed"
+          description: ""
+  - when:
+      allOf: [renovate, terraform]
+    settings:
+      labels:
+        "renovate/terraform":
+          color: "#ededed"
+          description: ""
 
 files:
   .devcontainer/devcontainer.json:
