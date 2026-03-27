@@ -365,12 +365,6 @@ groups:
                 requiredReviewers: []
                 requiredReviewThreadResolution: true
                 requireLastPushApproval: false
-            - type: required_status_checks
-              parameters:
-                doNotEnforceOnCreate: false
-                requiredStatusChecks:
-                  - context: "summary / Check Results"
-                strictRequiredStatusChecksPolicy: true
           target: branch
   python:
     files:
@@ -477,6 +471,18 @@ conditionalGroups:
           - Path-specific trivy ignores
           - https://trivy.dev/latest/docs/configuration/filtering
         content: "@templates/.trivyignore.yaml"
+  - when:
+      allOf: [protected-main-branch, github-ci]
+    settings:
+      rulesets:
+        pr-rules:
+          rules:
+            - type: required_status_checks
+              parameters:
+                doNotEnforceOnCreate: false
+                requiredStatusChecks:
+                  - context: "summary / Check Results"
+                strictRequiredStatusChecksPolicy: true
   - when:
       allOf: [renovate]
       anyOf: [github, github-ci, github-trivy]
