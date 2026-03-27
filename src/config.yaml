@@ -143,10 +143,6 @@ repos:
       - protected-main-branch
       - python
       - renovate
-    prOptions:
-      merge: manual
-      mergeStrategy: squash
-      deleteBranch: true
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
