@@ -137,9 +137,8 @@ repos:
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
       - docker
-      - github
-      # - github-ci
-      # - github-trivy
+      - github-ci
+      - github-trivy
       - megalinter
       - protected-main-branch
       - python
