@@ -335,12 +335,14 @@ groups:
       rulesets:
         pr-rules:
           bypassActors:
-            - actorId: 2740 # renovate
-              actorType: Integration
-              bypassMode: always
-            - actorId: 2758555 # repo-operator
-              actorType: Integration
-              bypassMode: always
+            $arrayMerge: append
+            $values:
+              - actorId: 2740 # renovate
+                actorType: Integration
+                bypassMode: always
+              - actorId: 2758555 # repo-operator
+                actorType: Integration
+                bypassMode: always
           conditions:
             refName:
               include:
@@ -348,25 +350,27 @@ groups:
               exclude: []
           enforcement: active
           rules:
-            - type: code_quality
-              parameters:
-                severity: errors
-            - type: code_scanning
-              parameters:
-                codeScanningTools:
-                  - tool: CodeQL
-                    alertsThreshold: errors
-                    securityAlertsThreshold: high_or_higher
-            - type: pull_request
-              parameters:
-                allowedMergeMethods:
-                  - squash
-                dismissStaleReviewsOnPush: true
-                requireCodeOwnerReview: true
-                requiredApprovingReviewCount: 0
-                requiredReviewers: []
-                requiredReviewThreadResolution: true
-                requireLastPushApproval: false
+            $arrayMerge: append
+            $values:
+              - type: code_quality
+                parameters:
+                  severity: errors
+              - type: code_scanning
+                parameters:
+                  codeScanningTools:
+                    - tool: CodeQL
+                      alertsThreshold: errors
+                      securityAlertsThreshold: high_or_higher
+              - type: pull_request
+                parameters:
+                  allowedMergeMethods:
+                    - squash
+                  dismissStaleReviewsOnPush: true
+                  requireCodeOwnerReview: true
+                  requiredApprovingReviewCount: 0
+                  requiredReviewers: []
+                  requiredReviewThreadResolution: true
+                  requireLastPushApproval: false
           target: branch
   python:
     files:
