@@ -48,6 +48,6 @@ repos:
     hooks:
       - id: jsonlint
         name: jsonlint
-        entry: npx @prantlf/jsonlint --quiet
+        entry: npx @prantlf/jsonlint --quiet --config .jsonlintrc
         language: system
         types: [json]
