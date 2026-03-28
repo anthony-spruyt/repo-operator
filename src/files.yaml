@@ -12,6 +12,9 @@ files:
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .jsonlintrc:
+    createOnly: true
+    content: "@templates/.jsonlintrc"
   .pre-commit-config.yaml:
     schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
     content: "@templates/.pre-commit-config.yaml"
