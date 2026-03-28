@@ -36,8 +36,10 @@ jobs:
     needs:
       - "lint"
     # Run on push (after lint passes), PRs, or manual dispatch (lint skipped)
+    # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
     if: >-
       always() &&
+      github.actor != 'repo-operator[bot]' &&
       (github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && needs.lint.result == 'success'))
