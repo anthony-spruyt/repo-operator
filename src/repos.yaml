@@ -1,0 +1,195 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+# Configuration for repo-operator - syncs files to target repositories
+repos:
+  #- git: https://github.com/anthony-spruyt/bai2csv.git
+
+  - git: https://github.com/anthony-spruyt/claude-config.git
+    groups:
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - python
+      - renovate
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "jetmartin.bats"
+
+  - git: https://github.com/anthony-spruyt/claude-plugins.git
+
+  - git: https://github.com/anthony-spruyt/container-images.git
+    groups:
+      - docker
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - python
+      - renovate
+    files:
+      .github/workflows/trivy-scan.yaml:
+        createOnly: true
+    settings:
+      labels:
+        "renovate/upstream":
+          color: "#ededed"
+          description: ""
+
+  #- git: https://github.com/anthony-spruyt/esphome.git
+
+  #- git: https://github.com/anthony-spruyt/firemerge.git
+
+  #- git: https://github.com/anthony-spruyt/gastown-dev.git
+
+  - git: https://github.com/anthony-spruyt/repo-operator.git
+    groups:
+      - github-ci
+      - github-trivy
+      - megalinter
+      - renovate
+
+  - git: https://github.com/anthony-spruyt/spruyt-labs.git
+    groups:
+      - docker
+      - github-ci
+      - github-trivy
+      - go
+      - megalinter
+      - renovate
+      - terraform
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers-extra/features/sops": {}
+            "ghcr.io/eitsupi/devcontainer-features/jq-likes":
+              yqVersion: "latest"
+          mounts:
+            $arrayMerge: append
+            $values:
+              - "source=${localEnv:HOME}/.secrets,target=/home/vscode/.secrets,type=bind,readonly"
+              - "source=${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "task.vscode-task"
+                  - "tim-koehler.helm-intellisense"
+          portsAttributes:
+            "3333":
+              label: "Capacitor"
+              onAutoForward: "openBrowser"
+      .vscode/settings.json:
+        createOnly: false
+        content:
+          "search.exclude":
+            "**/*.secret.*": true
+            "**/temp/**": true
+      .yamllint.yml:
+        content:
+          ignore: |
+            *.sops.*
+            talos/
+            clusterconfig/
+            legacy/
+            .taskfiles/talos/scripts/
+      trivy.yaml:
+        content:
+          scan:
+            skip-dirs:
+              - talos/clusterconfig
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            $values:
+              - repo: https://github.com/k8s-at-home/sops-pre-commit
+                rev: v2.1.1
+                hooks:
+                  - id: forbid-secrets
+      .github/renovate.json5:
+        content:
+          ignorePaths:
+            - "talos/helmfile"
+    settings:
+      repo:
+        allowAutoMerge: false
+      labels:
+        alert:
+          color: "#e11d48"
+          description: "Auto-created alert triage issue"
+        sre:
+          color: "#7c3aed"
+          description: "SRE investigation or triage"
+
+  - git: https://github.com/anthony-spruyt/SunGather.git
+    groups:
+      - docker
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - python
+      - renovate
+
+  - git: https://github.com/anthony-spruyt/xfg.git
+    groups:
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - python
+      - renovate
+      - typescript
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          features:
+            "ghcr.io/devcontainers/features/azure-cli": {}
+      .vscode/settings.json:
+        createOnly: false
+        content:
+          "files.exclude":
+            "dist/": true
+            "node_modules/": true
+            "site/": true
+            "tmp/": true
+          "search.exclude":
+            "coverage": true
+            ".output": true
+      trivy.yaml:
+        content:
+          scan:
+            $arrayMerge: replace
+            scanners:
+              - vuln
+              - secret
+    settings:
+      repo:
+        hasDiscussions: true
+      labels:
+        "run-integration":
+          color: "#0E8A16"
+          description: "Trigger integration tests on this PR"
+      rulesets:
+        pr-rules:
+          bypassActors:
+            $arrayMerge: append
+            $values:
+              - actorId: 2719952 # xfg release bot
+                actorType: Integration
+                bypassMode: always
+        tag-rules:
+          bypassActors:
+            $arrayMerge: append
+            $values:
+              - actorId: 2719952 # xfg release bot
+                actorType: Integration
+                bypassMode: always

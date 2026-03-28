@@ -79,9 +79,9 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@514e0a563aecee2a1f48d9ce30a72351c8c2cc47" # v5.4.0
+        uses: "anthony-spruyt/xfg@393f5c404c255111b2e82f1ab8a76a7c79430399" # v5.5.0
         with:
-          config: "./src/config.yaml"
+          config: "./src"
           dry-run: true
           github-app-id: "${{ vars.APP_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
@@ -114,9 +114,9 @@ jobs:
           fetch-depth: 2
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@514e0a563aecee2a1f48d9ce30a72351c8c2cc47" # v5.4.0
+        uses: "anthony-spruyt/xfg@393f5c404c255111b2e82f1ab8a76a7c79430399" # v5.5.0
         with:
-          config: "./src/config.yaml"
+          config: "./src"
           github-app-id: "${{ vars.APP_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 

@@ -1,0 +1,6 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+# Configuration for repo-operator - syncs files to target repositories
+id: repo-operator
+deleteOrphaned: true
+prOptions:
+  merge: direct

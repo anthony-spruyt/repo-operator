@@ -1,0 +1,126 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+# Configuration for repo-operator - syncs files to target repositories
+settings:
+  deleteOrphaned: true
+  codeScanning:
+    state: configured
+    querySuite: extended
+  labels:
+    blocked:
+      color: "#B60205"
+      description: "Waiting on upstream fix or external dependency"
+    bug:
+      color: "#d73a4a"
+      description: "Something isn't working"
+    chore:
+      color: "#FEF2C0"
+      description: "Maintenance, refactoring, configs"
+    "dep/major":
+      color: "#ededed"
+      description: ""
+    "dep/minor":
+      color: "#ededed"
+      description: ""
+    "dep/patch":
+      color: "#ededed"
+      description: ""
+    dependencies:
+      color: "#0366d6"
+      description: "Pull requests that update a dependency file"
+    docker:
+      color: "#21ceff"
+      description: "Pull requests that update docker code"
+    documentation:
+      color: "#0075ca"
+      description: "Improvements or additions to documentation"
+    duplicate:
+      color: "#cfd3d7"
+      description: "This issue or pull request already exists"
+    enhancement:
+      color: "#a2eeef"
+      description: "New feature or request"
+    "github actions":
+      color: "#000000"
+      description: "Pull requests that update GitHub Actions code"
+    "good first issue":
+      color: "#7057ff"
+      description: "Good for newcomers"
+    "help wanted":
+      color: "#008672"
+      description: "Extra attention is needed"
+    invalid:
+      color: "#e4e669"
+      description: "This doesn't seem right"
+    question:
+      color: "#d876e3"
+      description: "Further information is requested"
+    security:
+      color: "#d73a4a"
+      description: "Security vulnerability"
+    wontfix:
+      color: "#ffffff"
+      description: "This will not be worked on"
+  repo:
+    allowAutoMerge: true
+    allowForking: true
+    allowMergeCommit: false
+    allowRebaseMerge: false
+    allowSquashMerge: true
+    allowUpdateBranch: true
+    archived: false
+    automatedSecurityFixes: false
+    defaultBranch: main
+    deleteBranchOnMerge: true
+    hasDiscussions: false
+    hasIssues: true
+    hasProjects: false
+    hasWiki: false
+    isTemplate: false
+    mergeCommitMessage: PR_TITLE
+    mergeCommitTitle: MERGE_MESSAGE
+    privateVulnerabilityReporting: true
+    secretScanning: true
+    secretScanningPushProtection: true
+    squashMergeCommitMessage: COMMIT_MESSAGES
+    squashMergeCommitTitle: COMMIT_OR_PR_TITLE
+    visibility: public
+    vulnerabilityAlerts: false
+    webCommitSignoffRequired: true
+  rulesets:
+    push-protection:
+      bypassActors: []
+      conditions:
+        refName:
+          include:
+            - "refs/heads/main"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: creation
+        - type: deletion
+        - type: non_fast_forward
+        - type: required_linear_history
+      target: branch
+    branch-signatures:
+      bypassActors: []
+      conditions:
+        refName:
+          include:
+            - "refs/heads/**"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: required_signatures
+      target: branch
+    tag-rules:
+      conditions:
+        refName:
+          include:
+            - "refs/tags/**"
+          exclude: []
+      enforcement: active
+      rules:
+        - type: deletion
+        - type: non_fast_forward
+        - type: required_signatures
+      target: tag

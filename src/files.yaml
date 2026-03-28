@@ -1,0 +1,48 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
+# Configuration for repo-operator - syncs files to target repositories
+files:
+  .devcontainer/devcontainer.json:
+    content: "@templates/.devcontainer/devcontainer.json"
+  .devcontainer/package.json:
+    content: "@templates/.devcontainer/package.json"
+  .devcontainer/initialize.sh:
+    content: "@templates/.devcontainer/initialize.sh"
+  .devcontainer/post-create.sh:
+    content: "@templates/.devcontainer/post-create.sh"
+  .devcontainer/setup-devcontainer.sh:
+    createOnly: true
+    content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .pre-commit-config.yaml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
+    content: "@templates/.pre-commit-config.yaml"
+  .yamllint.yml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/yamllint.json
+    header:
+      - This file is automatically updated - do not modify directly
+      - https://yamllint.readthedocs.io/en/latest/configuration.html
+    content: "@templates/.yamllint.yml"
+  .gitleaks.toml:
+    createOnly: true
+    content: "@templates/.gitleaks.toml"
+  .vscode/settings.json:
+    createOnly: true
+    content: "@templates/.vscode/settings.json"
+  .prettierignore:
+    content: "@templates/.prettierignore"
+  .prettierrc.yaml:
+    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+    header: This file is automatically updated - do not modify directly
+    content: "@templates/.prettierrc.yaml"
+  .markdownlint.json:
+    content: "@templates/.markdownlint.json"
+  .markdownlintignore:
+    createOnly: true
+    content: "@templates/.markdownlintignore"
+  .editorconfig:
+    content: "@templates/.editorconfig"
+  .gitignore:
+    createOnly: true
+    content: "@templates/.gitignore"
+  LICENSE:
+    createOnly: true
+    content: "@templates/LICENSE.MIT"

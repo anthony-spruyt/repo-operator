@@ -30,7 +30,7 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 ./lint.sh
 
 # Run config sync manually (requires GH_TOKEN environment variable)
-GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src/config.yaml
+GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src
 ```
 
 Pre-commit hooks run automatically for linting (yamllint, prettier), security (gitleaks), and file hygiene (whitespace, line endings, merge conflicts, smart quotes).
@@ -41,14 +41,15 @@ Pre-commit hooks run automatically for linting (yamllint, prettier), security (g
 
 The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to target repositories.
 
-**Configuration file**: `src/config.yaml`
+**Configuration directory**: `src/` (multi-file directory-based config)
 
-- `repos` - List of target repositories with optional per-repo file overrides
-- `files` - Default files to sync, each with:
-  - `content` - Template path (prefixed with `@templates/`)
-  - `createOnly` - If true, only creates file if it doesn't exist (won't overwrite)
-  - `header` - Optional header comments
-- `prOptions.merge: auto` - PRs are automatically merged when checks pass
+- `base.yaml` - Core config: `id`, `deleteOrphaned`, `prOptions`
+- `files.yaml` - Default files to sync to all repos
+- `groups.yaml` - Group definitions and conditional groups
+- `repos.yaml` - Target repositories with optional per-repo overrides
+- `settings.yaml` - Global settings: labels, repo defaults, rulesets, code scanning
+- File content uses `@templates/` references (resolved relative to fragment file)
+- `prOptions.merge: direct` - Changes are pushed directly
 
 **Templates directory**: `src/templates/`
 Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
