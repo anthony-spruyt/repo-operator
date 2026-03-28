@@ -16,13 +16,6 @@ fail() {
   FAILED=$((FAILED + 1))
 }
 
-# Create writable .gitconfig that includes the read-only host config.
-# The host .gitconfig is bind-mounted read-only to ~/.gitconfig-host so that
-# VS Code (and other tools) can write to ~/.gitconfig without "Device or resource busy".
-if [[ -f "$HOME/.gitconfig-host" ]] && ! grep -q 'gitconfig-host' "$HOME/.gitconfig" 2>/dev/null; then
-  printf '[include]\n\tpath = ~/.gitconfig-host\n' >"$HOME/.gitconfig"
-fi
-
 # Make all shell scripts executable (runs from repo root via postCreateCommand)
 find . -type f -name '*.sh' -exec chmod +x {} +
 
