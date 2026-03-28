@@ -43,8 +43,7 @@ jobs:
       (github.event_name == 'push' && needs.lint.result == 'success'))
     concurrency:
       group: "xfg"
-      # IMPORTANT: Must be false to serialize deploys and avoid redundant syncs
-      cancel-in-progress: false
+      cancel-in-progress: true
     outputs:
       run_sync: "${{ steps.changes.outputs.run_sync }}"
     steps:
@@ -101,7 +100,7 @@ jobs:
     environment: "${{ (github.event_name == 'workflow_dispatch' && inputs.skip_approval) && '' || 'production' }}"
     concurrency:
       group: "xfg"
-      cancel-in-progress: false
+      cancel-in-progress: true
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fa2e9d605c4eeb9fcad4c99c224cee0c6c7f3594
