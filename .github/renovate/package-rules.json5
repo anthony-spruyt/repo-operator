@@ -165,7 +165,8 @@
       matchManagers: ["custom.regex"],
       matchFileNames: ["talos/**"],
       labels: ["renovate/talos"],
-      minimumReleaseAge: "3 days"
+      minimumReleaseAge: "3 days",
+      pinDigests: false
     }
   ]
 }
