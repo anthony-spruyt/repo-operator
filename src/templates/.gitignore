@@ -13,6 +13,10 @@ __pycache__/
 
 # Claude
 .claude/settings.local.json
+.claude/worktrees/
+
+# Worktrees
+.worktrees/
 
 # SSH agent
 agent.sock
