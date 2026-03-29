@@ -44,12 +44,9 @@ repos:
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
       - renovate
-    prOptions:
-      merge: manual
-      mergeStrategy: squash
-      deleteBranch: true
     files:
       .devcontainer/devcontainer.json:
+        createOnly: false
         content:
           customizations:
             vscode:
@@ -57,6 +54,13 @@ repos:
                 $arrayMerge: append
                 $values:
                   - "ESPHome.esphome-vscode"
+      .vscode/settings.json:
+        content:
+          files.associations:
+            "*.yaml": "esphome"
+          esphome.dashboard.url: "http://http://localhost:6052"
+          yaml.schemas:
+            "https://raw.githubusercontent.com/esphome/esphome/main/esphome/schemas/configuration.json": "*.yaml"
 
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
