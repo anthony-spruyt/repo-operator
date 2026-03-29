@@ -132,6 +132,12 @@
       labels: ["renovate/flux"]
     },
     {
+      description: "Disable digest pinning for Flux manager on OCI sources (Flux manager cannot insert digest field into OCIRepository spec/ref)",
+      matchManagers: ["flux"],
+      matchDatasources: ["docker", "oci"],
+      pinDigests: false
+    },
+    {
       matchManagers: ["kubernetes"],
       labels: ["renovate/kubernetes"]
     },
@@ -140,10 +146,12 @@
       labels: ["renovate/helm-values"]
     },
 
-    // ============ Custom regex by path ============
+    // ============ Custom regex ============
     {
+      description: "Disable digest pinning for all custom regex managers (regex replacement cannot insert new digests, only update existing ones; built-in managers handle initial pinning)",
       matchManagers: ["custom.regex"],
-      labels: ["renovate/script"]
+      labels: ["renovate/script"],
+      pinDigests: false
     },
     {
       matchManagers: ["custom.regex"],
@@ -158,23 +166,13 @@
     {
       matchManagers: ["custom.regex"],
       matchFileNames: [".taskfiles/**"],
-      labels: ["renovate/taskfile"],
-      pinDigests: false
+      labels: ["renovate/taskfile"]
     },
     {
       matchManagers: ["custom.regex"],
       matchFileNames: ["talos/**"],
       labels: ["renovate/talos"],
-      minimumReleaseAge: "3 days",
-      pinDigests: false
-    },
-
-    // ============ Digest pinning exceptions for multi-line custom regex ============
-    {
-      description: "Disable digest pinning for Flux OCI repository ref custom regex (multi-line tag/digest fields cannot be handled by regex replacement)",
-      matchManagers: ["custom.regex"],
-      matchFileNames: ["cluster/flux/meta/repositories/oci/**"],
-      pinDigests: false
+      minimumReleaseAge: "3 days"
     }
   ]
 }
