@@ -21,6 +21,14 @@
       }
     },
 
+    // ============ Devcontainer base image (managed via xfg sync) ============
+    {
+      description: "Disable devcontainer updates in all repos except repo-operator (xfg syncs the devcontainer config)",
+      matchManagers: ["devcontainer"],
+      matchRepositories: ["!/anthony-spruyt/repo-operator/"],
+      enabled: false
+    },
+
     // ============ Disable digest pinning ============
     {
       description: "Skip digest pinning for self-hosted reusable workflows",

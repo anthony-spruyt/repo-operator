@@ -54,7 +54,6 @@ repos:
       - renovate
     files:
       .devcontainer/devcontainer.json:
-        createOnly: false
         content:
           customizations:
             vscode:
