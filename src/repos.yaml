@@ -42,6 +42,8 @@ repos:
           description: ""
 
   - git: https://github.com/anthony-spruyt/esphome.git
+    groups:
+      - renovate
     prOptions:
       merge: manual
       mergeStrategy: squash
