@@ -52,7 +52,7 @@
       enabled: true,
       commitMessageTopic: "container image {{depName}}",
       commitMessageExtra: "to {{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}",
-      pinDigests: false
+      pinDigests: true
     },
     {
       matchDatasources: ["docker", "oci"],
