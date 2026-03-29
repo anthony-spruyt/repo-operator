@@ -55,6 +55,7 @@ repos:
                 $values:
                   - "ESPHome.esphome-vscode"
       .vscode/settings.json:
+        createOnly: false
         content:
           files.associations:
             "*.yaml": "esphome"
