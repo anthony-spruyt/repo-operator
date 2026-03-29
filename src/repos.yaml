@@ -41,7 +41,20 @@ repos:
           color: "#ededed"
           description: ""
 
-  #- git: https://github.com/anthony-spruyt/esphome.git
+  - git: https://github.com/anthony-spruyt/esphome.git
+    prOptions:
+      merge: manual
+      mergeStrategy: squash
+      deleteBranch: true
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "ESPHome.esphome-vscode"
 
   #- git: https://github.com/anthony-spruyt/firemerge.git
 
