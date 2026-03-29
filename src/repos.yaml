@@ -40,6 +40,14 @@ repos:
         "renovate/upstream":
           color: "#ededed"
           description: ""
+      rulesets:
+        tag-rules:
+          bypassActors:
+            $arrayMerge: append
+            $values:
+              - actorId: 3215096 # container-images-garbo
+                actorType: Integration
+                bypassMode: always
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
