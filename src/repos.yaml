@@ -58,7 +58,7 @@ repos:
         content:
           files.associations:
             "*.yaml": "esphome"
-          esphome.dashboard.url: "http://http://localhost:6052"
+          esphome.dashboard.url: "http://localhost:6052"
           yaml.schemas:
             "https://raw.githubusercontent.com/esphome/esphome/main/esphome/schemas/configuration.json": "*.yaml"
 
