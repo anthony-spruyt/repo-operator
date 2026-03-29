@@ -56,7 +56,7 @@
       description: ["OCI artifact references in cluster manifests."],
       managerFilePatterns: ["/(^|/)cluster/.+\\.ya?ml$/"],
       matchStrings: [
-        "artifact:\\s*\"?oci://(?<depNamePath>[^:\"\\s]+)(?::|@)(?<currentValue>[^\"\\s]+)\"?"
+        "artifact:\\s*\"?oci://(?<depNamePath>[^:\"\\s]+):(?<currentValue>[^@\"\\s]+)(?:@(?<currentDigest>sha256:[^\"\\s]+))?\"?"
       ],
       depNameTemplate: "{{{depNamePath}}}",
       packageNameTemplate: "{{{depNamePath}}}",

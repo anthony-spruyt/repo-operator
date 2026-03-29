@@ -167,6 +167,14 @@
       labels: ["renovate/talos"],
       minimumReleaseAge: "3 days",
       pinDigests: false
+    },
+
+    // ============ Digest pinning exceptions for multi-line custom regex ============
+    {
+      description: "Disable digest pinning for Flux OCI repository ref custom regex (multi-line tag/digest fields cannot be handled by regex replacement)",
+      matchManagers: ["custom.regex"],
+      matchFileNames: ["cluster/flux/meta/repositories/oci/**"],
+      pinDigests: false
     }
   ]
 }
