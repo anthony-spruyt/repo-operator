@@ -44,6 +44,27 @@
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
+    // Dockerfile: ARG VAR="version"
+    {
+      customType: "regex",
+      description: ["Annotated Dockerfile ARG (depName first)."],
+      managerFilePatterns: ["/(^|/)Dockerfile$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\nARG\\s+[A-Z_]+=(?:\"?)(?<currentValue>[^\"\\s]+)(?:\"?)"
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}npm{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated Dockerfile ARG (datasource first)."],
+      managerFilePatterns: ["/(^|/)Dockerfile$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\nARG\\s+[A-Z_]+=(?:\"?)(?<currentValue>[^\"\\s]+)(?:\"?)"
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}npm{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
     // YAML: Docker image with optional digest
     {
       customType: "regex",
