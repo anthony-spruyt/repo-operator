@@ -136,6 +136,7 @@ repos:
             $arrayMerge: append
             $values:
               - repo: https://github.com/k8s-at-home/sops-pre-commit
+                # renovate: depName=k8s-at-home/sops-pre-commit datasource=github-tags
                 rev: v2.1.1
                 hooks:
                   - id: forbid-secrets

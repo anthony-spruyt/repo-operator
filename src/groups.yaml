@@ -31,6 +31,7 @@ groups:
             $arrayMerge: append
             $values:
               - repo: https://github.com/rhysd/actionlint
+                # renovate: depName=rhysd/actionlint datasource=github-tags
                 rev: v1.7.12
                 hooks:
                   - id: actionlint
@@ -90,6 +91,7 @@ groups:
             $arrayMerge: append
             $values:
               - repo: https://github.com/Lucas-C/pre-commit-hooks
+                # renovate: depName=Lucas-C/pre-commit-hooks datasource=github-tags
                 rev: v1.5.6
                 hooks:
                   - id: remove-crlf
@@ -257,6 +259,7 @@ groups:
             $values:
               # NOTE: files pattern assumes infra/terraform/ directory structure - override per-repo if needed
               - repo: https://github.com/antonbabenko/pre-commit-terraform
+                # renovate: depName=antonbabenko/pre-commit-terraform datasource=github-tags
                 rev: v1.105.0
                 hooks:
                   - id: terraform_fmt
@@ -283,6 +286,7 @@ conditionalGroups:
             $arrayMerge: append
             $values:
               - repo: https://github.com/Lucas-C/pre-commit-hooks
+                # renovate: depName=Lucas-C/pre-commit-hooks datasource=github-tags
                 rev: v1.5.6
                 hooks:
                   - id: remove-crlf
