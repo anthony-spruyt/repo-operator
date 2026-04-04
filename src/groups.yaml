@@ -263,9 +263,9 @@ groups:
                 rev: v1.105.0
                 hooks:
                   - id: terraform_fmt
-                    files: ^infra/terraform/
+                    files: "^(infra/terraform|coder)/"
                   - id: terraform_tflint
-                    files: ^infra/terraform/
+                    files: "^(infra/terraform|coder)/"
       .vscode/settings.json:
         createOnly: false
         content:
