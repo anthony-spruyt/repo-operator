@@ -84,7 +84,7 @@ jobs:
         with:
           config: "./src"
           dry-run: true
-          github-app-id: "${{ vars.CLIENT_ID }}"
+          github-app-id: "${{ vars.APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
   xfg-apply:
@@ -118,14 +118,14 @@ jobs:
         uses: "anthony-spruyt/xfg@847029325b4de9674ab4259d18ab459dd4d229ea" # v5.7.0
         with:
           config: "./src"
-          github-app-id: "${{ vars.CLIENT_ID }}"
+          github-app-id: "${{ vars.APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Generate app token"
         id: "app-token"
         uses: "actions/create-github-app-token@1b10c78c7865c340bc4f6099eb2f838309f1e8c3" # v3
         with:
-          client-id: "${{ vars.CLIENT_ID }}"
+          client-id: "${{ vars.APP_CLIENT_ID }}"
           private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Record deploy SHA"

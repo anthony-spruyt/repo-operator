@@ -5,7 +5,7 @@
 self-hosted-runner:
   labels: []
 config-variables:
-  - CLIENT_ID
+  - APP_CLIENT_ID
   - LAST_XFG_DEPLOY_SHA
 paths:
   .github/workflows/**/*.{yml,yaml}:
