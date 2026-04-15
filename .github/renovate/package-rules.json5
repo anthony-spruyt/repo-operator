@@ -103,33 +103,33 @@
     // ============ Managers ============
     {
       matchManagers: ["github-actions"],
-      labels: ["renovate/github-actions"],
+      addLabels: ["renovate/github-actions"],
       minimumReleaseAge: "2 days"
     },
     {
       matchManagers: ["terraform"],
-      labels: ["renovate/terraform"],
+      addLabels: ["renovate/terraform"],
       separateMinorPatch: true
     },
     {
       matchManagers: ["devcontainer"],
-      labels: ["renovate/devcontainer"]
+      addLabels: ["renovate/devcontainer"]
     },
     {
       matchManagers: ["npm"],
-      labels: ["renovate/npm"]
+      addLabels: ["renovate/npm"]
     },
     {
       matchManagers: ["pip_requirements"],
-      labels: ["renovate/python"]
+      addLabels: ["renovate/python"]
     },
     {
       matchManagers: ["pre-commit"],
-      labels: ["renovate/pre-commit"]
+      addLabels: ["renovate/pre-commit"]
     },
     {
       matchManagers: ["flux"],
-      labels: ["renovate/flux"]
+      addLabels: ["renovate/flux"]
     },
     {
       description: "Disable digest pinning for Flux manager on OCI sources (Flux manager cannot insert digest field into OCIRepository spec/ref)",
@@ -139,39 +139,39 @@
     },
     {
       matchManagers: ["kubernetes"],
-      labels: ["renovate/kubernetes"]
+      addLabels: ["renovate/kubernetes"]
     },
     {
       matchManagers: ["helm-values"],
-      labels: ["renovate/helm-values"]
+      addLabels: ["renovate/helm-values"]
     },
 
     // ============ Custom regex ============
     {
       description: "Disable digest pinning for all custom regex managers (regex replacement cannot insert new digests, only update existing ones; built-in managers handle initial pinning)",
       matchManagers: ["custom.regex"],
-      labels: ["renovate/script"],
+      addLabels: ["renovate/script"],
       pinDigests: false
     },
     {
       matchManagers: ["custom.regex"],
       matchFileNames: ["**/flavor.yaml"],
-      labels: ["renovate/megalinter-flavor"]
+      addLabels: ["renovate/megalinter-flavor"]
     },
     {
       matchManagers: ["custom.regex"],
       matchFileNames: ["**/metadata.yaml"],
-      labels: ["renovate/upstream"]
+      addLabels: ["renovate/upstream"]
     },
     {
       matchManagers: ["custom.regex"],
       matchFileNames: [".taskfiles/**"],
-      labels: ["renovate/taskfile"]
+      addLabels: ["renovate/taskfile"]
     },
     {
       matchManagers: ["custom.regex"],
       matchFileNames: ["talos/**"],
-      labels: ["renovate/talos"],
+      addLabels: ["renovate/talos"],
       minimumReleaseAge: "3 days"
     }
   ]
