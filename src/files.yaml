@@ -12,6 +12,17 @@ files:
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .devcontainer/Dockerfile:
+    content: "@templates/.devcontainer/Dockerfile"
+  .devcontainer/podman-seccomp.json:
+    content: "@templates/.devcontainer/podman-seccomp.json"
+  .devcontainer/update-podman-seccomp.sh:
+    content: "@templates/.devcontainer/update-podman-seccomp.sh"
+  .devcontainer/agent-run:
+    content: "@templates/.devcontainer/agent-run"
+  .devcontainer/README.md:
+    createOnly: true
+    content: "@templates/.devcontainer/README.md"
   .jsonlintrc:
     createOnly: true
     content: "@templates/.jsonlintrc"
