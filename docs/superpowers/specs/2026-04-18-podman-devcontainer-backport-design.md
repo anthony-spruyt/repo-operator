@@ -29,6 +29,7 @@ Backport the devcontainer and MegaLinter changes developed in `anthony-spruyt/sp
 | `podman-seccomp.json` | Vendored upstream seccomp profile from `containers/common`. ~20KB. Applied via `runArgs`; no-op in envbuilder. |
 | `update-podman-seccomp.sh` | Re-fetches `podman-seccomp.json` from version pinned by Renovate (`PODMAN_SECCOMP_VERSION`). |
 | `agent-run` | Policy-enforcing wrapper around `podman run` for AI agents. Rejects `--privileged`, `--network=host`, etc. Installed to `/usr/local/bin/agent-run` by `post-create.sh`. |
+| `README.md` | Describes devcontainer layout, security posture, and seccomp update flow. Ported from spruyt-labs. |
 
 ### Rewritten files under `src/templates/.devcontainer/`
 
@@ -87,6 +88,9 @@ Add entries:
   content: "@templates/.devcontainer/update-podman-seccomp.sh"
 .devcontainer/agent-run:
   content: "@templates/.devcontainer/agent-run"
+.devcontainer/README.md:
+  createOnly: true
+  content: "@templates/.devcontainer/README.md"
 ```
 
 No removals.
@@ -126,10 +130,6 @@ All new/rewritten scripts are processed by xfg. Every shell expansion `${VAR}` m
 | MegaLinter image tag `ghcr.io/anthony-spruyt/megalinter-spruyt-labs:latest` is spruyt-specific. | Out of scope — `lint-config.sh` is `createOnly:true`, so each repo picks its own image. No change needed. |
 | Named volume `*-containers` grows unbounded per repo. | Acceptable — Docker Desktop user can prune. |
 | Renovate bumping pinned feature versions creates churn. | Accept — that is the goal of pinning. |
-
-## Open Questions
-
-- **Port `.devcontainer/README.md`?** spruyt-labs has a useful README describing the security posture and seccomp update flow. Recommend **yes** — landed as a new synced file. Will confirm before implementation.
 
 ## Success Criteria
 
