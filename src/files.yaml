@@ -1,28 +1,28 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 # Configuration for repo-operator - syncs files to target repositories
 files:
+  .devcontainer/Dockerfile:
+    content: "@templates/.devcontainer/Dockerfile"
+  .devcontainer/README.md:
+    createOnly: true
+    content: "@templates/.devcontainer/README.md"
+  .devcontainer/agent-run:
+    content: "@templates/.devcontainer/agent-run"
   .devcontainer/devcontainer.json:
     content: "@templates/.devcontainer/devcontainer.json"
-  .devcontainer/package.json:
-    content: "@templates/.devcontainer/package.json"
   .devcontainer/initialize.sh:
     content: "@templates/.devcontainer/initialize.sh"
+  .devcontainer/package.json:
+    content: "@templates/.devcontainer/package.json"
+  .devcontainer/podman-seccomp.json:
+    content: "@templates/.devcontainer/podman-seccomp.json"
   .devcontainer/post-create.sh:
     content: "@templates/.devcontainer/post-create.sh"
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
-  .devcontainer/Dockerfile:
-    content: "@templates/.devcontainer/Dockerfile"
-  .devcontainer/podman-seccomp.json:
-    content: "@templates/.devcontainer/podman-seccomp.json"
   .devcontainer/update-podman-seccomp.sh:
     content: "@templates/.devcontainer/update-podman-seccomp.sh"
-  .devcontainer/agent-run:
-    content: "@templates/.devcontainer/agent-run"
-  .devcontainer/README.md:
-    createOnly: true
-    content: "@templates/.devcontainer/README.md"
   .jsonlintrc:
     createOnly: true
     content: "@templates/.jsonlintrc"
