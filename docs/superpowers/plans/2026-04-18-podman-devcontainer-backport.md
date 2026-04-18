@@ -15,6 +15,24 @@ configures storage accordingly. Harden outer container with `runArgs: seccomp=po
 
 **Key constraint — xfg escaping:** All `${VAR}` shell expansions in template scripts MUST be written as `$${VAR}`. Command substitutions `$(...)` are **not** escaped. JSON files are not escaped. The spec file has more detail.
 
+**Escaping recipe used by every script task below:**
+
+```bash
+# 1. Pre-scan for nested expansions — the sed below matches the first '}',
+#    so ${foo:-${bar}} would leave the outer brace unescaped. If any hits,
+#    escape those manually before running sed.
+grep -nE '\$\{[^}]*\$\{' "$FILE" && { echo "nested \${...\${...}}; escape manually"; exit 1; }
+
+# 2. Apply xfg escaping to all ${...} expansions.
+sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' "$FILE"
+
+# 3. Verify no unescaped ${...} remain.
+grep -nE '(^|[^$])\$\{' "$FILE" && { echo "unescaped \${...} left"; exit 1; }
+echo "$FILE: escaping ok"
+```
+
+Run these three steps against each of: `update-podman-seccomp.sh`, `agent-run`, `post-create.sh`, `lint.sh`.
+
 **Reference source:** `github.com/anthony-spruyt/spruyt-labs` is the upstream. Files are fetched via `gh api repos/anthony-spruyt/spruyt-labs/contents/<path>` and base64-decoded. Do not clone the repo.
 
 ---
@@ -57,7 +75,7 @@ Not modified (confirmed in spec):
 Run:
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/Dockerfile --jq '.content' | base64 -d > src/templates/.devcontainer/Dockerfile
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/Dockerfile -o src/templates/.devcontainer/Dockerfile
 ```
 
 No xfg escaping needed (no `${...}` in Dockerfile). Verify:
@@ -73,7 +91,7 @@ Expected: `no ${ — ok`.
 Run:
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/podman-seccomp.json --jq '.content' | base64 -d > src/templates/.devcontainer/podman-seccomp.json
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/podman-seccomp.json -o src/templates/.devcontainer/podman-seccomp.json
 ```
 
 Validate JSON:
@@ -89,7 +107,7 @@ Expected: `ok`.
 Run:
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/README.md --jq '.content' | base64 -d > src/templates/.devcontainer/README.md
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/README.md -o src/templates/.devcontainer/README.md
 ```
 
 No xfg escaping needed in prose.
@@ -114,22 +132,23 @@ git commit -m "feat(templates): add Dockerfile, seccomp profile, and README for 
 Run:
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/update-podman-seccomp.sh --jq '.content' | base64 -d > src/templates/.devcontainer/update-podman-seccomp.sh
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/update-podman-seccomp.sh -o src/templates/.devcontainer/update-podman-seccomp.sh
 chmod +x src/templates/.devcontainer/update-podman-seccomp.sh
 ```
 
 - [ ] **Step 2: Apply xfg escaping**
 
-Open the file and replace every `${VAR}` with `$${VAR}`. The upstream script contains two such expansions:
-
-- `"$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"` → `"$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"`
-- `"${PODMAN_SECCOMP_VERSION}"` → `"$${PODMAN_SECCOMP_VERSION}"`
-
-Do NOT escape `$(...)` command substitutions. Use sed:
+Apply the escaping recipe from the plan header to `src/templates/.devcontainer/update-podman-seccomp.sh`:
 
 ```bash
-sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' src/templates/.devcontainer/update-podman-seccomp.sh
+FILE=src/templates/.devcontainer/update-podman-seccomp.sh
+grep -nE '\$\{[^}]*\$\{' "$FILE" && { echo "nested expansion — escape manually first"; exit 1; }
+sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' "$FILE"
+grep -nE '(^|[^$])\$\{' "$FILE" && { echo "unescaped \${...} left"; exit 1; }
+echo "ok"
 ```
+
+Expected: `ok`. Upstream expansions covered: `"${BASH_SOURCE[0]}"` and `"${PODMAN_SECCOMP_VERSION}"`. `$(...)` command substitutions stay unchanged.
 
 - [ ] **Step 3: Sanity-check the diff**
 
@@ -159,29 +178,27 @@ git commit -m "feat(templates): add update-podman-seccomp.sh with xfg escaping"
 - [ ] **Step 1: Fetch upstream**
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/agent-run --jq '.content' | base64 -d > src/templates/.devcontainer/agent-run
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/agent-run -o src/templates/.devcontainer/agent-run
 chmod +x src/templates/.devcontainer/agent-run
 ```
 
 - [ ] **Step 2: Apply xfg escaping**
 
-Apply the same sed replacement for `${VAR}` → `$${VAR}`:
+Apply the escaping recipe from the plan header:
 
 ```bash
-sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' src/templates/.devcontainer/agent-run
+FILE=src/templates/.devcontainer/agent-run
+grep -nE '\$\{[^}]*\$\{' "$FILE" && { echo "nested expansion — escape manually first"; exit 1; }
+sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' "$FILE"
+grep -nE '(^|[^$])\$\{' "$FILE" && { echo "unescaped \${...} left"; exit 1; }
+echo "ok"
 ```
 
-This affects parameter expansions like `${FORBIDDEN_FLAGS[@]}`, `${!i}`, `${arg%%=*}`, `${arg#*=}`, `${AGENT_RUN_NET:-...}`, `${runner[@]}`, etc. Note that the sed regex allows `:`, `-`, alphanum, underscore inside the braces.
+Expected: `ok`. This affects `${FORBIDDEN_FLAGS[@]}`, `${!i}`, `${arg%%=*}`, `${arg#*=}`, `${AGENT_RUN_NET:-slirp4netns:allow_host_loopback=false}`, `${runner[@]}`, and similar.
 
-- [ ] **Step 3: Check for unescaped `${` left behind**
+- [ ] **Step 3: (merged into Step 2)**
 
-Run:
-
-```bash
-grep -nE '(^|[^$])\$\{' src/templates/.devcontainer/agent-run || echo "all escaped — ok"
-```
-
-Expected: `all escaped — ok`. If any remain (e.g. patterns like `${arg:i:1}` with colon-separated numeric slice), escape them manually.
+_Superseded by the post-sed grep inside Step 2._
 
 - [ ] **Step 4: Shellcheck the escaped version by temporarily unescaping into /tmp**
 
@@ -209,15 +226,21 @@ git commit -m "feat(templates): add agent-run policy wrapper for podman"
 - [ ] **Step 1: Replace the file contents with upstream spruyt-labs `post-create.sh`**
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/.devcontainer/post-create.sh --jq '.content' | base64 -d > src/templates/.devcontainer/post-create.sh
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/.devcontainer/post-create.sh -o src/templates/.devcontainer/post-create.sh
 chmod +x src/templates/.devcontainer/post-create.sh
 ```
 
 - [ ] **Step 2: Apply xfg escaping for `${VAR}` expansions**
 
 ```bash
-sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' src/templates/.devcontainer/post-create.sh
+FILE=src/templates/.devcontainer/post-create.sh
+grep -nE '\$\{[^}]*\$\{' "$FILE" && { echo "nested expansion — escape manually first"; exit 1; }
+sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' "$FILE"
+grep -nE '(^|[^$])\$\{' "$FILE" && { echo "unescaped \${...} left"; exit 1; }
+echo "ok"
 ```
+
+Expected: `ok`.
 
 - [ ] **Step 3: Verify heredocs are intact**
 
@@ -229,9 +252,38 @@ grep -n 'id -u' src/templates/.devcontainer/post-create.sh
 
 Expected lines should show `$(id -u)` unchanged (no `$$`).
 
-- [ ] **Step 4: Confirm verification block is intact**
+- [ ] **Step 4: Confirm all 14 behaviors from the spec are present**
 
-Read the full file and confirm it ends with a `Results: $PASSED passed, $FAILED failed` block that exits non-zero when any check fails. The pass/fail counters at the top (`PASSED=0`, `FAILED=0`, `pass()`, `fail()`) should also be present. If anything is missing, re-fetch and retry Step 1.
+Grep for every behavior listed in the spec's `post-create.sh` section. Every command below must return at least one match:
+
+```bash
+FILE=src/templates/.devcontainer/post-create.sh
+for pat in \
+  'git config --global --add safe.directory' \
+  'git ls-files.*chmod' \
+  'safe-chain' \
+  'pre-commit install' \
+  'claude.ai/install.sh' \
+  'podman-docker' \
+  'fuse-overlayfs' \
+  'slirp4netns' \
+  '/etc/subuid' \
+  'nodocker' \
+  'keep-id' \
+  '/dev/containers-disk' \
+  'short-name-mode' \
+  'install -m 0755.*agent-run' \
+  'setup-devcontainer.sh' \
+  'PASSED=0' \
+  'FAILED=0' \
+  'Results:.*passed' \
+  'exit.*FAILED' ; do
+    grep -q -E "$pat" "$FILE" || { echo "MISSING: $pat"; exit 1; }
+done
+echo "all 19 patterns present — ok"
+```
+
+Expected: `all 19 patterns present — ok`. If any `MISSING:` line prints, re-fetch from upstream and retry from Task 4 Step 1.
 
 - [ ] **Step 5: Lint the escaped script**
 
@@ -351,15 +403,21 @@ git commit -m "feat(templates): switch devcontainer.json to podman with build + 
 - [ ] **Step 1: Replace the file contents with upstream spruyt-labs `lint.sh`**
 
 ```bash
-gh api repos/anthony-spruyt/spruyt-labs/contents/lint.sh --jq '.content' | base64 -d > src/templates/lint.sh
+curl -sSL https://raw.githubusercontent.com/anthony-spruyt/spruyt-labs/main/lint.sh -o src/templates/lint.sh
 chmod +x src/templates/lint.sh
 ```
 
 - [ ] **Step 2: Apply xfg escaping**
 
 ```bash
-sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' src/templates/lint.sh
+FILE=src/templates/lint.sh
+grep -nE '\$\{[^}]*\$\{' "$FILE" && { echo "nested expansion — escape manually first"; exit 1; }
+sed -i -E 's/\$\{([^}]+)\}/\$\$\{\1\}/g' "$FILE"
+grep -nE '(^|[^$])\$\{' "$FILE" && { echo "unescaped \${...} left"; exit 1; }
+echo "ok"
 ```
+
+Expected: `ok`.
 
 - [ ] **Step 3: Verify the escaped file**
 
@@ -433,15 +491,17 @@ pre-commit run --all-files
 
 Expected: all hooks pass. If YAML/markdown lint complains about the new files (e.g. line length on README), fix inline and re-run.
 
-- [ ] **Step 2: Run `./lint.sh` (local mode)**
+- [ ] **Step 2: Lint the repo**
+
+`/workspaces/repo-operator/lint.sh` at the repo root is a prior-sync artifact — a separate file from the new `src/templates/lint.sh` we just edited. Running it exercises the **old** (DinD-based) logic against the current repo contents, which is still a valid smoke test for the template _files_ (shellcheck, yamllint, jsonlint, markdownlint, gitleaks, etc.).
 
 ```bash
 ./lint.sh
 ```
 
-Expected: MegaLinter runs via rootful podman, no errors on template files. Allow up to ~3 minutes.
+Expected: MegaLinter runs, no errors on any of the new template files. Allow up to ~3 minutes.
 
-Note: this validates the templates *as files* in this repo, not their effect on synced repos.
+Note: the new **template** `lint.sh` is not executed here — it will be tested end-to-end after the PR merges and the self-sync regenerates this repo's root `lint.sh`.
 
 - [ ] **Step 3: Dry-run xfg against this repo's own config**
 
@@ -449,7 +509,7 @@ Note: this validates the templates *as files* in this repo, not their effect on 
 GH_TOKEN="${GH_TOKEN:?set GH_TOKEN}" npx @aspruyt/xfg --config ./src --dry-run 2>&1 | tail -80
 ```
 
-Expected: xfg reports it *would* create/update the new `.devcontainer/*` files in target repos. No "template not found" errors. If `--dry-run` is not a supported flag for xfg, skip this step and rely on CI.
+Expected: xfg reports it _would_ create/update the new `.devcontainer/*` files in target repos. No "template not found" errors. If `--dry-run` is not a supported flag for xfg, skip this step and rely on CI.
 
 - [ ] **Step 4: Open PR**
 
