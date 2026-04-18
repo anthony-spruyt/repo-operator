@@ -185,11 +185,11 @@ echo "Setting up devcontainer (repo-specific tooling)..."
 echo "Running devcontainer verification tests..."
 echo ""
 
-# 1. Rootless Podman (exposed as `docker` via podman-docker)
+# 1. Rootful Podman (exposed as `docker` via podman-docker; `alias podman=sudo podman`)
 if ! docker --version 2>&1 | grep -qi 'podman'; then
   fail "docker CLI is not Podman (got: $(docker --version 2>&1))"
-elif docker run --rm docker.io/library/hello-world &>/dev/null; then
-  pass "Rootless Podman is working (docker → podman)"
+elif sudo -n docker run --rm docker.io/library/hello-world &>/dev/null; then
+  pass "Rootful Podman is working (docker → podman)"
 else
   echo "  SKIP: Podman not runnable yet (may start via agent script in Coder)"
 fi
