@@ -264,6 +264,8 @@ for pat in \
   'safe-chain' \
   'pre-commit install' \
   'claude.ai/install.sh' \
+  'local/bin' \
+  'apt-get remove.*moby' \
   'podman-docker' \
   'fuse-overlayfs' \
   'slirp4netns' \
@@ -271,7 +273,11 @@ for pat in \
   'nodocker' \
   'keep-id' \
   '/dev/containers-disk' \
+  'mkfs\.ext4' \
+  'cgroups.*disabled' \
+  'registries\.conf\.d' \
   'short-name-mode' \
+  'alias podman=' \
   'install -m 0755.*agent-run' \
   'setup-devcontainer.sh' \
   'PASSED=0' \
@@ -280,10 +286,10 @@ for pat in \
   'exit.*FAILED' ; do
     grep -q -E "$pat" "$FILE" || { echo "MISSING: $pat"; exit 1; }
 done
-echo "all 19 patterns present — ok"
+echo "all 25 patterns present — ok"
 ```
 
-Expected: `all 19 patterns present — ok`. If any `MISSING:` line prints, re-fetch from upstream and retry from Task 4 Step 1.
+Expected: `all 25 patterns present — ok`. If any `MISSING:` line prints, re-fetch from upstream and retry from Task 4 Step 1.
 
 - [ ] **Step 5: Lint the escaped script**
 
@@ -444,7 +450,7 @@ git commit -m "feat(templates): prefer sudo podman with host network in lint.sh"
 
 - [ ] **Step 1: Add entries for the five new files**
 
-After the existing `.devcontainer/setup-devcontainer.sh:` block (line 14), insert:
+After the existing `.devcontainer/setup-devcontainer.sh:` entry in `src/files.yaml`, insert:
 
 ```yaml
   .devcontainer/Dockerfile:
