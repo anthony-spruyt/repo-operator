@@ -92,9 +92,10 @@ repos:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers-extra/features/sops": {}
+            "ghcr.io/devcontainers-extra/features/sops":
+              version: "3.12.2"
             "ghcr.io/eitsupi/devcontainer-features/jq-likes":
-              yqVersion: "latest"
+              yqVersion: "4.52.5"
           mounts:
             $arrayMerge: append
             $values:

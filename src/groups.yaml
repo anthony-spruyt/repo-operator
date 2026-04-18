@@ -78,7 +78,8 @@ groups:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers/features/go": {}
+            "ghcr.io/devcontainers/features/go":
+              version: "1.26.2"
           customizations:
             vscode:
               extensions:
@@ -97,7 +98,7 @@ groups:
                   - id: remove-crlf
                   - id: remove-tabs
                     args: [--whitespaces-count, "2"]
-                    exclude: '(go\.mod|go\.sum)$'
+                    exclude: '(\.go|go\.mod|go\.sum)$'
   megalinter:
     files:
       .lycheeignore:
@@ -195,7 +196,8 @@ groups:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers-extra/features/renovate-cli": {}
+            "ghcr.io/devcontainers-extra/features/renovate-cli":
+              version: "43.122.0"
       .github/renovate.json5:
         content: "@templates/.github/renovate.json5"
     settings:
@@ -241,7 +243,8 @@ groups:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers/features/terraform": {}
+            "ghcr.io/devcontainers/features/terraform":
+              version: "1.14.8"
           mounts:
             $arrayMerge: append
             $values:

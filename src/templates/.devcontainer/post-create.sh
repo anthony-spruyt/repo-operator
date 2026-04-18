@@ -20,6 +20,13 @@ fail() {
 # Mark repo as safe — envbuilder clones as root, postCreate runs as vscode user
 git config --global --add safe.directory '*'
 
+# Relax /etc/containers perms so podman (which strips supplementary groups in
+# its user namespace) can read storage.conf and the *.conf.d drop-ins. Image
+# ships /etc/containers as 0750 root:root which is unreadable from inside
+# the userns. Done before the podman verification test below. Ref #976.
+sudo mkdir -p /etc/containers/registries.conf.d /etc/containers/containers.conf.d
+sudo chmod a+rx /etc/containers /etc/containers/registries.conf.d /etc/containers/containers.conf.d
+
 # Make all shell scripts executable (runs from repo root via postCreateCommand)
 # Uses git ls-files to only touch tracked files, avoiding permission denied errors
 # on directories we don't own (e.g. mounted volumes, .git objects)

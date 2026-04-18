@@ -48,6 +48,9 @@ settings:
     "help wanted":
       color: "#008672"
       description: "Extra attention is needed"
+    infra:
+      color: "#ededed"
+      description: "Pull requests that update infra"
     invalid:
       color: "#e4e669"
       description: "This doesn't seem right"
