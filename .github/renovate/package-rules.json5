@@ -1,7 +1,13 @@
-// This file is automatically updated - do not modify directly
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
+    // ============ Supply-chain default ============
+    {
+      description: "Default minimum release age for supply-chain safety (overridden per-package below)",
+      matchUpdateTypes: ["major", "minor", "patch"],
+      minimumReleaseAge: "7 days"
+    },
+
     // ============ High-frequency packages ============
     {
       description: "Limit renovate CLI updates to weekly (releases multiple times daily)",
@@ -38,10 +44,11 @@
 
     // ============ Repo-specific rules ============
     {
-      description: "Wait for n8n releases to stabilize (pre-release .0/.1 patches become stable at .2+)",
+      description: "Coder uses two-channel releases (mainline/stable); 30-day delay avoids adopting unproven mainline versions",
       matchRepositories: ["anthony-spruyt/spruyt-labs"],
-      matchPackageNames: ["n8nio/n8n"],
-      minimumReleaseAge: "7 days"
+      matchPackageNames: ["coder"],
+      matchDatasources: ["helm"],
+      minimumReleaseAge: "30 days"
     },
     {
       description: "Weekly batch for all non-major updates in container-images",
@@ -103,8 +110,7 @@
     // ============ Managers ============
     {
       matchManagers: ["github-actions"],
-      addLabels: ["renovate/github-actions"],
-      minimumReleaseAge: "2 days"
+      addLabels: ["renovate/github-actions"]
     },
     {
       matchManagers: ["terraform"],
@@ -171,8 +177,7 @@
     {
       matchManagers: ["custom.regex"],
       matchFileNames: ["talos/**"],
-      addLabels: ["renovate/talos"],
-      minimumReleaseAge: "3 days"
+      addLabels: ["renovate/talos"]
     }
   ]
 }

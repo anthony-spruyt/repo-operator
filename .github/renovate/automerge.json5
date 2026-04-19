@@ -1,4 +1,3 @@
-// This file is automatically updated - do not modify directly
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   // Automerge disabled globally - PR triage and merging handled by n8n renovate agent workflow

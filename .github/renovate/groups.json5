@@ -1,4 +1,3 @@
-// This file is automatically updated - do not modify directly
 {
   $schema: "https://docs.renovatebot.com/renovate-schema.json",
   packageRules: [
@@ -35,8 +34,7 @@
         "cilium"
       ],
       matchDatasources: ["helm", "docker"],
-      separateMinorPatch: true,
-      minimumReleaseAge: "2 days"
+      separateMinorPatch: true
     },
     {
       description: "Victoria Metrics components",
@@ -60,8 +58,7 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true,
-      minimumReleaseAge: "7 days"
+      separateMinorPatch: true
     },
     {
       description: "CloudNativePG components",
@@ -81,8 +78,7 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true,
-      minimumReleaseAge: "7 days"
+      separateMinorPatch: true
     },
     {
       description: "Authentik stack",
@@ -102,8 +98,7 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true,
-      minimumReleaseAge: "7 days"
+      separateMinorPatch: true
     },
     {
       description: "External-DNS components",
