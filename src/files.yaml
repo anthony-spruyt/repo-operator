@@ -8,6 +8,7 @@ files:
     content: "@templates/.devcontainer/README.md"
   .devcontainer/agent-run:
     content: "@templates/.devcontainer/agent-run"
+    executable: true
   .devcontainer/devcontainer.json:
     content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/initialize.sh:
