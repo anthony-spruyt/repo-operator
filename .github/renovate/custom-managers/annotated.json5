@@ -85,6 +85,27 @@
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
+    },
+    // Terraform: Docker image string with optional digest
+    {
+      customType: "regex",
+      description: ["Annotated Terraform Docker image (depName first)."],
+      managerFilePatterns: ["/\\.tf$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*\\w+\\s*=\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+      ],
+      datasourceTemplate: "docker",
+      versioningTemplate: "docker"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated Terraform Docker image (datasource first)."],
+      managerFilePatterns: ["/\\.tf$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+\\s*=\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+      ],
+      datasourceTemplate: "docker",
+      versioningTemplate: "docker"
     }
   ]
 }
