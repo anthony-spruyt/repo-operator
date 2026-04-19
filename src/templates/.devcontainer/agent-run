@@ -20,7 +20,6 @@ set -euo pipefail
 
 # Hard-rejected flags. Also catches `--flag=true` and `--flag=value` variants
 # via prefix match, and space-separated `--flag value` via the look-ahead below.
-# shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
 readonly FORBIDDEN_FLAGS=(
   --privileged
   --pid
@@ -34,7 +33,6 @@ readonly FORBIDDEN_FLAGS=(
 
 # Rejected substring patterns (matched anywhere in an arg). These are values
 # that are unsafe in any flag context (e.g. mounting the docker socket).
-# shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
 readonly FORBIDDEN_SUBSTR=(
   "seccomp=unconfined"
   "apparmor=unconfined"
@@ -45,7 +43,6 @@ readonly FORBIDDEN_SUBSTR=(
 )
 
 # Values that make a namespace/privilege-related flag dangerous.
-# shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
 readonly FORBIDDEN_VALUES=(
   host
   true
@@ -55,7 +52,6 @@ readonly FORBIDDEN_VALUES=(
 
 is_forbidden_flag() {
   local f="$1"
-  # shellcheck disable=SC2066 # xfg template syntax $${} appears as literal to shellcheck
   for flag in "$${FORBIDDEN_FLAGS[@]}"; do
     [[ "$f" == "$flag" ]] && return 0
   done
@@ -64,7 +60,6 @@ is_forbidden_flag() {
 
 is_forbidden_value() {
   local v="$1"
-  # shellcheck disable=SC2066 # xfg template syntax $${} appears as literal to shellcheck
   for val in "$${FORBIDDEN_VALUES[@]}"; do
     [[ "$v" == "$val" ]] && return 0
   done
@@ -77,7 +72,6 @@ i=1
 while [[ $i -le $# ]]; do
   arg="$${!i}"
 
-  # shellcheck disable=SC2066 # xfg template syntax $${} appears as literal to shellcheck
   for pat in "$${FORBIDDEN_SUBSTR[@]}"; do
     if [[ "$arg" == *"$pat"* ]]; then
       echo "agent-run: forbidden pattern in arg: $arg (matched: $pat)" >&2
@@ -123,11 +117,9 @@ AGENT_CPUS="$${AGENT_RUN_CPUS:-2}"
 # Rootless podman is preferred. In WSL2 nested userns, newuidmap fails because
 # the outer namespace did not delegate subuid ranges; fall back to `sudo podman`
 # with --userns=auto still providing a dedicated user namespace.
-# shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
 runner=(podman)
 if ! podman info >/dev/null 2>&1; then
   if [[ "$(id -u)" != "0" ]] && command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
-    # shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
     runner=(sudo -n podman)
   fi
 fi

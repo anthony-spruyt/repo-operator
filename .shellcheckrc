@@ -1,0 +1,2 @@
+# xfg template syntax $${} appears as literal to shellcheck
+disable=SC2034,SC2066,SC2157,SC2193,SC2288

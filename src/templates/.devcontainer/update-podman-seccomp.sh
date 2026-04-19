@@ -5,7 +5,6 @@ set -euo pipefail
 # .devcontainer/podman-seccomp.json and commit the updated JSON alongside.
 
 # renovate: depName=containers/common datasource=github-releases
-# shellcheck disable=SC2034 # xfg template syntax $${} appears as literal to shellcheck
 PODMAN_SECCOMP_VERSION="v0.64.1"
 
 SCRIPT_DIR="$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"

@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC2193,SC2157,SC2034,SC2288 # xfg template syntax $${} appears as literal to shellcheck
 # shellcheck disable=SC1091 # lint-config.sh path resolved at runtime
 set -euo pipefail
 

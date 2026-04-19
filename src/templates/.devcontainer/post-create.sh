@@ -239,7 +239,6 @@ if [[ -S "$${SSH_AUTH_SOCK:-}" ]]; then
   SSH_ASKPASS='' ssh-add -l &>/dev/null || ssh_rc=$?
   [[ $ssh_rc -ne 2 ]] && SSH_AGENT_OK=true
 fi
-# shellcheck disable=SC2157 # xfg template syntax $${} appears as literal to shellcheck
 if $SSH_AGENT_OK; then
   pass "SSH agent reachable ($SSH_AUTH_SOCK)"
 elif [[ -f "/etc/coder/ssh-keys/id_ed25519" ]]; then
