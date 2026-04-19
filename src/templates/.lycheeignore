@@ -5,6 +5,12 @@ https://raw.githubusercontent.com/.*
 # GitHub API URLs require authentication and can't be validated
 https://api.github.com/.*
 
+# VS Code site returns 403 to automated link checkers
+https://code.visualstudio.com/.*
+
+# LAN server URLs use private .lan domains with shell variable substitution
+.*\.lan/.*
+
 # Localhost URLs are not reachable in CI/lint environments
 http://localhost.*
 https://localhost.*
