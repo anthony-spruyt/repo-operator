@@ -19,11 +19,11 @@ RUN printf 'Acquire::Retries "5";\nAcquire::http::Timeout "30";\nAcquire::http::
 ARG NEXUS_URL=""
 RUN set -eu; \
     if [ -z "$${NEXUS_URL}" ]; then \
-    echo "NEXUS_URL unset — leaving /etc/apt/sources.list unchanged"; \
+        echo "NEXUS_URL unset — leaving /etc/apt/sources.list unchanged"; \
     else \
-    echo "Routing Ubuntu archive through $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
-    printf 'deb %s/repository/apt-ubuntu-proxy/ jammy main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-updates main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-security main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-backports main restricted universe multiverse\n' \
-    "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" > /etc/apt/sources.list; \
+        echo "Routing Ubuntu archive through $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
+        printf 'deb %s/repository/apt-ubuntu-proxy/ jammy main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-updates main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-security main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-backports main restricted universe multiverse\n' \
+        "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" > /etc/apt/sources.list; \
     fi
 
 # Default to non-root. Devcontainer features explicitly USER root when
