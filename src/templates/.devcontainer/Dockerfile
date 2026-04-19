@@ -23,7 +23,7 @@ RUN set -eu; \
     else \
         echo "Routing Ubuntu archive through $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
         printf 'deb %s/repository/apt-ubuntu-proxy/ jammy main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-updates main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-security main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-backports main restricted universe multiverse\n' \
-        "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" > /etc/apt/sources.list; \
+            "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" > /etc/apt/sources.list; \
     fi
 
 # Default to non-root. Devcontainer features explicitly USER root when
