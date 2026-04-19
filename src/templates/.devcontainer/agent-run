@@ -116,11 +116,15 @@ AGENT_CPUS="$${AGENT_RUN_CPUS:-2}"
 
 # Rootless podman is preferred. In WSL2 nested userns, newuidmap fails because
 # the outer namespace did not delegate subuid ranges; fall back to `sudo podman`
-# with --userns=auto still providing a dedicated user namespace.
+# with --network=host --uts=host (matching lint.sh) so slirp4netns and
+# sethostname don't need subordinate ID ranges.
 runner=(podman)
+ns_args=()
 if ! podman info >/dev/null 2>&1; then
   if [[ "$(id -u)" != "0" ]] && command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
     runner=(sudo -n podman)
+    AGENT_NET="host"
+    ns_args=(--uts=host)
   fi
 fi
 
@@ -136,4 +140,5 @@ exec "$${runner[@]}" run --rm \
   --memory-swap="$AGENT_MEM" \
   --cpus="$AGENT_CPUS" \
   --network="$AGENT_NET" \
+  "$${ns_args[@]}" \
   "$@"
