@@ -3,27 +3,18 @@
 files:
   .devcontainer/Dockerfile:
     content: "@templates/.devcontainer/Dockerfile"
+  .devcontainer/devcontainer.json:
+    content: "@templates/.devcontainer/devcontainer.json"
+  .devcontainer/podman-seccomp.json:
+    content: "@templates/.devcontainer/podman-seccomp.json"
   .devcontainer/README.md:
     createOnly: true
     content: "@templates/.devcontainer/README.md"
-  .devcontainer/agent-run:
-    content: "@templates/.devcontainer/agent-run"
-    executable: true
-  .devcontainer/devcontainer.json:
-    content: "@templates/.devcontainer/devcontainer.json"
   .devcontainer/initialize.sh:
     content: "@templates/.devcontainer/initialize.sh"
-  .devcontainer/package.json:
-    content: "@templates/.devcontainer/package.json"
-  .devcontainer/podman-seccomp.json:
-    content: "@templates/.devcontainer/podman-seccomp.json"
-  .devcontainer/post-create.sh:
-    content: "@templates/.devcontainer/post-create.sh"
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
-  .devcontainer/update-podman-seccomp.sh:
-    content: "@templates/.devcontainer/update-podman-seccomp.sh"
   .jsonlintrc:
     createOnly: true
     content: "@templates/.jsonlintrc"
