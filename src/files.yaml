@@ -44,6 +44,8 @@ files:
   .markdownlintignore:
     createOnly: true
     content: "@templates/.markdownlintignore"
+  .mdformat.toml:
+    content: "@templates/.mdformat.toml"
   .editorconfig:
     content: "@templates/.editorconfig"
   .gitignore:
