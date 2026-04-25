@@ -11,17 +11,14 @@ When writing tests and implementing features, follow the red-green-refactor cycl
 ## Workflow
 
 1. **Red** - Write a test that fails (or doesn't compile)
-
    - Define the expected behavior before implementation
    - Run the test to confirm it fails
 
-1. **Green** - Make it pass with minimal code
-
+2. **Green** - Make it pass with minimal code
    - Write just enough code to pass the test
    - Avoid over-engineering or adding untested features
 
-1. **Refactor** - Improve the code
-
+3. **Refactor** - Improve the code
    - Clean up duplication, naming, structure
    - Run tests after each change to ensure they still pass
 
