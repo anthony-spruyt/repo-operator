@@ -1,10 +1,6 @@
----
-name: block-age-decrypt
-enabled: true
-event: bash
-pattern: age\s+(-d|--decrypt)
-action: block
----
+______________________________________________________________________
+
+## name: block-age-decrypt enabled: true event: bash pattern: age\\s+(-d|--decrypt) action: block
 
 🚫 **Blocked: Age decryption**
 
@@ -15,8 +11,8 @@ action: block
 **If you need the decrypted content:**
 
 1. Ask the user: "Can you decrypt this file and share the specific portion you need me to work with?"
-2. User can decrypt manually: `age -d -i key.txt file.age`
-3. User shares only the non-sensitive parts needed
+1. User can decrypt manually: `age -d -i key.txt file.age`
+1. User shares only the non-sensitive parts needed
 
 **Safe alternatives:**
 

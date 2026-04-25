@@ -1,11 +1,6 @@
----
-name: warn-use-edit-tool
-enabled: true
-event: bash
-pattern: (^|\s|&&|\|\||;|\(|`)(sed|awk)\s+.*-i
-action: warn
-warn_once: true
----
+______________________________________________________________________
+
+## name: warn-use-edit-tool enabled: true event: bash pattern: (^|\\s|&&||||;|(|\`)(sed|awk)\\s+.\*-i action: warn warn_once: true
 
 ⚠️ **Use the Edit tool instead**
 

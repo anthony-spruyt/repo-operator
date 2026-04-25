@@ -18,8 +18,8 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 This operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync template files to target repositories.
 
 1. Templates are defined in `src/templates/`
-2. Target repositories and file mappings are configured in `src/config.yaml`
-3. CI runs on push to main, creating PRs in target repos with updated configs
+1. Target repositories and file mappings are configured in `src/config.yaml`
+1. CI runs on push to main, creating PRs in target repos with updated configs
 
 ## Adding a Repository
 

@@ -1,13 +1,16 @@
----
+______________________________________________________________________
+
 name: block-read-cloud-creds
 enabled: true
 event: file
 action: block
 conditions:
-  - field: file_path
-    operator: regex_match
-    pattern: [/\\]\.aws[/\\]credentials$|[/\\]\.kube[/\\]config$|kubeconfig|[/\\]\.docker[/\\]config\.json$|[/\\]\.config[/\\]gh[/\\]hosts\.yml$
----
+
+- field: file_path
+  operator: regex_match
+  pattern: [/\\].aws[/\\]credentials$|[/\\].kube[/\\]config$|kubeconfig|[/\\].docker[/\\]config.json$|[/\\].config[/\\]gh[/\\]hosts.yml$
+
+______________________________________________________________________
 
 **Blocked: Reading cloud credentials file**
 

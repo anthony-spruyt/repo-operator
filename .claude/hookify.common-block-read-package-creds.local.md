@@ -1,13 +1,16 @@
----
+______________________________________________________________________
+
 name: block-read-package-creds
 enabled: true
 event: file
 action: block
 conditions:
-  - field: file_path
-    operator: regex_match
-    pattern: [/\\]\.(npmrc|pypirc|netrc)$
----
+
+- field: file_path
+  operator: regex_match
+  pattern: [/\\].(npmrc|pypirc|netrc)$
+
+______________________________________________________________________
 
 **Blocked: Reading package manager credentials**
 

@@ -1,10 +1,6 @@
----
-name: block-echo-secrets
-enabled: true
-event: bash
-pattern: (echo|printf)\s+.*\$\{?[A-Za-z_]*(_PAT|TOKEN|SECRET|PASSWORD|PASSPHRASE|CREDENTIAL|PRIVATE_KEY|API_KEY|SECRET_KEY|ACCESS_KEY)\b
-action: block
----
+______________________________________________________________________
+
+## name: block-echo-secrets enabled: true event: bash pattern: (echo|printf)\\s+.*${?[A-Za-z\_]*(\_PAT|TOKEN|SECRET|PASSWORD|PASSPHRASE|CREDENTIAL|PRIVATE_KEY|API_KEY|SECRET_KEY|ACCESS_KEY)\\b action: block
 
 🚫 **Blocked: Echoing sensitive environment variable**
 
@@ -29,10 +25,11 @@ echo "${VAR:+set (hidden)}${VAR:-NOT SET}"
    [ -n "$VAR_NAME" ] && echo "set" || echo "not set"
    ```
 
-2. **Ask the user directly:**
+1. **Ask the user directly:**
    "Is the environment variable `VAR_NAME` set?"
 
-3. **Use printenv with existence check only:**
+1. **Use printenv with existence check only:**
+
    ```bash
    printenv VAR_NAME >/dev/null 2>&1 && echo "set" || echo "not set"
    ```

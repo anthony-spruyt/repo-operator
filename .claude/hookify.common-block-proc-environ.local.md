@@ -1,10 +1,6 @@
----
-name: block-proc-environ
-enabled: true
-event: bash
-pattern: cat\s+/proc/(self|\$\$|[0-9]+)/environ
-action: block
----
+______________________________________________________________________
+
+## name: block-proc-environ enabled: true event: bash pattern: cat\\s+/proc/(self|$$|[0-9]+)/environ action: block
 
 🚫 **Blocked: Reading process environment from /proc**
 
@@ -15,7 +11,7 @@ action: block
 **If you need a specific variable:**
 
 1. Ask the user: "What is the value of $VARIABLE_NAME?"
-2. User can provide the value if it's safe
-3. User can decline if it contains secrets
+1. User can provide the value if it's safe
+1. User can decline if it contains secrets
 
 **Note:** This is a direct filesystem access to environment variables, bypassing normal shell commands.

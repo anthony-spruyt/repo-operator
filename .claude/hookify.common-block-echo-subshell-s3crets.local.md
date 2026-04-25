@@ -1,10 +1,6 @@
----
-name: block-echo-subshell-secrets
-enabled: true
-event: bash
-pattern: (echo|printf)\s+.*\$\((env|printenv|set)\b
-action: block
----
+______________________________________________________________________
+
+## name: block-echo-subshell-secrets enabled: true event: bash pattern: (echo|printf)\\s+.\*$((env|printenv|set)\\b action: block
 
 🚫 **Blocked: Echo with command substitution that dumps environment**
 
@@ -20,10 +16,10 @@ action: block
    [ -n "$VAR_NAME" ] && echo "set" || echo "not set"
    ```
 
-2. **List variable names only:**
+1. **List variable names only:**
 
    ```bash
    env | cut -d= -f1
    ```
 
-3. **Ask the user** for specific variable values if needed.
+1. **Ask the user** for specific variable values if needed.

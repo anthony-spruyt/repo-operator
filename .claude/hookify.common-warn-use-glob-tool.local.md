@@ -1,11 +1,6 @@
----
-name: warn-use-glob-tool
-enabled: true
-event: bash
-pattern: (^|\s|&&|\|\||;|\(|`)(find|ls)\s+\S
-action: warn
-warn_once: true
----
+______________________________________________________________________
+
+## name: warn-use-glob-tool enabled: true event: bash pattern: (^|\\s|&&||||;|(|\`)(find|ls)\\s+\\S action: warn warn_once: true
 
 ⚠️ **Use the Glob tool instead**
 

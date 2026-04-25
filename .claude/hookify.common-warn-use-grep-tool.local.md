@@ -1,11 +1,6 @@
----
-name: warn-use-grep-tool
-enabled: true
-event: bash
-pattern: (^|\s|&&|\|\||;|\(|`)(grep|rg|ack|ag)\s
-action: warn
-warn_once: true
----
+______________________________________________________________________
+
+## name: warn-use-grep-tool enabled: true event: bash pattern: (^|\\s|&&||||;|(|\`)(grep|rg|ack|ag)\\s action: warn warn_once: true
 
 ⚠️ **Use the Grep tool instead**
 

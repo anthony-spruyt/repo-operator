@@ -1,10 +1,6 @@
----
-name: block-gpg-decrypt
-enabled: true
-event: bash
-pattern: gpg\s+(-d|--decrypt)
-action: block
----
+______________________________________________________________________
+
+## name: block-gpg-decrypt enabled: true event: bash pattern: gpg\\s+(-d|--decrypt) action: block
 
 🚫 **Blocked: GPG decryption**
 
@@ -15,8 +11,8 @@ action: block
 **If you need the decrypted content:**
 
 1. Ask the user: "Can you decrypt this file and share the specific portion you'd like me to work with?"
-2. User can decrypt manually: `gpg -d filename.gpg`
-3. User shares only the non-sensitive parts needed
+1. User can decrypt manually: `gpg -d filename.gpg`
+1. User shares only the non-sensitive parts needed
 
 **Safe alternatives:**
 

@@ -1,10 +1,6 @@
----
-name: block-env-grep
-enabled: true
-event: bash
-pattern: (env|printenv)\s*\|\s*grep
-action: block
----
+______________________________________________________________________
+
+## name: block-env-grep enabled: true event: bash pattern: (env|printenv)\\s\*|\\s\*grep action: block
 
 🚫 **Blocked: Searching environment variables**
 
@@ -15,8 +11,8 @@ action: block
 **If you need a specific variable:**
 
 1. Ask the user: "What is the value of $VARIABLE_NAME?"
-2. User can provide the value if it's safe
-3. User can decline if it contains secrets
+1. User can provide the value if it's safe
+1. User can decline if it contains secrets
 
 **Note:** This pattern is almost always used to search for credentials or tokens.
 

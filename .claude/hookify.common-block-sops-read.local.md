@@ -1,13 +1,16 @@
----
+______________________________________________________________________
+
 name: block-sops-read
 enabled: true
 event: file
 action: block
 conditions:
-  - field: file_path
-    operator: regex_match
-    pattern: \.sops\.(yaml|yml|json)$
----
+
+- field: file_path
+  operator: regex_match
+  pattern: .sops.(yaml|yml|json)$
+
+______________________________________________________________________
 
 🚫 **Blocked: Reading SOPS encrypted file**
 

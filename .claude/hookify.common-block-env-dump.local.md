@@ -1,10 +1,6 @@
----
-name: block-env-dump
-enabled: true
-event: bash
-pattern: (^|\s|&&|\|\||;|\(|`)env\s*($|\||;|&&|\|\||\)|`)
-action: block
----
+______________________________________________________________________
+
+## name: block-env-dump enabled: true event: bash pattern: (^|\\s|&&||||;|(|`)env\s*($|\||;|&&|\|\||\)|`) action: block
 
 🚫 **Blocked: Dumping environment variables**
 
@@ -15,7 +11,7 @@ action: block
 **If you need a specific variable:**
 
 1. Ask the user: "What is the value of `$VARIABLE_NAME`?"
-2. User can provide the value if it's safe to share
+1. User can provide the value if it's safe to share
 
 **Safe alternatives:**
 

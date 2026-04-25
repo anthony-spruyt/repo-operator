@@ -1,13 +1,16 @@
----
+______________________________________________________________________
+
 name: block-read-secrets-generic
 enabled: true
 event: file
 action: block
 conditions:
-  - field: file_path
-    operator: regex_match
-    pattern: (secrets?\.(ya?ml|json|txt)|tokens?\.(json|txt)|\.credentials$|credentials\.json$|\.htpasswd$|\.vault-token$)
----
+
+- field: file_path
+  operator: regex_match
+  pattern: (secrets?.(ya?ml|json|txt)|tokens?.(json|txt)|.credentials$|credentials.json$|.htpasswd$|.vault-token$)
+
+______________________________________________________________________
 
 **Blocked: Reading potential secrets file**
 
