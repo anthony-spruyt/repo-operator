@@ -51,8 +51,7 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - File content uses `@templates/` references (resolved relative to fragment file)
 - `prOptions.merge: direct` - Changes are pushed directly
 
-**Templates directory**: `src/templates/`
-Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
+**Templates directory**: `src/templates/` Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
 
 ### Renovate Configuration
 
