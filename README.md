@@ -1,7 +1,6 @@
 # repo-operator
 
-[![CI](https://github.com/anthony-spruyt/repo-operator/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/anthony-spruyt/repo-operator/actions/workflows/ci.yaml)
-[![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
+[![CI](https://github.com/anthony-spruyt/repo-operator/actions/workflows/ci.yaml/badge.svg?branch=main)](https://github.com/anthony-spruyt/repo-operator/actions/workflows/ci.yaml) [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 A GitHub Repository Operator that manages and standardizes configuration across multiple repositories.
 
@@ -18,8 +17,8 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 This operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync template files to target repositories.
 
 1. Templates are defined in `src/templates/`
-2. Target repositories and file mappings are configured in `src/config.yaml`
-3. CI runs on push to main, creating PRs in target repos with updated configs
+1. Target repositories and file mappings are configured in `src/config.yaml`
+1. CI runs on push to main, creating PRs in target repos with updated configs
 
 ## Adding a Repository
 

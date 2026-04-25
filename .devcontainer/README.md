@@ -25,9 +25,9 @@ Standardized development container synced across repos via repo-operator. Edits 
 ## Seccomp profile updates
 
 1. Renovate bumps `PODMAN_SECCOMP_VERSION` in `update-podman-seccomp.sh`.
-2. Run `task dev-env:update-podman-seccomp` locally to refresh `podman-seccomp.json`.
-3. Commit the updated JSON alongside the Renovate PR.
-4. Rebuild the devcontainer to pick up the new profile.
+1. Run `task dev-env:update-podman-seccomp` locally to refresh `podman-seccomp.json`.
+1. Commit the updated JSON alongside the Renovate PR.
+1. Rebuild the devcontainer to pick up the new profile.
 
 If nested Podman breaks on a syscall after an update, either narrow which operation triggers it (and file upstream to `containers/common`) or add a local override allow rule before merging.
 

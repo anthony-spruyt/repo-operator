@@ -51,8 +51,7 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - File content uses `@templates/` references (resolved relative to fragment file)
 - `prOptions.merge: direct` - Changes are pushed directly
 
-**Templates directory**: `src/templates/`
-Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
+**Templates directory**: `src/templates/` Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
 
 ### Renovate Configuration
 
@@ -66,8 +65,8 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
 1. **lint** - MegaLinter validation (skipped for renovate/dependabot commits)
-2. **sync-config** - Uses the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) via GitHub App (on push only, skipped if no `src/` changes)
-3. **summary** - Aggregates results for branch protection
+1. **sync-config** - Uses the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) via GitHub App (on push only, skipped if no `src/` changes)
+1. **summary** - Aggregates results for branch protection
 
 The sync-config job creates PRs in target repositories with the updated configuration files.
 

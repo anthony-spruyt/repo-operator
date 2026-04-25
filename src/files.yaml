@@ -8,7 +8,6 @@ files:
   .devcontainer/podman-seccomp.json:
     content: "@templates/.devcontainer/podman-seccomp.json"
   .devcontainer/README.md:
-    createOnly: true
     content: "@templates/.devcontainer/README.md"
   .devcontainer/initialize.sh:
     content: "@templates/.devcontainer/initialize.sh"
