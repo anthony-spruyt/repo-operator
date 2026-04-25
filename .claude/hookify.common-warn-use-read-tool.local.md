@@ -1,6 +1,11 @@
-______________________________________________________________________
-
-## name: warn-use-read-tool enabled: true event: bash pattern: (^|\\s|&&||||;|(|\`)(cat|head|tail|less|more)\\s+[^|] action: warn warn_once: true
+---
+name: warn-use-read-tool
+enabled: true
+event: bash
+pattern: (^|\s|&&|\|\||;|\(|`)(cat|head|tail|less|more)\s+[^|]
+action: warn
+warn_once: true
+---
 
 ⚠️ **Use the Read tool instead**
 

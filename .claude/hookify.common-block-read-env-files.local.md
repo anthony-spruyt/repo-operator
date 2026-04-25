@@ -1,16 +1,13 @@
-______________________________________________________________________
-
+---
 name: block-read-env-files
 enabled: true
 event: file
 action: block
 conditions:
-
-- field: file_path
-  operator: regex_match
-  pattern: [/\\].env(.[^/\\]+)?$
-
-______________________________________________________________________
+  - field: file_path
+    operator: regex_match
+    pattern: [/\\]\.env(\.[^/\\]+)?$
+---
 
 **Blocked: Reading environment file**
 

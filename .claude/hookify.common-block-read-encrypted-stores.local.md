@@ -1,16 +1,13 @@
-______________________________________________________________________
-
+---
 name: block-read-encrypted-stores
 enabled: true
 event: file
 action: block
 conditions:
-
-- field: file_path
-  operator: regex_match
-  pattern: [/\\].(gnupg|password-store)[/\\]
-
-______________________________________________________________________
+  - field: file_path
+    operator: regex_match
+    pattern: [/\\]\.(gnupg|password-store)[/\\]
+---
 
 **Blocked: Reading encrypted password store**
 

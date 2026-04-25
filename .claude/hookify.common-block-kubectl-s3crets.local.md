@@ -1,6 +1,10 @@
-______________________________________________________________________
-
-## name: block-kubectl-secrets enabled: true event: bash pattern: kubectl\\s+get\\s+secrets?\\s+.\*(-o\\s+(yaml|json|jsonpath|go-template)|--output[=\\s]+(yaml|json|jsonpath|go-template)) action: block
+---
+name: block-kubectl-secrets
+enabled: true
+event: bash
+pattern: kubectl\s+get\s+secrets?\s+.*(-o\s+(yaml|json|jsonpath|go-template)|--output[=\s]+(yaml|json|jsonpath|go-template))
+action: block
+---
 
 🚫 **Blocked: kubectl get secret with output format**
 
