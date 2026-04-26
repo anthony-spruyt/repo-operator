@@ -68,7 +68,7 @@ jobs:
           echo "Found $TOTAL vulnerabilities ($CRITICAL critical, $HIGH high, $MEDIUM medium)"
 
           # Find existing issue by title prefix (also check old static title for migration)
-          EXISTING=$(gh issue list --state open --json number,title \
+          EXISTING=$(gh issue list --state open --limit 200 --json number,title \
             | jq -r --arg prefix "$ISSUE_PREFIX" --arg old "[Trivy] Security vulnerabilities found" \
               '.[] | select(.title | (startswith($prefix) or . == $old)) | .number' \
             | head -1)
