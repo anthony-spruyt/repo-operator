@@ -1,0 +1,241 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Trivy Image Vulnerability Scan
+
+on:
+  workflow_call: {}
+
+permissions:
+  contents: read
+  packages: read
+  issues: write
+
+env:
+  REGISTRY: ghcr.io
+
+jobs:
+  discover-images:
+    name: Discover Images
+    runs-on: ubuntu-latest
+    outputs:
+      images: ${{ steps.discover.outputs.images }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d
+        with:
+          egress-policy: audit
+
+      - name: Discover GHCR packages
+        id: discover
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # Query GHCR packages API for container images belonging to this repo
+          OWNER="${GITHUB_REPOSITORY_OWNER}"
+          REPO="${GITHUB_REPOSITORY}"
+
+          # List all container packages for the owner, filter by source repository
+          # Try user endpoint first, fall back to org endpoint
+          IMAGES=$(gh api "/users/${OWNER}/packages?package_type=container" \
+            --paginate \
+            --jq "[.[] | select(.repository.full_name == \"${REPO}\") | .name]" 2>/dev/null) || \
+          IMAGES=$(gh api "/orgs/${OWNER}/packages?package_type=container" \
+            --paginate \
+            --jq "[.[] | select(.repository.full_name == \"${REPO}\") | .name]" 2>/dev/null) || \
+          IMAGES="[]"
+
+          # Handle pagination producing multiple JSON arrays by merging them
+          IMAGES=$(echo "$IMAGES" | jq -s 'add // []' 2>/dev/null || echo '[]')
+
+          COUNT=$(echo "$IMAGES" | jq 'length')
+          echo "Found $COUNT container images for ${REPO}"
+          echo "$IMAGES" | jq .
+
+          echo "images=$IMAGES" >> "$GITHUB_OUTPUT"
+
+  scan-images:
+    name: Scan ${{ matrix.image }}
+    runs-on: ubuntu-latest
+    needs: discover-images
+    if: needs.discover-images.outputs.images != '[]'
+    permissions:
+      contents: read
+      packages: read
+      issues: write
+    strategy:
+      fail-fast: false
+      matrix:
+        image: ${{ fromJson(needs.discover-images.outputs.images) }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+
+      - name: Log in to GHCR
+        uses: docker/login-action@4907a6ddec9925e35a0a9e82d7399ccc52663121 # v4
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Check if image exists
+        id: check-image
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          IMAGE_REF="${REGISTRY}/${GITHUB_REPOSITORY_OWNER}/${IMAGE}:latest"
+          if docker manifest inspect "$IMAGE_REF" > /dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Image exists: $IMAGE_REF"
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::Image not found: $IMAGE_REF"
+          fi
+
+      - name: Detect Trivy ignore file
+        id: trivyconfig
+        if: steps.check-image.outputs.exists == 'true'
+        env:
+          IMAGE: ${{ matrix.image }}
+        run: |
+          if [ -f "${IMAGE}/.trivyignore" ]; then
+            echo "ignorefile=${IMAGE}/.trivyignore" >> "$GITHUB_OUTPUT"
+            echo "Using per-image ignore: ${IMAGE}/.trivyignore"
+          elif [ -f ".trivyignore.yaml" ]; then
+            echo "ignorefile=.trivyignore.yaml" >> "$GITHUB_OUTPUT"
+            echo "Using repo-level ignore: .trivyignore.yaml"
+          else
+            echo "ignorefile=" >> "$GITHUB_OUTPUT"
+            echo "No ignore file found"
+          fi
+
+      # Split into two steps because trivy-action errors on empty trivyignores parameter
+      - name: Scan image for vulnerabilities (with ignore file)
+        if: steps.check-image.outputs.exists == 'true' && steps.trivyconfig.outputs.ignorefile != ''
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          scanners: vuln,secret,misconfig
+          format: json
+          output: trivy-results.json
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+          trivyignores: ${{ steps.trivyconfig.outputs.ignorefile }}
+          exit-code: 0
+
+      - name: Scan image for vulnerabilities (no ignore file)
+        if: steps.check-image.outputs.exists == 'true' && steps.trivyconfig.outputs.ignorefile == ''
+        uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+        with:
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          scanners: vuln,secret,misconfig
+          format: json
+          output: trivy-results.json
+          severity: CRITICAL,HIGH,MEDIUM
+          ignore-unfixed: false
+          exit-code: 0
+
+      - name: Process results and manage issue
+        if: steps.check-image.outputs.exists == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          IMAGE: ${{ matrix.image }}
+        run: |
+          if [ ! -f trivy-results.json ]; then
+            echo "::error::trivy-results.json not found"
+            exit 1
+          fi
+
+          IMAGE_REF="${REGISTRY}/${GITHUB_REPOSITORY_OWNER}/${IMAGE}:latest"
+          SCAN_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          SCAN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
+
+          # Deduplicate vulnerabilities by CVE ID
+          VULNS=$(jq '[.Results[]?.Vulnerabilities[]?] | unique_by(.VulnerabilityID)' trivy-results.json)
+          CRITICAL=$(echo "$VULNS" | jq '[.[] | select(.Severity == "CRITICAL")] | length')
+          HIGH=$(echo "$VULNS" | jq '[.[] | select(.Severity == "HIGH")] | length')
+          MEDIUM=$(echo "$VULNS" | jq '[.[] | select(.Severity == "MEDIUM")] | length')
+          TOTAL=$((CRITICAL + HIGH + MEDIUM))
+
+          echo "Found $TOTAL vulnerabilities ($CRITICAL critical, $HIGH high, $MEDIUM medium)"
+
+          # Find existing issue by title prefix
+          ISSUE_PREFIX="[Trivy] ${IMAGE}:"
+          ISSUE_NUMBER=$(gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg prefix "$ISSUE_PREFIX" '.[] | select(.title | startswith($prefix)) | .number' \
+            | head -1)
+
+          if [ "$TOTAL" -eq 0 ]; then
+            echo "::notice::No vulnerabilities found for ${IMAGE}"
+            if [ -n "$ISSUE_NUMBER" ]; then
+              gh issue close "$ISSUE_NUMBER" \
+                --comment "All vulnerabilities resolved as of ${SCAN_DATE}."
+            fi
+            exit 0
+          fi
+
+          # Ensure labels exist (after zero-vuln exit to avoid unnecessary API calls)
+          gh label create "security" --color "d73a4a" --description "Security vulnerability" --force 2>/dev/null || true
+          gh label create "trivy" --color "0052cc" --description "Trivy scan finding" --force 2>/dev/null || true
+          gh label create "critical" --color "b60205" --description "Critical severity" --force 2>/dev/null || true
+          gh label create "high" --color "d93f0b" --description "High severity" --force 2>/dev/null || true
+          gh label create "medium" --color "fbca04" --description "Medium severity" --force 2>/dev/null || true
+
+          # Build issue title with severity counts
+          TITLE="[Trivy] ${IMAGE}:"
+          [ "$CRITICAL" -gt 0 ] && TITLE="${TITLE} ${CRITICAL} critical,"
+          [ "$HIGH" -gt 0 ] && TITLE="${TITLE} ${HIGH} high,"
+          [ "$MEDIUM" -gt 0 ] && TITLE="${TITLE} ${MEDIUM} medium,"
+          TITLE="${TITLE%,} found"
+
+          # Build CRITICAL/HIGH vulnerability table
+          TABLE=$(echo "$VULNS" | jq -r '
+            [.[] | select(.Severity == "CRITICAL" or .Severity == "HIGH")]
+            | .[]
+            | "| \(.VulnerabilityID) | \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion // "unfixed") |"
+          ')
+
+          # Build issue body (use printf to avoid YAML indentation in content)
+          NL=$'\n'
+          BODY="## Trivy Vulnerability Scan Results${NL}${NL}"
+          BODY+="**Image:** \`${IMAGE_REF}\`${NL}"
+          BODY+="**Scan date:** ${SCAN_DATE}${NL}"
+          BODY+="**Total:** ${TOTAL} (${CRITICAL} critical, ${HIGH} high, ${MEDIUM} medium)"
+
+          if [ "$((CRITICAL + HIGH))" -gt 0 ]; then
+            BODY+="${NL}${NL}### Critical & High Vulnerabilities${NL}${NL}"
+            BODY+="| CVE | Severity | Package | Installed | Fixed |${NL}"
+            BODY+="|-----|----------|---------|-----------|-------|${NL}"
+            BODY+="${TABLE}"
+          fi
+
+          if [ "$MEDIUM" -gt 0 ]; then
+            BODY+="${NL}${NL}> **${MEDIUM} medium severity** vulnerabilities."
+            BODY+=" See [full scan results](${SCAN_URL}) for details."
+          fi
+
+          BODY+="${NL}${NL}---${NL}*Auto-generated by [Trivy scan](${SCAN_URL})*"
+
+          # Determine labels
+          LABELS="security,trivy"
+          [ "$CRITICAL" -gt 0 ] && LABELS="${LABELS},critical"
+          [ "$HIGH" -gt 0 ] && LABELS="${LABELS},high"
+          [ "$MEDIUM" -gt 0 ] && LABELS="${LABELS},medium"
+
+          if [ -n "$ISSUE_NUMBER" ]; then
+            # Remove stale severity labels before applying current ones
+            EXISTING_SEVERITY=$(gh issue view "$ISSUE_NUMBER" --json labels \
+              -q '.labels[].name' | grep -E '^(critical|high|medium)$' | paste -sd, || echo "")
+            if [ -n "$EXISTING_SEVERITY" ]; then
+              gh issue edit "$ISSUE_NUMBER" --remove-label "$EXISTING_SEVERITY"
+            fi
+            gh issue edit "$ISSUE_NUMBER" --title "$TITLE" --body "$BODY" --add-label "$LABELS"
+            echo "::notice::Updated issue #$ISSUE_NUMBER"
+          else
+            gh issue create --title "$TITLE" --body "$BODY" --label "$LABELS"
+            echo "::notice::Created new vulnerability issue"
+          fi

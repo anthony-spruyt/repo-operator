@@ -32,9 +32,6 @@ repos:
       - protected-main-branch
       - python
       - renovate
-    files:
-      .github/workflows/trivy-scan.yaml:
-        createOnly: true
     settings:
       labels:
         "renovate/upstream":

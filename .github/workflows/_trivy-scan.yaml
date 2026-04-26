@@ -48,37 +48,32 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          ISSUE_TITLE="[Trivy] Security vulnerabilities found"
+          ISSUE_PREFIX="[Trivy] repo:"
 
           if [ ! -f trivy-results.json ]; then
             echo "No Trivy results file found"
             exit 0
           fi
 
-          ALL_VULNS=$(jq -r '
-            [.Results[]? | .Vulnerabilities[]? | {
-              id: .VulnerabilityID,
-              severity: .Severity,
-              package: .PkgName,
-              installed: .InstalledVersion,
-              fixed: (.FixedVersion // "unfixed")
-            }] | unique_by(.id)
-          ' trivy-results.json)
-
-          TOTAL_VULN_COUNT=$(echo "$ALL_VULNS" | jq 'length')
-          CRITICAL=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity == "CRITICAL")] | length')
-          HIGH=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity == "HIGH")] | length')
-          MEDIUM=$(echo "$ALL_VULNS" | jq '[.[] | select(.severity == "MEDIUM")] | length')
-
-          echo "Found $TOTAL_VULN_COUNT total vulnerabilities ($CRITICAL CRITICAL, $HIGH HIGH, $MEDIUM MEDIUM)"
-
-          EXISTING=$(gh issue list --state open --json number,title | \
-            jq --arg title "$ISSUE_TITLE" -r '.[] | select(.title == $title) | .number' | \
-            head -1)
-
           SCAN_DATE=$(date -u +"%Y-%m-%d %H:%M UTC")
+          SCAN_URL="${GITHUB_SERVER_URL}/${GITHUB_REPOSITORY}/actions/runs/${GITHUB_RUN_ID}"
 
-          if [ "$TOTAL_VULN_COUNT" -eq 0 ]; then
+          # Deduplicate vulnerabilities by CVE ID
+          VULNS=$(jq '[.Results[]?.Vulnerabilities[]?] | unique_by(.VulnerabilityID)' trivy-results.json)
+          CRITICAL=$(echo "$VULNS" | jq '[.[] | select(.Severity == "CRITICAL")] | length')
+          HIGH=$(echo "$VULNS" | jq '[.[] | select(.Severity == "HIGH")] | length')
+          MEDIUM=$(echo "$VULNS" | jq '[.[] | select(.Severity == "MEDIUM")] | length')
+          TOTAL=$((CRITICAL + HIGH + MEDIUM))
+
+          echo "Found $TOTAL vulnerabilities ($CRITICAL critical, $HIGH high, $MEDIUM medium)"
+
+          # Find existing issue by title prefix (also check old static title for migration)
+          EXISTING=$(gh issue list --state open --limit 200 --json number,title \
+            | jq -r --arg prefix "$ISSUE_PREFIX" --arg old "[Trivy] Security vulnerabilities found" \
+              '.[] | select(.title | (startswith($prefix) or . == $old)) | .number' \
+            | head -1)
+
+          if [ "$TOTAL" -eq 0 ]; then
             echo "No vulnerabilities found"
             if [ -n "$EXISTING" ]; then
               gh issue close "$EXISTING" \
@@ -88,69 +83,59 @@ jobs:
             exit 0
           fi
 
-          CRITICAL_HIGH_VULNS=$(echo "$ALL_VULNS" | jq -r '[.[] | select(.severity == "CRITICAL" or .severity == "HIGH")]')
-          ACTIONABLE_COUNT=$(echo "$CRITICAL_HIGH_VULNS" | jq 'length')
+          # Build issue title with severity counts
+          TITLE="[Trivy] repo:"
+          [ "$CRITICAL" -gt 0 ] && TITLE="${TITLE} ${CRITICAL} critical,"
+          [ "$HIGH" -gt 0 ] && TITLE="${TITLE} ${HIGH} high,"
+          [ "$MEDIUM" -gt 0 ] && TITLE="${TITLE} ${MEDIUM} medium,"
+          TITLE="${TITLE%,} found"
 
-          VULN_TABLE=$(echo "$CRITICAL_HIGH_VULNS" | jq -r '
-            .[] | "| \(.id) | \(.severity) | \(.package) | \(.installed) | \(.fixed) |"
+          # Build CRITICAL/HIGH vulnerability table
+          TABLE=$(echo "$VULNS" | jq -r '
+            [.[] | select(.Severity == "CRITICAL" or .Severity == "HIGH")]
+            | .[]
+            | "| \(.VulnerabilityID) | \(.Severity) | \(.PkgName) | \(.InstalledVersion) | \(.FixedVersion // "unfixed") |"
           ')
 
-          BODY=$(cat <<EOF
-          ## Vulnerability Scan Results
+          # Build issue body (use string concatenation to avoid YAML indentation in content)
+          NL=$'\n'
+          BODY="## Trivy Vulnerability Scan Results${NL}${NL}"
+          BODY+="**Scan date:** ${SCAN_DATE}${NL}"
+          BODY+="**Total:** ${TOTAL} (${CRITICAL} critical, ${HIGH} high, ${MEDIUM} medium)"
 
-          **Scan Date:** $SCAN_DATE
-          **Total:** $TOTAL_VULN_COUNT vulnerabilities ($CRITICAL CRITICAL, $HIGH HIGH, $MEDIUM MEDIUM)
+          if [ "$((CRITICAL + HIGH))" -gt 0 ]; then
+            BODY+="${NL}${NL}### Critical & High Vulnerabilities${NL}${NL}"
+            BODY+="| CVE | Severity | Package | Installed | Fixed |${NL}"
+            BODY+="|-----|----------|---------|-----------|-------|${NL}"
+            BODY+="${TABLE}"
+          fi
 
-          $(if [ "$ACTIONABLE_COUNT" -gt 0 ]; then
-            cat <<TABLE
+          if [ "$MEDIUM" -gt 0 ]; then
+            BODY+="${NL}${NL}> **${MEDIUM} medium severity** vulnerabilities."
+            BODY+=" See [full scan results](${SCAN_URL}) for details."
+          fi
 
-          ### CRITICAL and HIGH Vulnerabilities
+          BODY+="${NL}${NL}---${NL}*Auto-generated by [Trivy scan](${SCAN_URL})*"
 
-          | CVE | Severity | Package | Installed | Fixed |
-          |-----|----------|---------|-----------|-------|
-          $VULN_TABLE
-          TABLE
-            if [ "$MEDIUM" -gt 0 ]; then
-              echo ""
-              echo "**Note:** $MEDIUM MEDIUM severity vulnerabilities not shown in table. [View full scan results]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID)."
-            fi
-          fi)$(if [ "$ACTIONABLE_COUNT" -eq 0 ] && [ "$MEDIUM" -gt 0 ]; then
-            cat <<MEDIUMONLY
-
-          ### Summary
-
-          Only MEDIUM severity vulnerabilities detected. [View full scan results]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID) for details.
-          MEDIUMONLY
-          fi)
-
-          ---
-          *This issue is auto-generated by the Trivy scan workflow.*
-          EOF
-          )
-
+          # Determine labels
           LABELS="security,trivy"
-          [ "$CRITICAL" -gt 0 ] && LABELS="$LABELS,critical"
-          [ "$HIGH" -gt 0 ] && LABELS="$LABELS,high"
-          [ "$MEDIUM" -gt 0 ] && LABELS="$LABELS,medium"
+          [ "$CRITICAL" -gt 0 ] && LABELS="${LABELS},critical"
+          [ "$HIGH" -gt 0 ] && LABELS="${LABELS},high"
+          [ "$MEDIUM" -gt 0 ] && LABELS="${LABELS},medium"
 
-          for label in $(echo "$LABELS" | tr ',' ' '); do
-            if ! gh label list --json name -q ".[].name" | grep -qx "$label"; then
-              case "$label" in
-                security) gh label create "$label" --color "d73a4a" --description "Security vulnerability" ;;
-                trivy)    gh label create "$label" --color "0052cc" --description "Trivy scan finding" ;;
-                critical) gh label create "$label" --color "b60205" --description "Critical severity" ;;
-                high)     gh label create "$label" --color "d93f0b" --description "High severity" ;;
-                medium)   gh label create "$label" --color "fbca04" --description "Medium severity" ;;
-              esac
-            fi
-          done
+          # Ensure labels exist
+          gh label create "security" --color "d73a4a" --description "Security vulnerability" --force 2>/dev/null || true
+          gh label create "trivy" --color "0052cc" --description "Trivy scan finding" --force 2>/dev/null || true
+          gh label create "critical" --color "b60205" --description "Critical severity" --force 2>/dev/null || true
+          gh label create "high" --color "d93f0b" --description "High severity" --force 2>/dev/null || true
+          gh label create "medium" --color "fbca04" --description "Medium severity" --force 2>/dev/null || true
 
           if [ -n "$EXISTING" ]; then
             EXISTING_SEVERITY=$(gh issue view "$EXISTING" --json labels -q '.labels[].name' | grep -E '^(critical|high|medium)$' | paste -sd, || echo "")
             [ -n "$EXISTING_SEVERITY" ] && gh issue edit "$EXISTING" --remove-label "$EXISTING_SEVERITY"
-            gh issue edit "$EXISTING" --body "$BODY" --add-label "$LABELS"
+            gh issue edit "$EXISTING" --title "$TITLE" --body "$BODY" --add-label "$LABELS"
             echo "Updated issue #$EXISTING"
           else
-            gh issue create --title "$ISSUE_TITLE" --body "$BODY" --label "$LABELS"
+            gh issue create --title "$TITLE" --body "$BODY" --label "$LABELS"
             echo "Created new issue"
           fi

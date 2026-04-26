@@ -12,10 +12,13 @@ on:
 permissions:
   contents: read
   issues: write
+  packages: read
 
 jobs:
-  scan:
+  fs-scan:
     uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-scan.yaml@main
     # with:
     #   scan-type: "fs"
     #   trivy-config: "trivy.yaml"
+  image-scan:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-image-scan.yaml@main
