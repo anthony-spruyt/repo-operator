@@ -16,9 +16,9 @@ permissions:
 
 jobs:
   fs-scan:
-    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-scan.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-fs.yaml@main
     # with:
     #   scan-type: "fs"
     #   trivy-config: "trivy.yaml"
   image-scan:
-    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-image-scan.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_trivy-img.yaml@main
