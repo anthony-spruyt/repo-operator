@@ -25,30 +25,27 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Discover GHCR packages
+      - name: Checkout
+        uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
+        with:
+          sparse-checkout: .trivy-images.yaml
+          sparse-checkout-cone-mode: false
+
+      - name: Read image list from config
         id: discover
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          # Query GHCR packages API for container images belonging to this repo
-          OWNER="${GITHUB_REPOSITORY_OWNER}"
-          REPO="${GITHUB_REPOSITORY}"
+          CONFIG=".trivy-images.yaml"
 
-          # List all container packages for the owner, filter by source repository
-          # Try user endpoint first, fall back to org endpoint
-          IMAGES=$(gh api "/users/${OWNER}/packages?package_type=container" \
-            --paginate \
-            --jq "[.[] | select(.repository.full_name == \"${REPO}\") | .name]" 2>/dev/null) || \
-          IMAGES=$(gh api "/orgs/${OWNER}/packages?package_type=container" \
-            --paginate \
-            --jq "[.[] | select(.repository.full_name == \"${REPO}\") | .name]" 2>/dev/null) || \
-          IMAGES="[]"
+          if [ ! -f "$CONFIG" ]; then
+            echo "No $CONFIG found, skipping image scanning"
+            echo "images=[]" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
 
-          # Handle pagination producing multiple JSON arrays by merging them
-          IMAGES=$(echo "$IMAGES" | jq -s 'add // []' 2>/dev/null || echo '[]')
+          IMAGES=$(yq -o=json '.images // []' "$CONFIG")
 
           COUNT=$(echo "$IMAGES" | jq 'length')
-          echo "Found $COUNT container images for ${REPO}"
+          echo "Found $COUNT images in $CONFIG"
           echo "$IMAGES" | jq .
 
           echo "images=$IMAGES" >> "$GITHUB_OUTPUT"
