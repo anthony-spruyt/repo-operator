@@ -136,6 +136,33 @@ groups:
         content: "@templates/lint-config.sh"
       lint.sh:
         content: "@templates/lint.sh"
+  mergify:
+    files:
+      .mergify.yml:
+        content: "@templates/.mergify.yml"
+    settings:
+      labels:
+        "agent/safe":
+          color: "#0E8A16"
+          description: "Agent approved - safe to merge"
+        "agent/fixable":
+          color: "#fbca04"
+          description: "Agent found fixable issues"
+        "agent/fixing":
+          color: "#e4e669"
+          description: "Agent is working on fixes"
+        "agent/needs-review":
+          color: "#d93f0b"
+          description: "Agent flagged for human review"
+        "agent/revert":
+          color: "#b60205"
+          description: "Automated revert PR"
+        "blocked":
+          color: "#b60205"
+          description: "Blocked from merging"
+        "emergency/merge":
+          color: "#b60205"
+          description: "Break glass - bypass agent triage"
   private-repo:
     settings:
       repo:

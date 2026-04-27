@@ -8,6 +8,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - mergify
       - protected-main-branch
       - python
       - renovate
@@ -29,6 +30,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - mergify
       - protected-main-branch
       - python
       - renovate
@@ -68,6 +70,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
+      - mergify
       - renovate
     files:
       .devcontainer/devcontainer.json:
@@ -94,6 +97,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - mergify
       - renovate
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
@@ -103,6 +107,7 @@ repos:
       - github-trivy
       - go
       - megalinter
+      - mergify
       - renovate
       - terraform
     files:
@@ -187,6 +192,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - mergify
       - protected-main-branch
       - python
       - renovate
@@ -202,6 +208,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - mergify
       - protected-main-branch
       - python
       - renovate
