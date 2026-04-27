@@ -42,7 +42,7 @@ jobs:
             exit 0
           fi
 
-          IMAGES=$(yq -o=json '.images // []' "$CONFIG")
+          IMAGES=$(yq -o=json -I=0 '.images // []' "$CONFIG")
 
           COUNT=$(echo "$IMAGES" | jq 'length')
           echo "Found $COUNT images in $CONFIG"
