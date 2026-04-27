@@ -396,7 +396,7 @@ conditionalGroups:
             $values:
               - type: required_status_checks
                 parameters:
-                  doNotEnforceOnCreate: false
                   requiredStatusChecks:
-                    - context: "Mergify Merge Protections"
-                  strictRequiredStatusChecksPolicy: true
+                    $arrayMerge: append
+                    $values:
+                      - context: "Mergify Merge Protections"
