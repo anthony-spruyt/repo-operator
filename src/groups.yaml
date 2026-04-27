@@ -142,6 +142,9 @@ groups:
         content: "@templates/.mergify.yml"
     settings:
       labels:
+        "agent/triage":
+          color: "#ededed"
+          description: "Agent is triaging PR"
         "agent/safe":
           color: "#0E8A16"
           description: "Agent approved - safe to merge"
@@ -160,6 +163,12 @@ groups:
         "emergency/merge":
           color: "#b60205"
           description: "Break glass - bypass agent triage"
+        dequeued:
+          color: "#311812"
+          description: "Mergify dequeued"
+        queued:
+          color: "#4f3fea"
+          description: "Mergify queued"
   private-repo:
     settings:
       repo:
