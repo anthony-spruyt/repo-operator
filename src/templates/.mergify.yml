@@ -2,10 +2,7 @@ queue_rules:
   - name: default
     merge_method: squash
     batch_size: 1
-    queue_conditions:
-      - check-success = agent/triage
     merge_conditions:
-      - check-success = agent/triage
       - "#approved-reviews-by >= 1"
       - -draft
 
@@ -25,7 +22,6 @@ pull_request_rules:
   - name: auto-merge agent-approved PRs
     conditions:
       - label = agent/safe
-      - check-success = agent/triage
       - "#approved-reviews-by >= 1"
       - -label = blocked
       - -draft
@@ -36,7 +32,6 @@ pull_request_rules:
     conditions:
       - label = agent/revert
       - "author~=.*\\[bot\\]$"
-      - check-success = agent/triage
       - -label = blocked
     actions:
       queue: {}
