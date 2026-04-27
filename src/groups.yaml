@@ -185,6 +185,9 @@ groups:
               - actorId: 2758555 # repo-operator
                 actorType: Integration
                 bypassMode: always
+              - actorId: 10562 # mergify
+                actorType: Integration
+                bypassMode: always
           conditions:
             refName:
               include:
