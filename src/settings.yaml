@@ -8,7 +8,7 @@ settings:
   labels:
     blocked:
       color: "#B60205"
-      description: "Waiting on upstream fix or external dependency"
+      description: "Blocked from merging"
     bug:
       color: "#d73a4a"
       description: "Something isn't working"

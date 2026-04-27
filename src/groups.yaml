@@ -157,9 +157,6 @@ groups:
         "agent/revert":
           color: "#b60205"
           description: "Automated revert PR"
-        "blocked":
-          color: "#b60205"
-          description: "Blocked from merging"
         "emergency/merge":
           color: "#b60205"
           description: "Break glass - bypass agent triage"
