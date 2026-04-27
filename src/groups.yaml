@@ -339,6 +339,7 @@ conditionalGroups:
         content: "@templates/.trivyignore.yaml"
   - when:
       allOf: [protected-main-branch, github-ci]
+      noneOf: [mergify]
     settings:
       rulesets:
         pr-rules:
@@ -350,6 +351,21 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                  strictRequiredStatusChecksPolicy: true
+  - when:
+      allOf: [mergify, protected-main-branch, github-ci]
+    settings:
+      rulesets:
+        pr-rules:
+          rules:
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "summary / Check Results"
+                    - context: "Mergify Merge Protections"
                   strictRequiredStatusChecksPolicy: true
   - when:
       allOf: [renovate]
@@ -391,12 +407,3 @@ conditionalGroups:
               - actorId: 10562 # mergify
                 actorType: Integration
                 bypassMode: always
-          rules:
-            $arrayMerge: append
-            $values:
-              - type: required_status_checks
-                parameters:
-                  requiredStatusChecks:
-                    $arrayMerge: append
-                    $values:
-                      - context: "Mergify Merge Protections"
