@@ -391,3 +391,12 @@ conditionalGroups:
               - actorId: 10562 # mergify
                 actorType: Integration
                 bypassMode: always
+          rules:
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "Mergify Merge Protections"
+                  strictRequiredStatusChecksPolicy: true
