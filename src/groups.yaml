@@ -347,6 +347,20 @@ conditionalGroups:
           - https://trivy.dev/latest/docs/configuration/filtering
         content: "@templates/.trivyignore.yaml"
   - when:
+      allOf: [protected-main-branch, github-ci]
+    settings:
+      rulesets:
+        pr-rules:
+          rules:
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "summary / Check Results"
+                  strictRequiredStatusChecksPolicy: true
+  - when:
       allOf: [renovate]
       anyOf: [github, github-ci, github-trivy]
     settings:
