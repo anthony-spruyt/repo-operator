@@ -67,4 +67,4 @@ pull_request_rules:
           - "agent/fixable"
           - "agent/needs-review"
 merge_protections_settings:
-  reporting_method: check-runs
+  reporting_method: "check-runs"
