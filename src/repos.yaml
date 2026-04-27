@@ -32,6 +32,26 @@ repos:
       - protected-main-branch
       - python
       - renovate
+    files:
+      .trivy-images.yaml:
+        createOnly: true
+        content:
+          images:
+            - chrony
+            - claude-agent
+            - claude-agent-read
+            - claude-agent-sre
+            - claude-agent-write
+            - coder-gitops
+            - devcontainer-common
+            - firemerge
+            - megalinter-claude-config
+            - megalinter-container-images
+            - megalinter-factory
+            - megalinter-spruyt-labs
+            - megalinter-sungather
+            - megalinter-xfg
+            - ssh-key-rotation
     settings:
       labels:
         "renovate/upstream":
@@ -86,6 +106,14 @@ repos:
       - renovate
       - terraform
     files:
+      .trivy-images.yaml:
+        createOnly: true
+        content:
+          images:
+            - agent-queue-worker
+            - bull-board
+            - kata-tap-qdisc-fix
+            - shutdown-orchestrator
       .devcontainer/devcontainer.json:
         content:
           features:
@@ -162,6 +190,12 @@ repos:
       - protected-main-branch
       - python
       - renovate
+    files:
+      .trivy-images.yaml:
+        createOnly: true
+        content:
+          images:
+            - sungather
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
