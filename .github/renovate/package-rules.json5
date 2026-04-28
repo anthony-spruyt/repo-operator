@@ -35,11 +35,12 @@
       enabled: false
     },
 
-    // ============ Disable digest pinning ============
+    // ============ Disable self-referencing workflow updates ============
     {
-      description: "Skip digest pinning for self-hosted reusable workflows",
+      description: "Disable updates for self-hosted reusable workflows (intentionally track @main)",
       matchPackageNames: ["anthony-spruyt/repo-operator"],
-      pinDigests: false
+      matchManagers: ["github-actions"],
+      enabled: false
     },
 
     // ============ Repo-specific rules ============
