@@ -73,8 +73,8 @@
         "/(^|/)cluster/.+\\.ya?ml$/"
       ],
       matchStrings: [
-        "image:\\s*(?<depName>[^:\\s]+):(?<currentValue>[^@\\s\"']+)(?:@(?<currentDigest>sha256:[^\\s\"']+))?",
-        "(?<depName>(?:ghcr|docker\\.io|quay\\.io|registry\\.k8s\\.io)[^:\\s]+):(?<currentValue>[^@\\s\"']+)(?:@(?<currentDigest>sha256:[^\\s\"']+))?"
+        "image:\\s*(?<depName>[^:\\s\"']+):(?<currentValue>[^@\\s\"']+)(?:@(?<currentDigest>sha256:[^\\s\"']+))?",
+        "(?<depName>(?:ghcr|docker\\.io|quay\\.io|registry\\.k8s\\.io)[^:\\s\"']+):(?<currentValue>[^@\\s\"']+)(?:@(?<currentDigest>sha256:[^\\s\"']+))?"
       ],
       depNameTemplate: "{{{depName}}}",
       packageNameTemplate: "{{{depName}}}",
