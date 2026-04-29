@@ -13,3 +13,6 @@ https://127\.0\.0\.1.*
 
 # LAN server URLs use private .lan domains with shell variable substitution
 .*\.lan/.*
+
+# Schema store times out intermittently in CI
+https://json\.schemastore\.org/.*
