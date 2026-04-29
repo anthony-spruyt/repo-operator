@@ -38,6 +38,7 @@ pull_request_rules:
 
   - name: cleanup labels on merge
     conditions:
+      - closed
       - merged
     actions:
       label:
