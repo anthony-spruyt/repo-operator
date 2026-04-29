@@ -148,6 +148,9 @@ groups:
         "agent/safe":
           color: "#0E8A16"
           description: "Agent approved - safe to merge"
+        approved:
+          color: "#0E8A16"
+          description: "Human approved - safe to merge"
         "agent/fixable":
           color: "#fbca04"
           description: "Agent found fixable issues"
