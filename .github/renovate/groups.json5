@@ -144,6 +144,15 @@
       }
     },
     {
+      description: "n8n app and runner images (versions must match)",
+      groupName: "n8n",
+      matchPackageNames: ["n8nio/**"],
+      matchDatasources: ["docker"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      }
+    },
+    {
       description: "Kubernetes and Talos (core versions, installer, kubelet, kubectl sidecars, Go client libs, talosctl)",
       groupName: "Kubernetes/Talos",
       matchPackageNames: [
