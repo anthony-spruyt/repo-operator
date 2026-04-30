@@ -26,14 +26,16 @@
       separateMinorPatch: true
     },
     {
-      description: "Cilium CNI",
+      description: "Cilium CNI, CLI tools, and Hubble",
       groupName: "Cilium",
       matchPackageNames: [
         "quay.io/cilium/cilium",
         "quay.io/cilium/operator-generic",
-        "cilium"
+        "cilium",
+        "cilium/cilium-cli",
+        "cilium/hubble"
       ],
-      matchDatasources: ["helm", "docker"],
+      matchDatasources: ["helm", "docker", "github-releases"],
       separateMinorPatch: true
     },
     {
@@ -142,18 +144,23 @@
       }
     },
     {
-      description: "Kubernetes and Talos (core versions, kubelet, kubectl sidecars, talosctl)",
+      description: "Kubernetes and Talos (core versions, installer, kubelet, kubectl sidecars, Go client libs, talosctl)",
       groupName: "Kubernetes/Talos",
       matchPackageNames: [
         "kubernetes",
         "kubernetes/kubernetes",
         "siderolabs/talos",
+        "ghcr.io/siderolabs/installer",
         "ghcr.io/siderolabs/kubelet",
+        "github.com/siderolabs/talos/pkg/machinery",
         "bitnami/kubectl",
         "public.ecr.aws/bitnami/kubectl",
-        "alpine/k8s"
+        "alpine/k8s",
+        "k8s.io/api",
+        "k8s.io/apimachinery",
+        "k8s.io/client-go"
       ],
-      matchDatasources: ["docker", "github-releases", "custom.regex"],
+      matchDatasources: ["docker", "github-releases", "go"],
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       }
