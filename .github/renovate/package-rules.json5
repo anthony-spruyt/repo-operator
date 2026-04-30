@@ -125,7 +125,8 @@
 
     // ============ Dockerfile ARG dedup ============
     {
-      description: "Disable dockerfile manager for golang (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
+      description: "Disable dockerfile manager for golang in spruyt-labs (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
+      matchRepositories: ["anthony-spruyt/spruyt-labs"],
       matchManagers: ["dockerfile"],
       matchPackageNames: ["golang"],
       enabled: false
