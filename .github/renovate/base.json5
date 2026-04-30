@@ -14,5 +14,21 @@
   dependencyDashboardTitle: "Renovate Dashboard",
   suppressNotifications: ["prIgnoreNotification"],
   commitBodyTable: true,
-  rebaseWhen: "behind-base-branch"
+  rebaseWhen: "behind-base-branch",
+  hostRules: [
+    {
+      description: "Prevent GCR metadata token negotiation failures on hosted Renovate",
+      matchHost: "gcr.io",
+      hostType: "docker",
+      abortOnError: false,
+      abortIgnoreStatusCodes: [401, 403]
+    },
+    {
+      description: "Prevent registry.k8s.io token negotiation failures on hosted Renovate",
+      matchHost: "registry.k8s.io",
+      hostType: "docker",
+      abortOnError: false,
+      abortIgnoreStatusCodes: [401, 403]
+    }
+  ]
 }
