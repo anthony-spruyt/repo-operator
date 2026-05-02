@@ -70,7 +70,7 @@
       description: ["Annotated Docker image (depName first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*\\w+:\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*\\w+:\\s*\"[^:\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
@@ -80,7 +80,7 @@
       description: ["Annotated Docker image (datasource first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+:\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+:\\s*\"[^:\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
@@ -91,7 +91,7 @@
       description: ["Annotated Terraform Docker image (depName first)."],
       managerFilePatterns: ["/\\.tf$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*\\w+\\s*=\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*\\w+\\s*=\\s*\"[^:\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
@@ -101,7 +101,7 @@
       description: ["Annotated Terraform Docker image (datasource first)."],
       managerFilePatterns: ["/\\.tf$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+\\s*=\\s*\"[^:]+:(?<currentValue>[^@\"]+)(?:@(?<currentDigest>sha256:[^\"]+))?\""
+        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+\\s*=\\s*\"[^:\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
