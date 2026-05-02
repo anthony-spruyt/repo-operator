@@ -50,7 +50,9 @@ pull_request_rules:
 
   - name: cleanup labels on merge
     conditions:
-      - merged
+      - or:
+          - merged
+          - queue-dequeue-reason = PR_MERGED
     actions:
       label:
         remove:
