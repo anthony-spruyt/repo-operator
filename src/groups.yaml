@@ -236,8 +236,6 @@ groups:
               version: "43.122.0"
       .github/renovate.json5:
         content: "@templates/.github/renovate.json5"
-      .github/renovate-overrides.json5:
-        content: "@templates/.github/renovate-overrides.json5"
     settings:
       labels:
         "renovate/devcontainer":
