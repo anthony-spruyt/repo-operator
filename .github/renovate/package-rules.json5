@@ -43,50 +43,6 @@
       enabled: false
     },
 
-    // ============ Repo-specific rules ============
-    {
-      description: "Coder uses two-channel releases (mainline/stable); 30-day delay avoids adopting unproven mainline versions",
-      matchRepositories: ["anthony-spruyt/spruyt-labs"],
-      matchPackageNames: ["coder"],
-      matchDatasources: ["helm"],
-      minimumReleaseAge: "30 days"
-    },
-    {
-      description: "Weekly batch for all non-major updates in container-images (excludes named groups)",
-      matchRepositories: ["anthony-spruyt/container-images"],
-      matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"],
-      matchPackageNames: [
-        "!kubernetes",
-        "!kubernetes/kubernetes",
-        "!siderolabs/talos",
-        "!ghcr.io/siderolabs/installer",
-        "!ghcr.io/siderolabs/kubelet",
-        "!bitnami/kubectl",
-        "!public.ecr.aws/bitnami/kubectl",
-        "!alpine/k8s",
-        "!cilium",
-        "!cilium/cilium-cli",
-        "!cilium/hubble",
-        "!quay.io/cilium/cilium",
-        "!quay.io/cilium/operator-generic"
-      ],
-      schedule: ["before 9am on monday"],
-      groupName: "weekly-dependencies",
-      group: {
-        commitMessageTopic: "weekly dependency updates"
-      }
-    },
-
-    // ============ Kustomize postRenderers (version managed via newTag, not inline) ============
-    {
-      description: "Disable kubernetes manager pinDigest for images whose tag is set by kustomize images transformer (bare image in patch string, version tracked via annotated newTag)",
-      matchRepositories: ["anthony-spruyt/spruyt-labs"],
-      matchManagers: ["kubernetes"],
-      matchPackageNames: ["n8nio/runners"],
-      pinDigests: false,
-      enabled: false
-    },
-
     // ============ Docker/OCI ============
     {
       matchDatasources: ["docker", "oci"],
@@ -131,15 +87,6 @@
       matchDatasources: ["helm"],
       matchUpdateTypes: ["patch"],
       labels: ["renovate/helm", "dep/patch"]
-    },
-
-    // ============ Dockerfile ARG dedup ============
-    {
-      description: "Disable dockerfile manager for golang in spruyt-labs (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
-      matchRepositories: ["anthony-spruyt/spruyt-labs"],
-      matchManagers: ["dockerfile"],
-      matchPackageNames: ["golang"],
-      enabled: false
     },
 
     // ============ Managers ============

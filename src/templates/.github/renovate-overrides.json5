@@ -1,0 +1,4 @@
+// Repo-specific Renovate overrides — not synced after creation
+{
+  $schema: "https://docs.renovatebot.com/renovate-schema.json"
+}
