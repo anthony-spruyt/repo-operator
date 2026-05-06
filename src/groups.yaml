@@ -360,7 +360,7 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
-                  strictRequiredStatusChecksPolicy: true
+                  strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [mergify, protected-main-branch, github-ci]
     settings:
@@ -375,7 +375,7 @@ conditionalGroups:
                   requiredStatusChecks:
                     - context: "summary / Check Results"
                     - context: "Mergify Merge Protections"
-                  strictRequiredStatusChecksPolicy: true
+                  strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [renovate]
       anyOf: [github, github-ci, github-trivy]
