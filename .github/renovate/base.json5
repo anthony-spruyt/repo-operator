@@ -14,7 +14,7 @@
   dependencyDashboardTitle: "Renovate Dashboard",
   suppressNotifications: ["prIgnoreNotification"],
   commitBodyTable: true,
-  rebaseWhen: "behind-base-branch",
+  rebaseWhen: "conflicted",
   hostRules: [
     {
       description: "Prevent GCR metadata token negotiation failures on hosted Renovate",
