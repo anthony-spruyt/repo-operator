@@ -35,6 +35,37 @@ repos:
       - python
       - renovate
     files:
+      .github/renovate.json5:
+        content:
+          extends:
+            $arrayMerge: append
+            $values:
+              - "local>anthony-spruyt/container-images//.github/renovate-overrides"
+      .github/renovate-overrides.json5:
+        createOnly: true
+        content:
+          $schema: "https://docs.renovatebot.com/renovate-schema.json"
+          packageRules:
+            - description: "Weekly batch for all non-major updates (excludes named groups)"
+              matchUpdateTypes: ["minor", "patch", "digest", "pin", "pinDigest"]
+              matchPackageNames:
+                - "!kubernetes"
+                - "!kubernetes/kubernetes"
+                - "!siderolabs/talos"
+                - "!ghcr.io/siderolabs/installer"
+                - "!ghcr.io/siderolabs/kubelet"
+                - "!bitnami/kubectl"
+                - "!public.ecr.aws/bitnami/kubectl"
+                - "!alpine/k8s"
+                - "!cilium"
+                - "!cilium/cilium-cli"
+                - "!cilium/hubble"
+                - "!quay.io/cilium/cilium"
+                - "!quay.io/cilium/operator-generic"
+              schedule: ["before 9am on monday"]
+              groupName: "weekly-dependencies"
+              group:
+                commitMessageTopic: "weekly dependency updates"
       .trivy-images.yaml:
         createOnly: true
         content:
@@ -185,6 +216,28 @@ repos:
         content:
           ignorePaths:
             - "talos/helmfile"
+          extends:
+            $arrayMerge: append
+            $values:
+              - "local>anthony-spruyt/spruyt-labs//.github/renovate-overrides"
+      .github/renovate-overrides.json5:
+        createOnly: true
+        content:
+          $schema: "https://docs.renovatebot.com/renovate-schema.json"
+          packageRules:
+            - description: "Disable kubernetes manager for runner sidecar (version managed via kustomize images transformer)"
+              matchManagers: ["kubernetes"]
+              matchPackageNames: ["n8nio/runners"]
+              pinDigests: false
+              enabled: false
+            - description: "Coder uses two-channel releases (mainline/stable); 30-day delay avoids adopting unproven mainline versions"
+              matchPackageNames: ["coder"]
+              matchDatasources: ["helm"]
+              minimumReleaseAge: "30 days"
+            - description: "Disable dockerfile manager for golang (ARG interpolation breaks updates; custom.regex manager handles these via annotations)"
+              matchManagers: ["dockerfile"]
+              matchPackageNames: ["golang"]
+              enabled: false
     settings:
       repo:
         allowAutoMerge: false
