@@ -173,10 +173,10 @@
       addLabels: ["renovate/flux"]
     },
     {
-      description: "Disable digest pinning for Flux manager on OCI sources (Flux manager cannot insert digest field into OCIRepository spec/ref)",
+      description: "Enable digest pinning for Flux manager on OCI sources (Renovate >= v43.142.1 supports updating existing digest fields in OCIRepository spec/ref)",
       matchManagers: ["flux"],
       matchDatasources: ["docker", "oci"],
-      pinDigests: false
+      pinDigests: true
     },
     {
       matchManagers: ["kubernetes"],
