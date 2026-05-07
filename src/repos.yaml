@@ -104,10 +104,6 @@ repos:
       - mergify
       - protected-main-branch
       - renovate
-    prOptions:
-      merge: manual
-      mergeStrategy: squash
-      deleteBranch: true
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
