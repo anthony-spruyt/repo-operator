@@ -41,6 +41,10 @@ repos:
             $arrayMerge: append
             $values:
               - "local>anthony-spruyt/container-images//.github/renovate-overrides"
+      .github/renovate-overrides.json5:
+        createOnly: true
+        content:
+          $schema: "https://docs.renovatebot.com/renovate-schema.json"
       .trivy-images.yaml:
         createOnly: true
         content:
@@ -195,6 +199,10 @@ repos:
             $arrayMerge: append
             $values:
               - "local>anthony-spruyt/spruyt-labs//.github/renovate-overrides"
+      .github/renovate-overrides.json5:
+        createOnly: true
+        content:
+          $schema: "https://docs.renovatebot.com/renovate-schema.json"
     settings:
       repo:
         allowAutoMerge: false
