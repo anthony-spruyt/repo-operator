@@ -377,6 +377,7 @@ conditionalGroups:
                   requiredStatusChecks:
                     - context: "summary / Check Results"
                     - context: "Mergify Merge Protections"
+                    - context: "queue/merge-only"
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [renovate]
@@ -418,12 +419,3 @@ conditionalGroups:
               - actorId: 10562 # mergify
                 actorType: Integration
                 bypassMode: always
-          rules:
-            $arrayMerge: append
-            $values:
-              - type: required_status_checks
-                parameters:
-                  doNotEnforceOnCreate: false
-                  requiredStatusChecks:
-                    - context: "queue/merge-only"
-                  strictRequiredStatusChecksPolicy: false
