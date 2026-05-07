@@ -43,8 +43,7 @@ repos:
               - "local>anthony-spruyt/container-images//.github/renovate-overrides"
       .github/renovate-overrides.json5:
         createOnly: true
-        content:
-          $schema: "https://docs.renovatebot.com/renovate-schema.json"
+        content: "@templates/.github/renovate-overrides.json5"
       .trivy-images.yaml:
         createOnly: true
         content:
@@ -201,8 +200,7 @@ repos:
               - "local>anthony-spruyt/spruyt-labs//.github/renovate-overrides"
       .github/renovate-overrides.json5:
         createOnly: true
-        content:
-          $schema: "https://docs.renovatebot.com/renovate-schema.json"
+        content: "@templates/.github/renovate-overrides.json5"
     settings:
       repo:
         allowAutoMerge: false
