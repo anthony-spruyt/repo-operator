@@ -98,8 +98,11 @@ repos:
 
   - git: https://github.com/anthony-spruyt/firemerge.git
     groups:
-      - protected-main-branch
+      - github-ci
+      - github-trivy
+      - megalinter
       - mergify
+      - protected-main-branch
       - renovate
     prOptions:
       merge: manual
