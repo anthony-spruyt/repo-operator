@@ -141,6 +141,8 @@ groups:
       .mergify.yml:
         content: "@templates/.mergify.yml"
     settings:
+      repo:
+        allowAutoMerge: false
       labels:
         "agent/triage":
           color: "#ededed"
