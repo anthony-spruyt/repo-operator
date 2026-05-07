@@ -31,7 +31,12 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 
 # Run config sync manually (requires GH_TOKEN environment variable)
 GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src
+
+# Dry-run config sync (validates config and shows planned changes without applying)
+npx --safe-chain-skip-minimum-package-age @aspruyt/xfg sync --config ./src --dry-run
 ```
+
+**When to dry-run**: After any change to `src/` files (groups, repos, settings, files). Catches issues like xfg deduplicating rules by type, incorrect array merging, or missing file references before pushing to CI.
 
 Pre-commit hooks run automatically for linting (yamllint, prettier), security (gitleaks), and file hygiene (whitespace, line endings, merge conflicts, smart quotes).
 
