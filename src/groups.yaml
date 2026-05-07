@@ -137,6 +137,8 @@ groups:
       lint.sh:
         content: "@templates/lint.sh"
   mergify:
+    extends:
+      - github-ci
     files:
       .mergify.yml:
         content: "@templates/.mergify.yml"

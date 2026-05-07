@@ -13,6 +13,7 @@
   enabled: true,
   dependencyDashboardTitle: "Renovate Dashboard",
   suppressNotifications: ["prIgnoreNotification"],
+  branchTopic: "{{{depNameSanitized}}}-{{{newVersion}}}",
   commitBodyTable: true,
   rebaseWhen: "conflicted",
   hostRules: [
