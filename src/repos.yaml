@@ -96,9 +96,13 @@ repos:
             "*.yaml": "esphome"
           esphome.dashboard.url: "http://localhost:6052"
 
-  #- git: https://github.com/anthony-spruyt/firemerge.git
-
-  #- git: https://github.com/anthony-spruyt/gastown-dev.git
+  - git: https://github.com/anthony-spruyt/firemerge.git
+    groups:
+      - renovate
+    prOptions:
+      merge: manual
+      mergeStrategy: squash
+      deleteBranch: true
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
