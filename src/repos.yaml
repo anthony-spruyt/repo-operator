@@ -79,7 +79,6 @@ repos:
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
-      - mergify
       - renovate
     files:
       .devcontainer/devcontainer.json:
