@@ -148,7 +148,7 @@ groups:
           color: "#ededed"
           description: "Agent is triaging PR"
         "agent/safe":
-          color: "#0E8A16"
+          color: "#0e8a16"
           description: "Agent approved - safe to merge"
         "agent/fixable":
           color: "#fbca04"
