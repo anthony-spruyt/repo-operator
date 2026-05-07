@@ -70,7 +70,6 @@
     // ============ Helm ============
     {
       matchDatasources: ["helm"],
-      separateMinorPatch: true,
       ignoreDeprecated: true
     },
     {
@@ -96,8 +95,7 @@
     },
     {
       matchManagers: ["terraform"],
-      addLabels: ["renovate/terraform"],
-      separateMinorPatch: true
+      addLabels: ["renovate/terraform"]
     },
     {
       matchManagers: ["devcontainer"],

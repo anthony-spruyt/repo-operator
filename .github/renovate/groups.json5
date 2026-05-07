@@ -13,7 +13,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Traefik chart and CRD",
@@ -23,7 +22,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Cilium CNI, CLI tools, and Hubble",
@@ -36,7 +34,6 @@
         "cilium/hubble"
       ],
       matchDatasources: ["helm", "docker", "github-releases"],
-      separateMinorPatch: true
     },
     {
       description: "Victoria Metrics components",
@@ -50,7 +47,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "External Secrets Operator",
@@ -60,7 +56,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "CloudNativePG components",
@@ -70,7 +65,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Flux components",
@@ -80,7 +74,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Authentik stack",
@@ -90,7 +83,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Cert-Manager components",
@@ -100,7 +92,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "External-DNS components",
@@ -110,7 +101,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "Snapshot Controller components",
@@ -123,7 +113,6 @@
       group: {
         commitMessageTopic: "{{{groupName}}} group"
       },
-      separateMinorPatch: true
     },
     {
       description: "CI/CD Actions",

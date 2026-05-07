@@ -7,8 +7,7 @@
     ":dependencyDashboard",
     ":disableRateLimiting",
     ":semanticCommits",
-    ":enablePreCommit",
-    ":separatePatchReleases"
+    ":enablePreCommit"
   ],
   enabled: true,
   dependencyDashboardTitle: "Renovate Dashboard",
