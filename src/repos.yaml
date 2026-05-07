@@ -40,7 +40,7 @@ repos:
           extends:
             $arrayMerge: append
             $values:
-              - "local>.github/renovate-overrides"
+              - "local>anthony-spruyt/container-images//.github/renovate-overrides.json5"
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
@@ -197,7 +197,7 @@ repos:
           extends:
             $arrayMerge: append
             $values:
-              - "local>.github/renovate-overrides"
+              - "local>anthony-spruyt/spruyt-labs//.github/renovate-overrides.json5"
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
