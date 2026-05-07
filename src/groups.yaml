@@ -379,7 +379,6 @@ conditionalGroups:
                   requiredStatusChecks:
                     - context: "summary / Check Results"
                     - context: "Mergify Merge Protections"
-                    - context: "queue/merge-only"
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [renovate]
