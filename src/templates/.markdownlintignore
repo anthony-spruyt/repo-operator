@@ -1,2 +1,5 @@
 # Claude Code generated files
 .claude/
+
+# Changelogs use duplicate headings (Fix/Feat) and start with H2 by design
+CHANGELOG.md
