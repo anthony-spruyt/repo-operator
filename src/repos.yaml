@@ -26,13 +26,13 @@ repos:
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
-      - docker
       - github-ci
       - github-trivy
       - megalinter
-      - mergify
       - protected-main-branch
+      - docker
       - python
+      - mergify
       - renovate
     files:
       .github/renovate.json5:
@@ -48,21 +48,20 @@ repos:
         createOnly: true
         content:
           images:
-            - chrony
-            - claude-agent
-            - claude-agent-read
-            - claude-agent-sre
-            - claude-agent-write
-            - coder-gitops
-            - devcontainer-common
-            - firemerge
-            - megalinter-claude-config
-            - megalinter-container-images
-            - megalinter-factory
-            - megalinter-spruyt-labs
-            - megalinter-sungather
-            - megalinter-xfg
-            - ssh-key-rotation
+            - "chrony"
+            - "claude-agent-read"
+            - "claude-agent-spruyt-labs"
+            - "claude-agent-write"
+            - "coder-gitops"
+            - "devcontainer-common"
+            - "megalinter-claude-config"
+            - "megalinter-container-images"
+            - "megalinter-firemerge"
+            - "megalinter-factory"
+            - "megalinter-spruyt-labs"
+            - "megalinter-sungather"
+            - "megalinter-xfg"
+            - "ssh-key-rotation"
     settings:
       labels:
         "renovate/upstream":
@@ -101,8 +100,11 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - mergify
       - protected-main-branch
+      - docker
+      - python
+      - typescript
+      - mergify
       - renovate
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
@@ -115,14 +117,15 @@ repos:
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
-      - docker
       - github-ci
       - github-trivy
-      - go
       - megalinter
+      - docker
+      - go
+      - terraform
+      - typescript
       - mergify
       - renovate
-      - terraform
     files:
       .trivy-images.yaml:
         createOnly: true
@@ -218,13 +221,13 @@ repos:
 
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
-      - docker
       - github-ci
       - github-trivy
       - megalinter
-      - mergify
       - protected-main-branch
+      - docker
       - python
+      - mergify
       - renovate
     files:
       .trivy-images.yaml:
@@ -238,11 +241,11 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - mergify
       - protected-main-branch
       - python
-      - renovate
       - typescript
+      - mergify
+      - renovate
     files:
       .devcontainer/devcontainer.json:
         content:
