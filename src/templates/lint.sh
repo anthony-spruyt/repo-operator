@@ -19,9 +19,9 @@ if [[ "$${1:-}" == "--ci" ]]; then
   # CI mode
   # Skip bot-authored commits if configured (check commit author, not workflow actor)
   if [[ "$SKIP_BOT_COMMITS" == "true" ]]; then
-    commit_author="$$(git log -1 --format='%an' HEAD 2>/dev/null || true)"
-    if [[ "$$commit_author" == "renovate[bot]" || "$$commit_author" == "dependabot[bot]" ]]; then
-      echo "::notice::Skipping lint for bot commit (author: $$commit_author)"
+    commit_author="$(git log -1 --format='%an' HEAD 2>/dev/null || true)"
+    if [[ "$commit_author" == "renovate[bot]" || "$commit_author" == "dependabot[bot]" ]]; then
+      echo "::notice::Skipping lint for bot commit (author: $commit_author)"
       exit 0
     fi
   fi
