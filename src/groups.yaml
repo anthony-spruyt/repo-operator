@@ -314,10 +314,14 @@ groups:
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
-  typescript:
+  eslint:
     files:
-      .eslintrc.json:
-        content: "@templates/.eslintrc.json"
+      eslint.config.js:
+        content: "@templates/eslint.config.js"
+  biome:
+    files:
+      biome.json:
+        content: "@templates/biome.json"
 
 conditionalGroups:
   - when:

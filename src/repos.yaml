@@ -103,7 +103,6 @@ repos:
       - protected-main-branch
       - docker
       - python
-      - typescript
       - mergify
       - renovate
 
@@ -123,10 +122,14 @@ repos:
       - docker
       - go
       - terraform
-      - typescript
+      - biome
       - mergify
       - renovate
     files:
+      biome.json:
+        content:
+          files:
+            includes: ["ts/**/src/**/*.ts"]
       .trivy-images.yaml:
         createOnly: true
         content:
@@ -243,7 +246,7 @@ repos:
       - megalinter
       - protected-main-branch
       - python
-      - typescript
+      - eslint
       - mergify
       - renovate
     files:
