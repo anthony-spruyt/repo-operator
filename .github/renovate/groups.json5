@@ -115,15 +115,6 @@
       },
     },
     {
-      description: "CI/CD Actions",
-      groupName: "CI/CD Actions",
-      matchManagers: ["github-actions"],
-      matchPackageNames: ["actions/*", "docker/*"],
-      group: {
-        commitMessageTopic: "{{{groupName}}} group"
-      }
-    },
-    {
       description: "BJW-S App Template",
       groupName: "App Template",
       matchPackageNames: ["ghcr.io/bjw-s-labs/helm/app-template"],
