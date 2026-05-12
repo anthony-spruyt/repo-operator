@@ -1,0 +1,118 @@
+---
+# Caller requirements:
+#   permissions:
+#     security-events: write  (SARIF upload to GitHub code scanning)
+#     contents: read          (checkout / code access)
+#   steps before this action:
+#     - actions/checkout      (if trivyignores is used)
+#     - docker/login-action   (if scanning private registry images)
+name: Trivy Scan
+description: >-
+  Scan a container image for vulnerabilities with human-readable table output
+  and SARIF upload to GitHub code scanning.
+
+inputs:
+  image-ref:
+    description: Docker image reference to scan
+    required: true
+  trivyignores:
+    description: Path to trivyignore file (leave empty if none)
+    required: false
+    default: ""
+  scanners:
+    description: Comma-separated list of Trivy scanners
+    required: false
+    default: "vuln"
+  severity:
+    description: Severity levels to report
+    required: false
+    default: "CRITICAL,HIGH"
+  exit-code:
+    description: Exit code when vulnerabilities found (table scan only, SARIF always exits 0)
+    required: false
+    default: "1"
+  ignore-unfixed:
+    description: Ignore vulnerabilities without a fix
+    required: false
+    default: "true"
+  category:
+    description: SARIF upload category (must be unique per scan in the same repo/run)
+    required: false
+    default: "trivy"
+
+runs:
+  using: composite
+  steps:
+    # Table scan — human-readable output, exit-code gates the PR
+    - name: Trivy scan (table)
+      if: ${{ inputs.trivyignores != '' }}
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        scanners: ${{ inputs.scanners }}
+        format: table
+        severity: ${{ inputs.severity }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        exit-code: ${{ inputs.exit-code }}
+        trivyignores: ${{ inputs.trivyignores }}
+
+    - name: Trivy scan (table, no ignores)
+      if: ${{ inputs.trivyignores == '' }}
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        scanners: ${{ inputs.scanners }}
+        format: table
+        severity: ${{ inputs.severity }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        exit-code: ${{ inputs.exit-code }}
+
+    # SARIF scan — always runs (even if table scan fails), exit-code 0
+    - name: Trivy scan (SARIF)
+      if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        scanners: ${{ inputs.scanners }}
+        format: sarif
+        output: trivy-results.sarif
+        severity: ${{ inputs.severity }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        exit-code: "0"
+        trivyignores: ${{ inputs.trivyignores }}
+
+    - name: Trivy scan (SARIF, no ignores)
+      if: ${{ (success() || failure()) && inputs.trivyignores == '' }}
+      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      with:
+        image-ref: ${{ inputs.image-ref }}
+        scanners: ${{ inputs.scanners }}
+        format: sarif
+        output: trivy-results.sarif
+        severity: ${{ inputs.severity }}
+        ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        exit-code: "0"
+
+    - name: Check SARIF exists
+      id: sarif-check
+      if: ${{ success() || failure() }}
+      shell: bash
+      run: |
+        if [ -f trivy-results.sarif ] && [ -s trivy-results.sarif ]; then
+          echo "exists=true" >> "$GITHUB_OUTPUT"
+        fi
+
+    # Upload SARIF to GitHub code scanning
+    - name: Upload SARIF to GitHub Security
+      id: sarif-upload
+      if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' }}
+      uses: github/codeql-action/upload-sarif@1065967b50e179b7e74048c2277d849911c549cb
+      continue-on-error: true
+      with:
+        sarif_file: trivy-results.sarif
+        category: ${{ inputs.category }}
+
+    - name: Warn on SARIF upload failure
+      if: ${{ (success() || failure()) && steps.sarif-upload.outcome == 'failure' }}
+      shell: bash
+      run: echo "::warning::SARIF upload failed — GitHub Advanced Security may not be enabled for this repository"
