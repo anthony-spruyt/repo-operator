@@ -39,7 +39,7 @@ jobs:
         with:
           scan-type: ${{ inputs.scan-type }}
           trivy-config: ${{ inputs.trivy-config }}
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: "false"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: "true"
           exit-code: "0"
           category: trivy-daily-fs

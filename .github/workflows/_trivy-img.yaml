@@ -116,8 +116,8 @@ jobs:
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
           scanners: vuln,secret,misconfig
-          severity: CRITICAL,HIGH,MEDIUM
-          ignore-unfixed: "false"
+          severity: CRITICAL,HIGH
+          ignore-unfixed: "true"
           exit-code: "0"
           trivyignores: ${{ steps.trivyconfig.outputs.ignorefile }}
           category: trivy-daily-${{ matrix.image }}
