@@ -4,17 +4,26 @@
 #     security-events: write  (SARIF upload to GitHub code scanning)
 #     contents: read          (checkout / code access)
 #   steps before this action:
-#     - actions/checkout      (if trivyignores is used)
+#     - actions/checkout      (required for fs scans and trivyignores)
 #     - docker/login-action   (if scanning private registry images)
 name: Trivy Scan
 description: >-
-  Scan a container image for vulnerabilities with human-readable table output
-  and SARIF upload to GitHub code scanning.
+  Scan for vulnerabilities with human-readable table output and SARIF upload
+  to GitHub code scanning. Supports image and filesystem scans.
 
 inputs:
   image-ref:
-    description: Docker image reference to scan
-    required: true
+    description: Docker image reference to scan (required for image scans)
+    required: false
+    default: ""
+  scan-type:
+    description: "Trivy scan type (image, fs, repo)"
+    required: false
+    default: "image"
+  trivy-config:
+    description: Path to Trivy config file
+    required: false
+    default: ""
   trivyignores:
     description: Path to trivyignore file (leave empty if none)
     required: false
@@ -48,7 +57,9 @@ runs:
       if: ${{ inputs.trivyignores != '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
+        scan-type: ${{ inputs.scan-type }}
         image-ref: ${{ inputs.image-ref }}
+        trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
         format: table
         severity: ${{ inputs.severity }}
@@ -60,7 +71,9 @@ runs:
       if: ${{ inputs.trivyignores == '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
+        scan-type: ${{ inputs.scan-type }}
         image-ref: ${{ inputs.image-ref }}
+        trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
         format: table
         severity: ${{ inputs.severity }}
@@ -72,7 +85,9 @@ runs:
       if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
+        scan-type: ${{ inputs.scan-type }}
         image-ref: ${{ inputs.image-ref }}
+        trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
         format: sarif
         output: trivy-results.sarif
@@ -85,7 +100,9 @@ runs:
       if: ${{ (success() || failure()) && inputs.trivyignores == '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
+        scan-type: ${{ inputs.scan-type }}
         image-ref: ${{ inputs.image-ref }}
+        trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
         format: sarif
         output: trivy-results.sarif

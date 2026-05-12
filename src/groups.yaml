@@ -62,20 +62,6 @@ groups:
         createOnly: true
         header: Container images to scan daily with Trivy (empty list = skip image scanning)
         content: "@templates/.trivy-images.yaml"
-    settings:
-      labels:
-        critical:
-          color: "#b60205"
-          description: "Critical severity"
-        high:
-          color: "#d93f0b"
-          description: "High severity"
-        medium:
-          color: "#fbca04"
-          description: "Medium severity"
-        trivy:
-          color: "#0052cc"
-          description: "Trivy scan finding"
   go:
     files:
       .devcontainer/devcontainer.json:
