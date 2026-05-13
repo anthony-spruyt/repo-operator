@@ -10,13 +10,11 @@
 
     // ============ Own container images ============
     {
-      description: "Own container images: no release age wait, branch automerge (skip triage agent)",
+      description: "Own container images: no release age wait, any-time schedule",
       matchPackageNames: ["ghcr.io/anthony-spruyt/**"],
       matchDatasources: ["docker"],
       minimumReleaseAge: "0 days",
-      schedule: ["at any time"],
-      automerge: true,
-      automergeType: "branch"
+      schedule: ["at any time"]
     },
 
     // ============ High-frequency packages ============
