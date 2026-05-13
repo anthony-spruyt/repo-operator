@@ -133,6 +133,15 @@
       }
     },
     {
+      description: "Go toolchain (go.mod directive + Dockerfile builder image stay in sync)",
+      groupName: "Go toolchain",
+      matchPackageNames: ["golang", "go"],
+      matchDatasources: ["docker", "golang-version"],
+      group: {
+        commitMessageTopic: "{{{groupName}}}"
+      }
+    },
+    {
       description: "Kubernetes and Talos (core versions, installer, kubelet, kubectl sidecars, Go client libs, talosctl)",
       groupName: "Kubernetes/Talos",
       matchPackageNames: [

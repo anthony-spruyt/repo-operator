@@ -132,6 +132,14 @@
       addLabels: ["renovate/helm-values"]
     },
 
+    // ============ Go toolchain ============
+    {
+      description: "Proactively bump Go toolchain version in go.mod to latest patch (default rangeStrategy only updates when a dependency requires it)",
+      matchManagers: ["gomod"],
+      matchDepTypes: ["golang"],
+      rangeStrategy: "bump"
+    },
+
     // ============ Custom regex ============
     {
       description: "Disable digest pinning for all custom regex managers (regex replacement cannot insert new digests, only update existing ones; built-in managers handle initial pinning)",
