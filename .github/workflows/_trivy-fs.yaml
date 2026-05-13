@@ -35,7 +35,7 @@ jobs:
         uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6
 
       - name: Trivy scan
-        uses: ./.github/actions/trivy-scan
+        uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
         with:
           scan-type: ${{ inputs.scan-type }}
           trivy-config: ${{ inputs.trivy-config }}
