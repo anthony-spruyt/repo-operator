@@ -17,6 +17,13 @@
       schedule: ["at any time"]
     },
 
+    // ============ Claude CLI ============
+    {
+      description: "Claude CLI: no release age wait (first-party tooling)",
+      matchPackageNames: ["@anthropic-ai/claude-code"],
+      minimumReleaseAge: "0 days"
+    },
+
     // ============ High-frequency packages ============
     {
       description: "Limit renovate CLI updates to weekly (releases multiple times daily)",
