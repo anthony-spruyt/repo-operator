@@ -10,6 +10,16 @@ groups:
   # "c#":
   #   files:
   #     TODO
+  claude:
+    files:
+      .claude/settings.json:
+        content: "@templates/.claude/settings.json"
+      .claude/rules/tdd.md:
+        content: "@templates/.claude/rules/tdd.md"
+      .claude/rules/research.md:
+        content: "@templates/.claude/rules/research.md"
+      .claude/rules/github.md:
+        content: "@templates/.claude/rules/github.md"
   docker:
     files:
       .hadolint.yaml:
@@ -62,6 +72,10 @@ groups:
         createOnly: true
         header: Container images to scan daily with Trivy (empty list = skip image scanning)
         content: "@templates/.trivy-images.yaml"
+      .claude/hookify-plus/warn-code-scanning-ref.md:
+        content: "@templates/.claude/hookify-plus/warn-code-scanning-ref.md"
+      .claude/hookify-plus/warn-trivy-sarif.md:
+        content: "@templates/.claude/hookify-plus/warn-trivy-sarif.md"
   go:
     files:
       .devcontainer/devcontainer.json:
