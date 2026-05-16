@@ -23,9 +23,12 @@ repos:
                   - "jetmartin.bats"
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
+    groups:
+      - claude
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -97,6 +100,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/firemerge.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -108,6 +112,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -116,6 +121,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -224,6 +230,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -241,6 +248,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
