@@ -15,8 +15,8 @@ jobs:
     name: MegaLinter
     runs-on: ubuntu-latest
     concurrency:
-      group: ${{ github.workflow }}-lint-${{ github.ref }}
-      cancel-in-progress: true
+      group: ${{ github.workflow }}-lint-${{ github.event_name == 'push' && github.sha || github.ref }}
+      cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d
