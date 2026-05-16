@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json.schemastore.org/claude-code-settings.json",
+  "permissions": {
+    "deny": [
+      "Read(./**/*id_rsa*)",
+      "Read(./**/*id_ed25519*)",
+      "Read(./**/*id_ecdsa*)",
+      "Read(./**/*.pem)",
+      "Read(./**/*.key)",
+      "Read(./**/*.p12)",
+      "Read(./**/*.pfx)",
+      "Read(./**/*.jks)",
+      "Read(./**/*.keystore)",
+      "Read(./**/*.credentials)",
+      "Read(./**/*credentials.json)",
+      "Read(./**/.aws/credentials)",
+      "Read(./**/.kube/config)",
+      "Read(./**/*kubeconfig*)",
+      "Read(./**/*.htpasswd)",
+      "Read(./**/.env)",
+      "Read(./**/.env.*)",
+      "Read(./**/*.sops.*)",
+      "Read(./**/.docker/config.json)",
+      "Read(./**/.config/gh/hosts.yml)",
+      "Read(./**/.npmrc)",
+      "Read(./**/.pypirc)",
+      "Read(./**/.netrc)",
+      "Read(./**/.vault-token)",
+      "Read(./**/.ssh/config)",
+      "Read(~/.ssh/*)",
+      "Read(~/.ssh/**/*)",
+      "Read(~/.aws/credentials)",
+      "Read(~/.kube/config)",
+      "Read(~/.docker/config.json)",
+      "Read(~/.config/gh/hosts.yml)",
+      "Read(~/.npmrc)",
+      "Read(~/.pypirc)",
+      "Read(~/.netrc)",
+      "Read(~/.vault-token)",
+      "Read(~/.gnupg/*)",
+      "Read(~/.gnupg/**/*)",
+      "Read(~/.password-store/*)",
+      "Read(~/.password-store/**/*)"
+    ]
+  },
+  "hooks": {
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|NotebookEdit",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "file_path=$(jq -r '.tool_input.file_path // .tool_input.notebook_path' < /dev/stdin); case \"$file_path\" in *.md) mdformat \"$file_path\" 2>/dev/null || true ;; *) npx prettier --write \"$file_path\" 2>/dev/null || true ;; esac"
+          }
+        ]
+      }
+    ]
+  }
+}
