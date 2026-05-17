@@ -146,6 +146,7 @@ repos:
               extensions:
                 $arrayMerge: append
                 $values:
+                  - "jetmartin.bats"
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
           portsAttributes:
