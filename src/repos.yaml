@@ -3,27 +3,9 @@
 repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
 
-  - git: https://github.com/anthony-spruyt/claude-config.git
-    groups:
-      - github-ci
-      - github-trivy
-      - megalinter
-      - mergify
-      - protected-main-branch
-      - python
-      - renovate
-    files:
-      .devcontainer/devcontainer.json:
-        content:
-          customizations:
-            vscode:
-              extensions:
-                $arrayMerge: append
-                $values:
-                  - "jetmartin.bats"
-
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -43,6 +25,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -114,6 +97,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/firemerge.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -125,6 +109,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -133,6 +118,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -241,6 +227,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
@@ -258,6 +245,7 @@ repos:
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
+      - claude
       - github-ci
       - github-trivy
       - megalinter
