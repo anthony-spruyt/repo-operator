@@ -58,4 +58,6 @@ tags = ["ip-leakage"]
   paths = [
     '''talos/''',
     '''\.sops\.yaml$''',
+    # SunGather example inverter addresses
+    '''sungather/''',
   ]
