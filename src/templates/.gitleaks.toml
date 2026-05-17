@@ -10,15 +10,6 @@ useDefault = true
 # Repo-specific paths consolidated here for central management.
 [allowlist]
 paths = [
-  # spruyt-labs: ExternalSecret CRDs contain key references, not secret values
-  '''external-secret\.yaml$''',
-  # xfg: Test fixture files with non-sensitive test RSA keys
-  '''test/fixtures/test-fixtures\.ts$''',
-  '''fixtures/test-fixtures\.ts$''',
-  # Hookify rules contain example IPs in documentation
-  '''\.claude/hookify\..*\.local\.md$''',
-  # Hookify test cases contain example IPs for testing
-  '''tests/hooks/hookify_test_cases\.yaml$''',
 ]
 
 # --- IP/CIDR Leakage Prevention ---
@@ -32,8 +23,6 @@ tags = ["ip-leakage"]
 
   [rules.allowlist]
   paths = [
-    '''talos/''',
-    '''\.sops\.yaml$''',
   ]
 
 [[rules]]
@@ -44,8 +33,6 @@ tags = ["ip-leakage"]
 
   [rules.allowlist]
   paths = [
-    '''talos/''',
-    '''\.sops\.yaml$''',
   ]
 
 [[rules]]
@@ -56,8 +43,4 @@ tags = ["ip-leakage"]
 
   [rules.allowlist]
   paths = [
-    '''talos/''',
-    '''\.sops\.yaml$''',
-    # SunGather example inverter addresses
-    '''sungather/''',
   ]

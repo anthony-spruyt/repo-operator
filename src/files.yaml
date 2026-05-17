@@ -27,6 +27,7 @@ files:
       - https://yamllint.readthedocs.io/en/latest/configuration.html
     content: "@templates/.yamllint.yml"
   .gitleaks.toml:
+    createOnly: true
     content: "@templates/.gitleaks.toml"
   .vscode/settings.json:
     createOnly: true
