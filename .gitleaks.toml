@@ -6,13 +6,6 @@
 # https://github.com/gitleaks/gitleaks/blob/master/config/gitleaks.toml
 useDefault = true
 
-# --- Global Allowlists ---
-[allowlist]
-paths = [
-  '''\.claude/hookify\..*\.local\.md$''',
-  '''tests/hooks/hookify_test_cases\.yaml$''',
-]
-
 # --- IP/CIDR Leakage Prevention ---
 # Prevents private IP addresses from being committed to public repositories.
 
