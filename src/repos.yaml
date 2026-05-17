@@ -6,6 +6,22 @@ repos:
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
       - claude
+      - github-ci
+      - github-trivy
+      - megalinter
+      - mergify
+      - protected-main-branch
+      - python
+      - renovate
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "jetmartin.bats"
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
