@@ -129,18 +129,6 @@ repos:
       - mergify
       - renovate
     files:
-      biome.json:
-        content:
-          files:
-            includes: ["ts/**/src/**/*.ts"]
-      .trivy-images.yaml:
-        createOnly: true
-        content:
-          images:
-            - agent-queue-worker
-            - bull-board
-            - kata-tap-qdisc-fix
-            - shutdown-orchestrator
       .devcontainer/devcontainer.json:
         content:
           features:
@@ -164,45 +152,6 @@ repos:
             "3333":
               label: "Capacitor"
               onAutoForward: "openBrowser"
-      .vscode/settings.json:
-        createOnly: false
-        content:
-          "search.exclude":
-            "**/*.secret.*": true
-            "**/temp/**": true
-      .yamllint.yml:
-        content:
-          ignore: |
-            *.sops.*
-            talos/
-            clusterconfig/
-            legacy/
-            .taskfiles/talos/scripts/
-      trivy.yaml:
-        content:
-          scan:
-            skip-dirs:
-              - talos/clusterconfig
-      .pre-commit-config.yaml:
-        content:
-          repos:
-            $arrayMerge: append
-            $values:
-              - repo: https://github.com/k8s-at-home/sops-pre-commit
-                # renovate: depName=k8s-at-home/sops-pre-commit datasource=github-tags
-                rev: v2.1.1
-                hooks:
-                  - id: forbid-secrets
-      .mdformat.toml:
-        content: |
-          wrap = 400
-          end_of_line = "lf"
-
-          # Python 3.13+ only
-          exclude = [
-              ".claude/**",
-              "cluster/apps/n8n-system/n8n/app/prompts/**",
-          ]
       .github/renovate.json5:
         content:
           ignorePaths:
@@ -214,6 +163,57 @@ repos:
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
+      .trivy-images.yaml:
+        createOnly: true
+        content:
+          images:
+            - agent-queue-worker
+            - bull-board
+            - kata-tap-qdisc-fix
+            - shutdown-orchestrator
+      .vscode/settings.json:
+        createOnly: false
+        content:
+          "search.exclude":
+            "**/*.secret.*": true
+            "**/temp/**": true
+      .mdformat.toml:
+        content: |
+          wrap = 400
+          end_of_line = "lf"
+
+          # Python 3.13+ only
+          exclude = [
+              ".claude/**",
+              "cluster/apps/n8n-system/n8n/app/prompts/**",
+          ]
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            $values:
+              - repo: https://github.com/k8s-at-home/sops-pre-commit
+                # renovate: depName=k8s-at-home/sops-pre-commit datasource=github-tags
+                rev: v2.1.1
+                hooks:
+                  - id: forbid-secrets
+      .yamllint.yml:
+        content:
+          ignore: |
+            *.sops.*
+            talos/
+            clusterconfig/
+            legacy/
+            .taskfiles/talos/scripts/
+      biome.json:
+        content:
+          files:
+            includes: ["ts/**/src/**/*.ts"]
+      trivy.yaml:
+        content:
+          scan:
+            skip-dirs:
+              - talos/clusterconfig
     settings:
       repo:
         allowAutoMerge: false
