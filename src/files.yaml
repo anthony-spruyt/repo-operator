@@ -1,6 +1,8 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 # Configuration for repo-operator - syncs files to target repositories
 files:
+  .devcontainer/.gitignore:
+    content: "@templates/.devcontainer/.gitignore"
   .devcontainer/Dockerfile:
     content: "@templates/.devcontainer/Dockerfile"
   .devcontainer/devcontainer.json:
