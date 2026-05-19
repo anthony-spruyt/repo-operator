@@ -14,8 +14,8 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 ## How It Works
 
 1. Configuration lives in `src/` as multiple YAML files (see [Configuration](#configuration))
-1. Template files in `src/templates/` are synced to target repos
-1. CI runs a **plan/apply** pipeline on push to main:
+2. Template files in `src/templates/` are synced to target repos
+3. CI runs a **plan/apply** pipeline on push to main:
    - **Lint** — MegaLinter validation
    - **XFG Plan** — dry-run showing planned changes (runs on PRs too)
    - **XFG Apply** — pushes changes to target repos (requires production environment approval)

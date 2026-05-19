@@ -10,6 +10,10 @@ groups:
   # "c#":
   #   files:
   #     TODO
+  biome:
+    files:
+      biome.json:
+        content: "@templates/biome.json"
   claude:
     files:
       .claude/settings.json:
@@ -20,6 +24,10 @@ groups:
         content: "@templates/.claude/rules/research.md"
       .claude/rules/github.md:
         content: "@templates/.claude/rules/github.md"
+  eslint:
+    files:
+      eslint.config.js:
+        content: "@templates/eslint.config.js"
   docker:
     files:
       .hadolint.yaml:
@@ -105,7 +113,6 @@ groups:
   mcp:
     files:
       .mcp.json:
-        createOnly: true
         content: "@templates/.mcp.json"
   megalinter:
     files:
@@ -319,14 +326,6 @@ groups:
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
-  eslint:
-    files:
-      eslint.config.js:
-        content: "@templates/eslint.config.js"
-  biome:
-    files:
-      biome.json:
-        content: "@templates/biome.json"
 
 conditionalGroups:
   - when:
