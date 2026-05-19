@@ -1,0 +1,9 @@
+{
+  "mcpServers": {
+    "bravesearch": {
+      "type": "http",
+      "url": "https://litellm.$${EXTERNAL_DOMAIN}/bravesearch/mcp",
+      "headers": { "Authorization": "Bearer $${ANTHROPIC_AUTH_TOKEN}" }
+    }
+  }
+}

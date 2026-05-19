@@ -12,3 +12,14 @@ CONFIG_PROPERTIES_TO_APPEND:
 # ENABLE_LINTERS:
 #   - TYPESCRIPT_ES
 #   - PYTHON_PYLINT
+EXCLUDED_DIRECTORIES:
+  - "coverage"
+  - "dist"
+  - "site"
+  - "tmp"
+  - ".desloppify"
+  - "worktrees"
+  - ".worktrees"
+  - ".output"
+  - "node_modules"
+  - ".git"

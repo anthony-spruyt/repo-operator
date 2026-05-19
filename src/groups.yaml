@@ -102,6 +102,11 @@ groups:
                   - id: remove-tabs
                     args: [--whitespaces-count, "2"]
                     exclude: '(\.go|go\.mod|go\.sum)$'
+  mcp:
+    files:
+      .mcp.json:
+        createOnly: true
+        content: "@templates/.mcp.json"
   megalinter:
     files:
       .lycheeignore:

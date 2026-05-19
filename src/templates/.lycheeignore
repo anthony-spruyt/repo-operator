@@ -8,8 +8,15 @@ https://api.github.com/.*
 # VS Code site returns 403 to automated link checkers
 https://code.visualstudio.com/.*
 
+# VS Code Marketplace (intermittent 503s)
+https://marketplace.visualstudio.com/
+
+
 # LAN server URLs use private .lan domains with shell variable substitution
 .*\.lan/.*
+
+# Internal MCP server hostname (not publicly accessible)
+https://litellm/
 
 # Localhost URLs are not reachable in CI/lint environments
 http://localhost.*

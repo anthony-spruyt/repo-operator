@@ -6,6 +6,7 @@ repos:
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -26,6 +27,7 @@ repos:
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -78,6 +80,8 @@ repos:
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
+      - claude
+      - mcp
       - renovate
     files:
       .devcontainer/devcontainer.json:
@@ -98,6 +102,7 @@ repos:
   - git: https://github.com/anthony-spruyt/firemerge.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -110,6 +115,7 @@ repos:
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -119,6 +125,7 @@ repos:
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -229,6 +236,7 @@ repos:
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
@@ -247,6 +255,7 @@ repos:
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
       - claude
+      - mcp
       - github-ci
       - github-trivy
       - megalinter
