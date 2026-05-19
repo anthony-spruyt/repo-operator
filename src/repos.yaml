@@ -180,11 +180,11 @@ repos:
       .mdformat.toml:
         content: |
           wrap = 400
+          number = true
           end_of_line = "lf"
 
           # Python 3.13+ only
           exclude = [
-              ".claude/**",
               "cluster/apps/n8n-system/n8n/app/prompts/**",
           ]
       .pre-commit-config.yaml:
