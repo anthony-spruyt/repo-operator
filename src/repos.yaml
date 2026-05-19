@@ -46,24 +46,6 @@ repos:
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
-      .trivy-images.yaml:
-        createOnly: true
-        content:
-          images:
-            - "chrony"
-            - "claude-agent-read"
-            - "claude-agent-spruyt-labs"
-            - "claude-agent-write"
-            - "coder-gitops"
-            - "devcontainer-common"
-            - "megalinter-claude-config"
-            - "megalinter-container-images"
-            - "megalinter-firemerge"
-            - "megalinter-factory"
-            - "megalinter-spruyt-labs"
-            - "megalinter-sungather"
-            - "megalinter-xfg"
-            - "ssh-key-rotation"
     settings:
       labels:
         "renovate/upstream":
@@ -171,20 +153,30 @@ repos:
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
-      .trivy-images.yaml:
-        createOnly: true
-        content:
-          images:
-            - agent-queue-worker
-            - bull-board
-            - kata-tap-qdisc-fix
-            - shutdown-orchestrator
       .vscode/settings.json:
         createOnly: false
         content:
           "search.exclude":
             "**/*.secret.*": true
             "**/temp/**": true
+      .mcp.json:
+        content:
+          mcpServers:
+            cclsp:
+              type: "stdio"
+              command: "cclsp"
+              env:
+                CCLSP_CONFIG_PATH: "/workspaces/spruyt-labs/.claude/cclsp.json"
+            n8n:
+              type: "http"
+              url: "https://litellm.$${EXTERNAL_DOMAIN}/n8n/mcp"
+              headers:
+                Authorization: "Bearer $${ANTHROPIC_AUTH_TOKEN}"
+            victoriametrics:
+              type: "http"
+              url: "https://litellm.$${EXTERNAL_DOMAIN}/victoriametrics/mcp"
+              headers:
+                Authorization: "Bearer $${ANTHROPIC_AUTH_TOKEN}"
       .mdformat.toml:
         content: |
           wrap = 400
@@ -246,11 +238,14 @@ repos:
       - mergify
       - renovate
     files:
-      .trivy-images.yaml:
-        createOnly: true
+      .mcp.json:
         content:
-          images:
-            - sungather
+          mcpServers:
+            cclsp:
+              type: "stdio"
+              command: "cclsp"
+              env:
+                CCLSP_CONFIG_PATH: "/workspaces/SunGather/.claude/cclsp.json"
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
@@ -280,6 +275,14 @@ repos:
           "search.exclude":
             "coverage": true
             ".output": true
+      .mcp.json:
+        content:
+          mcpServers:
+            cclsp:
+              type: "stdio"
+              command: "cclsp"
+              env:
+                CCLSP_CONFIG_PATH: "/workspaces/xfg/.claude/cclsp.json"
       trivy.yaml:
         content:
           scan:
