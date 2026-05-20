@@ -100,8 +100,10 @@ runs:
     - name: Inject image name into SARIF
       if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' && inputs.image-name != '' }}
       shell: bash
+      env:
+        IMAGE_NAME: ${{ inputs.image-name }}
       run: |
-        jq --arg image "${{ inputs.image-name }}" '
+        jq --arg image "$IMAGE_NAME" '
           .runs |= map(.results |= map(
             .message.text = ("Image: " + $image + "\n" + .message.text)
           ))
