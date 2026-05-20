@@ -16,14 +16,16 @@ groups:
         content: "@templates/biome.json"
   claude:
     files:
-      .claude/settings.json:
-        content: "@templates/.claude/settings.json"
       .claude/rules/tdd.md:
         content: "@templates/.claude/rules/tdd.md"
       .claude/rules/research.md:
         content: "@templates/.claude/rules/research.md"
       .claude/rules/github.md:
         content: "@templates/.claude/rules/github.md"
+      .claude/settings.json:
+        content: "@templates/.claude/settings.json"
+      statusline.sh:
+        content: "@templates/.claude/statusline.sh"
   eslint:
     files:
       eslint.config.js:
