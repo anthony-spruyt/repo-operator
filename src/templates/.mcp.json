@@ -1,14 +1,11 @@
 {
   "mcpServers": {
-    "bravesearch": {
+    "litellm": {
       "type": "http",
-      "url": "https://litellm.$${EXTERNAL_DOMAIN}/bravesearch/mcp",
-      "headers": { "Authorization": "Bearer $${ANTHROPIC_AUTH_TOKEN}" }
-    },
-    "context7": {
-      "type": "http",
-      "url": "https://litellm.$${EXTERNAL_DOMAIN}/context7/mcp",
-      "headers": { "Authorization": "Bearer $${ANTHROPIC_AUTH_TOKEN}" }
+      "url": "https://litellm.$${EXTERNAL_DOMAIN}/mcp",
+      "headers": {
+        "x-litellm-api-key": "Bearer $${ANTHROPIC_AUTH_TOKEN}"
+      }
     }
   }
 }
