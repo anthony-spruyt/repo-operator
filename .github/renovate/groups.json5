@@ -11,7 +11,8 @@
       ],
       matchDatasources: ["docker", "helm", "oci"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -20,7 +21,8 @@
       matchPackageNames: ["traefik", "traefik-crd-source"],
       matchDatasources: ["helm", "regex", "github-tags"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -34,6 +36,10 @@
         "cilium/hubble"
       ],
       matchDatasources: ["helm", "docker", "github-releases"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
+      },
     },
     {
       description: "Victoria Metrics components",
@@ -45,7 +51,8 @@
       ],
       matchDatasources: ["helm", "docker", "oci"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -54,7 +61,8 @@
       matchPackageNames: ["external-secrets"],
       matchDatasources: ["helm"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -63,7 +71,8 @@
       matchPackageNames: ["cloudnative-pg", "cnpg"],
       matchDatasources: ["helm", "docker"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -72,7 +81,8 @@
       matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*"],
       matchDatasources: ["docker", "helm", "github-releases"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -81,7 +91,8 @@
       matchPackageNames: ["goauthentik/*", "ghcr.io/goauthentik/*"],
       matchDatasources: ["docker", "helm"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -90,7 +101,8 @@
       matchPackageNames: ["cert-manager", "jetstack/cert-manager"],
       matchDatasources: ["helm", "docker"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -99,7 +111,8 @@
       matchPackageNames: ["external-dns", "kubernetes-sigs/external-dns"],
       matchDatasources: ["helm", "docker"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -111,7 +124,8 @@
       ],
       matchDatasources: ["helm", "docker"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       },
     },
     {
@@ -120,7 +134,8 @@
       matchPackageNames: ["ghcr.io/bjw-s-labs/helm/app-template"],
       matchDatasources: ["helm"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       }
     },
     {
@@ -129,7 +144,8 @@
       matchPackageNames: ["n8nio/**"],
       matchDatasources: ["docker"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       }
     },
     {
@@ -138,7 +154,8 @@
       matchPackageNames: ["golang", "go"],
       matchDatasources: ["docker", "golang-version"],
       group: {
-        commitMessageTopic: "{{{groupName}}}"
+        commitMessageTopic: "{{{groupName}}}",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       }
     },
     {
@@ -160,7 +177,8 @@
       ],
       matchDatasources: ["docker", "github-releases", "go"],
       group: {
-        commitMessageTopic: "{{{groupName}}} group"
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
       }
     }
   ]
