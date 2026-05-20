@@ -24,7 +24,7 @@ groups:
         content: "@templates/.claude/rules/github.md"
       .claude/settings.json:
         content: "@templates/.claude/settings.json"
-      statusline.sh:
+      .claude/statusline.sh:
         content: "@templates/.claude/statusline.sh"
   eslint:
     files:
