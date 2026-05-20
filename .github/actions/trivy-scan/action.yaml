@@ -32,6 +32,10 @@ inputs:
     description: Comma-separated list of Trivy scanners
     required: false
     default: "vuln"
+  image-name:
+    description: Image name to inject into SARIF message (for image scans)
+    required: false
+    default: ""
   severity:
     description: Severity levels to report
     required: false
@@ -58,6 +62,7 @@ runs:
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
+        scan-ref: "."
         image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
@@ -72,6 +77,7 @@ runs:
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
+        scan-ref: "."
         image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
@@ -86,6 +92,7 @@ runs:
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
+        scan-ref: "."
         image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
@@ -101,6 +108,7 @@ runs:
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
+        scan-ref: "."
         image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
@@ -118,6 +126,16 @@ runs:
         if [ -f trivy-results.sarif ] && [ -s trivy-results.sarif ]; then
           echo "exists=true" >> "$GITHUB_OUTPUT"
         fi
+
+    - name: Inject image name into SARIF
+      if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' && inputs.image-name != '' }}
+      shell: bash
+      run: |
+        jq --arg image "${{ inputs.image-name }}" '
+          .runs |= map(.results |= map(
+            .message.text = ("Image: " + $image + "\n" + .message.text)
+          ))
+        ' trivy-results.sarif > trivy-results.tmp && mv trivy-results.tmp trivy-results.sarif
 
     # Upload SARIF to GitHub code scanning
     - name: Upload SARIF to GitHub Security

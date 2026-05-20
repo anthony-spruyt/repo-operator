@@ -115,6 +115,7 @@ jobs:
         uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
         with:
           image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          image-name: ${{ matrix.image }}
           scanners: vuln,secret,misconfig
           severity: CRITICAL,HIGH
           ignore-unfixed: "true"
