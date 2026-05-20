@@ -57,20 +57,26 @@ usage_color() {
 }
 
 # Resolve config directory: CLAUDE_CONFIG_DIR (set by alias) or default ~/.claude
-claude_config_dir="${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
+claude_config_dir="$${CLAUDE_CONFIG_DIR:-$HOME/.claude}"
 
 # Return 0 (true) if $1 > $2 using semantic versioning
 version_gt() {
-  local a="${1#v}" b="${2#v}"
+  local a="$${1#v}" b="$${2#v}"
   local IFS='.'
   read -r a1 a2 a3 <<<"$a"
   read -r b1 b2 b3 <<<"$b"
-  a1=${a1:-0}
-  a2=${a2:-0}
-  a3=${a3:-0}
-  b1=${b1:-0}
-  b2=${b2:-0}
-  b3=${b3:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  a1=$${a1:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  a2=$${a2:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  a3=$${a3:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  b1=$${b1:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  b2=$${b2:-0}
+  # shellcheck disable=SC1083 # xfg escape
+  b3=$${b3:-0}
   [ "$a1" -gt "$b1" ] 2>/dev/null && return 0
   [ "$a1" -lt "$b1" ] 2>/dev/null && return 1
   [ "$a2" -gt "$b2" ] 2>/dev/null && return 0
@@ -121,33 +127,33 @@ fi
 
 # ===== Build single-line output =====
 out=""
-out+="${blue}${model_name}${reset}"
+out+="$${blue}$${model_name}$${reset}"
 
 # Current working directory
 cwd=$(echo "$input" | jq -r '.cwd // empty')
 if [ -n "$cwd" ]; then
-  display_dir="${cwd##*/}"
-  git_branch=$(git -C "${cwd}" rev-parse --abbrev-ref HEAD 2>/dev/null)
-  out+=" ${dim}|${reset} "
-  out+="${cyan}${display_dir}${reset}"
+  display_dir="$${cwd##*/}"
+  git_branch=$(git -C "$${cwd}" rev-parse --abbrev-ref HEAD 2>/dev/null)
+  out+=" $${dim}|$${reset} "
+  out+="$${cyan}$${display_dir}$${reset}"
   if [ -n "$git_branch" ]; then
-    out+="${dim}@${reset}${green}${git_branch}${reset}"
-    git_stat=$(git -C "${cwd}" diff --numstat 2>/dev/null | awk '{a+=$1; d+=$2} END {if (a+d>0) printf "+%d -%d", a, d}')
-    [ -n "$git_stat" ] && out+=" ${dim}(${reset}${green}${git_stat%% *}${reset} ${red}${git_stat##* }${reset}${dim})${reset}"
+    out+="$${dim}@$${reset}$${green}$${git_branch}$${reset}"
+    git_stat=$(git -C "$${cwd}" diff --numstat 2>/dev/null | awk '{a+=$1; d+=$2} END {if (a+d>0) printf "+%d -%d", a, d}')
+    [ -n "$git_stat" ] && out+=" $${dim}($${reset}$${green}$${git_stat%% *}$${reset} $${red}$${git_stat##* }$${reset}$${dim})$${reset}"
   fi
 fi
 
-out+=" ${dim}|${reset} "
-out+="${orange}${used_tokens}/${total_tokens}${reset} ${dim}(${reset}${green}${pct_used}%${reset}${dim})${reset}"
-out+=" ${dim}|${reset} "
+out+=" $${dim}|$${reset} "
+out+="$${orange}$${used_tokens}/$${total_tokens}$${reset} $${dim}($${reset}$${green}$${pct_used}%$${reset}$${dim})$${reset}"
+out+=" $${dim}|$${reset} "
 out+="effort: "
 case "$effort_level" in
-low) out+="${dim}${effort_level}${reset}" ;;
-medium) out+="${orange}med${reset}" ;;
-high) out+="${green}${effort_level}${reset}" ;;
-xhigh) out+="${purple}${effort_level}${reset}" ;;
-max) out+="${red}${effort_level}${reset}" ;;
-*) out+="${green}${effort_level}${reset}" ;;
+low) out+="$${dim}$${effort_level}$${reset}" ;;
+medium) out+="$${orange}med$${reset}" ;;
+high) out+="$${green}$${effort_level}$${reset}" ;;
+xhigh) out+="$${purple}$${effort_level}$${reset}" ;;
+max) out+="$${red}$${effort_level}$${reset}" ;;
+*) out+="$${green}$${effort_level}$${reset}" ;;
 esac
 
 # ===== Cross-platform OAuth token resolution (from statusline.sh) =====
@@ -167,7 +173,7 @@ get_oauth_token() {
     if [ -n "$CLAUDE_CONFIG_DIR" ]; then
       local dir_hash
       dir_hash=$(echo -n "$CLAUDE_CONFIG_DIR" | shasum -a 256 | cut -c1-8)
-      keychain_svc="Claude Code-credentials-${dir_hash}"
+      keychain_svc="Claude Code-credentials-$${dir_hash}"
     fi
     local blob
     blob=$(security find-generic-password -s "$keychain_svc" -w 2>/dev/null)
@@ -181,7 +187,7 @@ get_oauth_token() {
   fi
 
   # 3. Linux credentials file
-  local creds_file="${claude_config_dir}/.credentials.json"
+  local creds_file="$${claude_config_dir}/.credentials.json"
   if [ -f "$creds_file" ]; then
     token=$(jq -r '.claudeAiOauth.accessToken // empty' "$creds_file" 2>/dev/null)
     if [ -n "$token" ] && [ "$token" != "null" ]; then
@@ -222,7 +228,7 @@ fi
 # Cache setup — shared across all Claude Code instances to avoid rate limits
 claude_config_dir_hash=$(echo -n "$claude_config_dir" | shasum -a 256 2>/dev/null || echo -n "$claude_config_dir" | sha256sum 2>/dev/null)
 claude_config_dir_hash=$(echo "$claude_config_dir_hash" | cut -c1-8)
-cache_file="/tmp/claude/statusline-usage-cache-${claude_config_dir_hash}.json"
+cache_file="/tmp/claude/statusline-usage-cache-$${claude_config_dir_hash}.json"
 cache_max_age=60 # seconds between API calls
 mkdir -p /tmp/claude
 
@@ -293,17 +299,17 @@ iso_to_epoch() {
 
   # Try GNU date first (Linux) — handles ISO 8601 format automatically
   local epoch
-  epoch=$(date -d "${iso_str}" +%s 2>/dev/null)
+  epoch=$(date -d "$${iso_str}" +%s 2>/dev/null)
   if [ -n "$epoch" ]; then
     echo "$epoch"
     return 0
   fi
 
   # BSD date (macOS) - handle various ISO 8601 formats
-  local stripped="${iso_str%%.*}"                # Remove fractional seconds (.123456)
-  stripped="${stripped%%Z}"                      # Remove trailing Z
-  stripped="${stripped%%+*}"                     # Remove timezone offset (+00:00)
-  stripped="${stripped%%-[0-9][0-9]:[0-9][0-9]}" # Remove negative timezone offset
+  local stripped="$${iso_str%%.*}"                # Remove fractional seconds (.123456)
+  stripped="$${stripped%%Z}"                      # Remove trailing Z
+  stripped="$${stripped%%+*}"                     # Remove timezone offset (+00:00)
+  stripped="$${stripped%%-[0-9][0-9]:[0-9][0-9]}" # Remove negative timezone offset
 
   # Check if timestamp is UTC (has Z or +00:00 or -00:00)
   if [[ "$iso_str" == *"Z"* ]] || [[ "$iso_str" == *"+00:00"* ]] || [[ "$iso_str" == *"-00:00"* ]]; then
@@ -356,7 +362,7 @@ format_reset_time() {
   [ -n "$formatted" ] && echo "$formatted"
 }
 
-sep=" ${dim}|${reset} "
+sep=" $${dim}|$${reset} "
 
 # Render extra_usage segment from API usage data (not available via stdin rate_limits).
 # Appends to the global $out. No-op when data is missing or is_enabled is false.
@@ -375,9 +381,9 @@ render_extra_usage() {
   if [ -n "$used" ] && [ -n "$limit" ] && [[ "$used" != *'$'* ]] && [[ "$limit" != *'$'* ]]; then
     local color
     color=$(usage_color "$pct")
-    out+="${sep}${white}extra${reset} ${color}\$${used}/\$${limit}${reset}"
+    out+="$${sep}$${white}extra$${reset} $${color}\$$${used}/\$$${limit}$${reset}"
   else
-    out+="${sep}${white}extra${reset} ${green}enabled${reset}"
+    out+="$${sep}$${white}extra$${reset} $${green}enabled$${reset}"
   fi
 }
 
@@ -387,20 +393,20 @@ if $effective_builtin; then
   if [ -n "$builtin_five_hour_pct" ]; then
     five_hour_pct=$(printf "%.0f" "$builtin_five_hour_pct")
     five_hour_color=$(usage_color "$five_hour_pct")
-    out+="${sep}${white}5h${reset} ${five_hour_color}${five_hour_pct}%${reset}"
+    out+="$${sep}$${white}5h$${reset} $${five_hour_color}$${five_hour_pct}%$${reset}"
     if [ -n "$builtin_five_hour_reset" ] && [ "$builtin_five_hour_reset" != "null" ]; then
       five_hour_reset=$(date -j -r "$builtin_five_hour_reset" +"%H:%M" 2>/dev/null || date -d "@$builtin_five_hour_reset" +"%H:%M" 2>/dev/null)
-      [ -n "$five_hour_reset" ] && out+=" ${dim}@${five_hour_reset}${reset}"
+      [ -n "$five_hour_reset" ] && out+=" $${dim}@$${five_hour_reset}$${reset}"
     fi
   fi
 
   if [ -n "$builtin_seven_day_pct" ]; then
     seven_day_pct=$(printf "%.0f" "$builtin_seven_day_pct")
     seven_day_color=$(usage_color "$seven_day_pct")
-    out+="${sep}${white}7d${reset} ${seven_day_color}${seven_day_pct}%${reset}"
+    out+="$${sep}$${white}7d$${reset} $${seven_day_color}$${seven_day_pct}%$${reset}"
     if [ -n "$builtin_seven_day_reset" ] && [ "$builtin_seven_day_reset" != "null" ]; then
       seven_day_reset=$(date -j -r "$builtin_seven_day_reset" +"%b %-d, %H:%M" 2>/dev/null || date -d "@$builtin_seven_day_reset" +"%b %-d, %H:%M" 2>/dev/null)
-      [ -n "$seven_day_reset" ] && out+=" ${dim}@${seven_day_reset}${reset}"
+      [ -n "$seven_day_reset" ] && out+=" $${dim}@$${seven_day_reset}$${reset}"
     fi
   fi
 
@@ -425,8 +431,8 @@ if $effective_builtin; then
   _extra_json=$(echo "$usage_data" | jq -c '.extra_usage // null' 2>/dev/null)
   [ -z "$_extra_json" ] && _extra_json="null"
   printf '{"five_hour":{"utilization":%s,"resets_at":%s},"seven_day":{"utilization":%s,"resets_at":%s},"extra_usage":%s}' \
-    "${builtin_five_hour_pct:-0}" "$_fh_reset_json" \
-    "${builtin_seven_day_pct:-0}" "$_sd_reset_json" \
+    "$${builtin_five_hour_pct:-0}" "$_fh_reset_json" \
+    "$${builtin_seven_day_pct:-0}" "$_sd_reset_json" \
     "$_extra_json" >"$cache_file" 2>/dev/null
 elif [ -n "$usage_data" ] && echo "$usage_data" | jq -e '.five_hour' >/dev/null 2>&1; then
   # ---- Fall back: API-fetched usage data ----
@@ -436,8 +442,8 @@ elif [ -n "$usage_data" ] && echo "$usage_data" | jq -e '.five_hour' >/dev/null 
   five_hour_reset=$(format_reset_time "$five_hour_reset_iso" "time")
   five_hour_color=$(usage_color "$five_hour_pct")
 
-  out+="${sep}${white}5h${reset} ${five_hour_color}${five_hour_pct}%${reset}"
-  [ -n "$five_hour_reset" ] && out+=" ${dim}@${five_hour_reset}${reset}"
+  out+="$${sep}$${white}5h$${reset} $${five_hour_color}$${five_hour_pct}%$${reset}"
+  [ -n "$five_hour_reset" ] && out+=" $${dim}@$${five_hour_reset}$${reset}"
 
   # ---- 7-day (weekly) ----
   seven_day_pct=$(echo "$usage_data" | jq -r '.seven_day.utilization // 0' | awk '{printf "%.0f", $1}')
@@ -445,14 +451,14 @@ elif [ -n "$usage_data" ] && echo "$usage_data" | jq -e '.five_hour' >/dev/null 
   seven_day_reset=$(format_reset_time "$seven_day_reset_iso" "datetime")
   seven_day_color=$(usage_color "$seven_day_pct")
 
-  out+="${sep}${white}7d${reset} ${seven_day_color}${seven_day_pct}%${reset}"
-  [ -n "$seven_day_reset" ] && out+=" ${dim}@${seven_day_reset}${reset}"
+  out+="$${sep}$${white}7d$${reset} $${seven_day_color}$${seven_day_pct}%$${reset}"
+  [ -n "$seven_day_reset" ] && out+=" $${dim}@$${seven_day_reset}$${reset}"
 
   render_extra_usage "$usage_data"
 else
   # No valid usage data — show placeholders
-  out+="${sep}${white}5h${reset} ${dim}-${reset}"
-  out+="${sep}${white}7d${reset} ${dim}-${reset}"
+  out+="$${sep}$${white}5h$${reset} $${dim}-$${reset}"
+  out+="$${sep}$${white}7d$${reset} $${dim}-$${reset}"
 fi
 
 # ===== Update check (cached, 24h TTL) =====
@@ -492,7 +498,7 @@ update_line=""
 if [ -n "$version_data" ]; then
   latest_tag=$(echo "$version_data" | jq -r '.tag_name // empty')
   if [ -n "$latest_tag" ] && version_gt "$latest_tag" "$VERSION"; then
-    update_line="\n${dim}Update available: ${latest_tag} → Tell Claude: \"Find my installed status bar and update it\"${reset}"
+    update_line="\n$${dim}Update available: $${latest_tag} → Tell Claude: \"Find my installed status bar and update it\"$${reset}"
   fi
 fi
 
