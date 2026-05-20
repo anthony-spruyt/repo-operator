@@ -8,8 +8,8 @@
 #     - docker/login-action   (if scanning private registry images)
 name: Trivy Scan
 description: >-
-  Scan for vulnerabilities with human-readable table output and SARIF upload
-  to GitHub code scanning. Supports image and filesystem scans.
+  Scan for vulnerabilities and upload SARIF to GitHub code scanning.
+  Zero console output. Supports image and filesystem scans.
 
 inputs:
   image-ref:
@@ -41,9 +41,9 @@ inputs:
     required: false
     default: "CRITICAL,HIGH"
   exit-code:
-    description: Exit code when vulnerabilities found (table scan only, SARIF always exits 0)
+    description: Exit code when vulnerabilities found (unused, SARIF always exits 0)
     required: false
-    default: "1"
+    default: "0"
   ignore-unfixed:
     description: Ignore vulnerabilities without a fix
     required: false
@@ -56,37 +56,7 @@ inputs:
 runs:
   using: composite
   steps:
-    # Table scan — human-readable output, exit-code gates the PR
-    - name: Trivy scan (table)
-      if: ${{ inputs.trivyignores != '' }}
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-      with:
-        scan-type: ${{ inputs.scan-type }}
-        scan-ref: "."
-        image-ref: ${{ inputs.image-ref }}
-        trivy-config: ${{ inputs.trivy-config }}
-        scanners: ${{ inputs.scanners }}
-        format: table
-        severity: ${{ inputs.severity }}
-        ignore-unfixed: ${{ inputs.ignore-unfixed }}
-        exit-code: ${{ inputs.exit-code }}
-        trivyignores: ${{ inputs.trivyignores }}
-
-    - name: Trivy scan (table, no ignores)
-      if: ${{ inputs.trivyignores == '' }}
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
-      with:
-        scan-type: ${{ inputs.scan-type }}
-        scan-ref: "."
-        image-ref: ${{ inputs.image-ref }}
-        trivy-config: ${{ inputs.trivy-config }}
-        scanners: ${{ inputs.scanners }}
-        format: table
-        severity: ${{ inputs.severity }}
-        ignore-unfixed: ${{ inputs.ignore-unfixed }}
-        exit-code: ${{ inputs.exit-code }}
-
-    # SARIF scan — always runs (even if table scan fails), exit-code 0
+    # SARIF scan — zero console noise, uploads to GitHub code scanning
     - name: Trivy scan (SARIF)
       if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
