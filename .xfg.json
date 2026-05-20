@@ -44,6 +44,7 @@
         "LICENSE",
         "lint-config.sh",
         "lint.sh",
+        "statusline.sh",
         "trivy.yaml"
       ]
     }
