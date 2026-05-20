@@ -65,11 +65,17 @@ version_gt() {
   local IFS='.'
   read -r a1 a2 a3 <<<"$a"
   read -r b1 b2 b3 <<<"$b"
+  # shellcheck disable=SC1083 # xfg escape
   a1=${a1:-0}
+  # shellcheck disable=SC1083 # xfg escape
   a2=${a2:-0}
+  # shellcheck disable=SC1083 # xfg escape
   a3=${a3:-0}
+  # shellcheck disable=SC1083 # xfg escape
   b1=${b1:-0}
+  # shellcheck disable=SC1083 # xfg escape
   b2=${b2:-0}
+  # shellcheck disable=SC1083 # xfg escape
   b3=${b3:-0}
   [ "$a1" -gt "$b1" ] 2>/dev/null && return 0
   [ "$a1" -lt "$b1" ] 2>/dev/null && return 1
