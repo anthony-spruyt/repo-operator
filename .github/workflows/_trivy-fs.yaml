@@ -30,3 +30,4 @@ jobs:
           severity: CRITICAL,HIGH
           ignore-unfixed: "true"
           category: trivy-daily-repo
+          trivyignores: .trivyignore.yaml
