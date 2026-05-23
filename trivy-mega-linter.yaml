@@ -10,4 +10,5 @@ scan:
   scanners:
     - "license"
     - "secret"
+    - "misconfig"
 ignorefile: ".trivyignore.yaml"
