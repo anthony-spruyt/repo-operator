@@ -60,6 +60,9 @@ settings:
     security:
       color: "#d73a4a"
       description: "Security vulnerability"
+    slop:
+      color: "#d73a4a"
+      description: "Bad robot!"
     wontfix:
       color: "#ffffff"
       description: "This will not be worked on"
