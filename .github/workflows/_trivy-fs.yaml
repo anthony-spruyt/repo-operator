@@ -11,7 +11,7 @@ permissions:
 
 jobs:
   scan:
-    name: Scan for vulnerabilities
+    name: Scan Filesystem
     runs-on: ubuntu-latest
 
     steps:
