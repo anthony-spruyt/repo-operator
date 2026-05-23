@@ -31,6 +31,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python
@@ -75,7 +76,6 @@ repos:
                 $values:
                   - "ESPHome.esphome-vscode"
       .vscode/settings.json:
-        createOnly: false
         content:
           files.associations:
             "*.yaml": "esphome"
@@ -88,6 +88,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python
@@ -101,6 +102,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-misconfig
       - mergify
       - renovate
 
@@ -111,6 +113,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-misconfig
       - docker
       - go
       - terraform
@@ -154,7 +157,6 @@ repos:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
       .vscode/settings.json:
-        createOnly: false
         content:
           "search.exclude":
             "**/*.secret.*": true
@@ -199,7 +201,7 @@ repos:
         content:
           files:
             includes: ["ts/**/src/**/*.ts"]
-      trivy.yaml:
+      trivy-mega-linter.yaml:
         content:
           scan:
             skip-dirs:
@@ -222,6 +224,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python
@@ -255,7 +258,6 @@ repos:
           features:
             "ghcr.io/devcontainers/features/azure-cli": {}
       .vscode/settings.json:
-        createOnly: false
         content:
           "files.exclude":
             "dist/": true
@@ -273,13 +275,6 @@ repos:
               command: "cclsp"
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/xfg/.claude/cclsp.json"
-      trivy.yaml:
-        content:
-          scan:
-            $arrayMerge: replace
-            scanners:
-              - vuln
-              - secret
     settings:
       repo:
         hasDiscussions: true

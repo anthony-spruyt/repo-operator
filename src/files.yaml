@@ -16,6 +16,8 @@ files:
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .vscode/settings.json:
+    content: "@templates/.vscode/settings.json"
   .jsonlintrc:
     createOnly: true
     content: "@templates/.jsonlintrc"
@@ -31,9 +33,6 @@ files:
   .gitleaks.toml:
     createOnly: true
     content: "@templates/.gitleaks.toml"
-  .vscode/settings.json:
-    createOnly: true
-    content: "@templates/.vscode/settings.json"
   .prettierignore:
     content: "@templates/.prettierignore"
   .prettierrc.yaml:

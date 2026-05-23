@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-name: Trivy Image Vulnerability Scan
+name: Trivy Container Image Scan
 
 on:
   workflow_call: {}
@@ -114,11 +114,11 @@ jobs:
         if: steps.check-image.outputs.exists == 'true'
         uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
         with:
-          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
-          image-name: ${{ matrix.image }}
-          scanners: vuln,secret,misconfig
+          scan-type: image
+          scanners: license,misconfig,secret,vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: "true"
-          exit-code: "0"
           trivyignores: ${{ steps.trivyconfig.outputs.ignorefile }}
+          image-ref: ${{ env.REGISTRY }}/${{ github.repository_owner }}/${{ matrix.image }}:latest
+          image-name: ${{ matrix.image }}
           category: trivy-daily-${{ matrix.image }}

@@ -1,8 +1,8 @@
----
 # yaml-language-server: $schema=https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json
 # Base MegaLinter configuration synced from repo-operator
 # This file is automatically updated - do not modify directly
 # To add custom linters, modify .mega-linter.yml instead
+
 DEFAULT_BRANCH: "main"
 ENABLE_LINTERS:
   - "ACTION_ACTIONLINT"
@@ -28,3 +28,6 @@ REPOSITORY_SECRETLINT_ARGUMENTS:
   - "--secretlintignore"
   - ".secretlintignore"
 SPELL_LYCHEE_FILTER_REGEX_EXCLUDE: "(package-lock\\.json)"
+REPOSITORY_TRIVY_ARGUMENTS:
+  - "--config"
+  - "trivy-mega-linter.yaml"

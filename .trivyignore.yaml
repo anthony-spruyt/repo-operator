@@ -3,9 +3,4 @@
 
 vulnerabilities: null
 secrets: null
-misconfigurations:
-  # Devcontainer image is driven by VS Code / envbuilder lifecycle,
-  # not a long-running service — HEALTHCHECK is not applicable.
-  - id: AVD-DS-0026
-    paths:
-      - src/templates/.devcontainer/Dockerfile
+misconfigurations: null

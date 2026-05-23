@@ -8,7 +8,8 @@
     "agent.sock": true
   },
   "search.exclude": {
-    "**/node_modules": true
+    "**/node_modules": true,
+    ".output/updated_sources": true
   },
   "search.useIgnoreFiles": false,
   "search.useGlobalIgnoreFiles": false,

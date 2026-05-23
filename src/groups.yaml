@@ -118,6 +118,10 @@ groups:
         content: "@templates/.mcp.json"
   megalinter:
     files:
+      .vscode/settings.json:
+        content:
+          search.exclude:
+            ".output/updated_sources": true
       .lycheeignore:
         createOnly: true
         content: "@templates/.lycheeignore"
@@ -150,6 +154,23 @@ groups:
         content: "@templates/lint-config.sh"
       lint.sh:
         content: "@templates/lint.sh"
+      trivy-mega-linter.yaml:
+        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
+        header:
+          - This file is automatically updated - do not modify directly
+          - https://trivy.dev/latest/docs/references/configuration/config-file/
+        content: "@templates/trivy-mega-linter.yaml"
+  megalinter-misconfig:
+    extends:
+      - megalinter
+    files:
+      trivy-mega-linter.yaml:
+        content:
+          scan:
+            scanners:
+              $arrayMerge: append
+              $values:
+                - misconfig
   mergify:
     extends:
       - github-ci
@@ -324,7 +345,6 @@ groups:
                   - id: terraform_tflint
                     files: "^(infra/terraform|coder)/"
       .vscode/settings.json:
-        createOnly: false
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
@@ -348,12 +368,6 @@ conditionalGroups:
   - when:
       anyOf: [megalinter, github-trivy]
     files:
-      trivy.yaml:
-        schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
-        header:
-          - This file is automatically updated - do not modify directly
-          - https://trivy.dev/latest/docs/references/configuration/config-file/
-        content: "@templates/trivy.yaml"
       .trivyignore.yaml:
         createOnly: true
         header:

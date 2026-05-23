@@ -1,20 +1,9 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-name: Trivy Vulnerability Scan
+name: Trivy Filesystem Scan
 
 on:
-  workflow_call:
-    inputs:
-      trivy-config:
-        description: "Path to Trivy config file"
-        type: string
-        required: false
-        default: "trivy.yaml"
-      scan-type:
-        description: "Trivy scan type (fs, repo, image, etc.)"
-        type: string
-        required: false
-        default: "fs"
+  workflow_call: {}
 
 permissions:
   contents: read
@@ -37,9 +26,7 @@ jobs:
       - name: Trivy scan
         uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
         with:
-          scan-type: ${{ inputs.scan-type }}
-          trivy-config: ${{ inputs.trivy-config }}
+          scan-type: fs
           severity: CRITICAL,HIGH
           ignore-unfixed: "true"
-          exit-code: "0"
-          category: trivy-daily-fs
+          category: trivy-daily-repo

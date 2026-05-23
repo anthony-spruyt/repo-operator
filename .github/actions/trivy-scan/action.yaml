@@ -9,45 +9,37 @@
 name: Trivy Scan
 description: >-
   Scan for vulnerabilities and upload SARIF to GitHub code scanning.
-  Zero console output. Supports image and filesystem scans.
+  Zero console output. Supports image, repo and filesystem scans.
 
 inputs:
-  image-ref:
-    description: Docker image reference to scan (required for image scans)
-    required: false
-    default: ""
   scan-type:
     description: "Trivy scan type (image, fs, repo)"
     required: false
     default: "image"
-  trivy-config:
-    description: Path to Trivy config file
-    required: false
-    default: ""
-  trivyignores:
-    description: Path to trivyignore file (leave empty if none)
-    required: false
-    default: ""
   scanners:
-    description: Comma-separated list of Trivy scanners
+    description: Comma-separated list of Trivy scanners (license,misconfig,secret,vuln)
     required: false
-    default: "vuln"
-  image-name:
-    description: Image name to inject into SARIF message (for image scans)
-    required: false
-    default: ""
+    default: "license,misconfig,secret,vuln"
   severity:
     description: Severity levels to report
     required: false
     default: "CRITICAL,HIGH"
-  exit-code:
-    description: Exit code when vulnerabilities found (unused, SARIF always exits 0)
-    required: false
-    default: "0"
   ignore-unfixed:
     description: Ignore vulnerabilities without a fix
     required: false
     default: "true"
+  trivyignores:
+    description: Path to trivyignore file (leave empty if none)
+    required: false
+    default: ""
+  image-ref:
+    description: Docker image reference to scan (required for image scans)
+    required: false
+    default: ""
+  image-name:
+    description: Image name to inject into SARIF message (for image scans)
+    required: false
+    default: ""
   category:
     description: SARIF upload category (must be unique per scan in the same repo/run)
     required: false
@@ -56,37 +48,36 @@ inputs:
 runs:
   using: composite
   steps:
-    # SARIF scan — zero console noise, uploads to GitHub code scanning
-    - name: Trivy scan (SARIF)
+    - name: Trivy scan (SARIF with ignores)
       if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
-        scan-ref: "."
-        image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
-        format: sarif
-        output: trivy-results.sarif
         severity: ${{ inputs.severity }}
         ignore-unfixed: ${{ inputs.ignore-unfixed }}
-        exit-code: "0"
         trivyignores: ${{ inputs.trivyignores }}
+        image-ref: ${{ inputs.image-ref }}
+        scan-ref: "."
+        exit-code: "0"
+        format: sarif
+        output: trivy-results.sarif
 
-    - name: Trivy scan (SARIF, no ignores)
+    - name: Trivy scan (SARIF)
       if: ${{ (success() || failure()) && inputs.trivyignores == '' }}
       uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
       with:
         scan-type: ${{ inputs.scan-type }}
-        scan-ref: "."
-        image-ref: ${{ inputs.image-ref }}
         trivy-config: ${{ inputs.trivy-config }}
         scanners: ${{ inputs.scanners }}
-        format: sarif
-        output: trivy-results.sarif
         severity: ${{ inputs.severity }}
         ignore-unfixed: ${{ inputs.ignore-unfixed }}
+        image-ref: ${{ inputs.image-ref }}
+        scan-ref: "."
         exit-code: "0"
+        format: sarif
+        output: trivy-results.sarif
 
     - name: Check SARIF exists
       id: sarif-check
