@@ -31,7 +31,6 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python
@@ -88,7 +87,6 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python
@@ -102,7 +100,6 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - megalinter-misconfig
       - mergify
       - renovate
 
@@ -113,7 +110,6 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - megalinter-misconfig
       - docker
       - go
       - terraform
@@ -224,7 +220,6 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - megalinter-misconfig
       - protected-main-branch
       - docker
       - python

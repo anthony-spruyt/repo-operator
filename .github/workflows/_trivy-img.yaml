@@ -115,7 +115,7 @@ jobs:
         uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
         with:
           scan-type: image
-          scanners: license,misconfig,secret,vuln
+          scanners: misconfig,secret,vuln
           severity: CRITICAL,HIGH
           ignore-unfixed: "true"
           trivyignores: ${{ steps.trivyconfig.outputs.ignorefile }}

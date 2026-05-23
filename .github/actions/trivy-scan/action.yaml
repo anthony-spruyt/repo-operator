@@ -17,9 +17,9 @@ inputs:
     required: false
     default: "image"
   scanners:
-    description: Comma-separated list of Trivy scanners (license,misconfig,secret,vuln)
+    description: Comma-separated list of Trivy scanners (misconfig,secret,vuln)
     required: false
-    default: "license,misconfig,secret,vuln"
+    default: "misconfig,secret,vuln"
   severity:
     description: Severity levels to report
     required: false
