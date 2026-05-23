@@ -4,6 +4,7 @@
     "config:recommended",
     "docker:enableMajor",
     "helpers:pinGitHubActionDigests",
+    "mergeConfidence:all-badges",
     ":dependencyDashboard",
     ":disableRateLimiting",
     ":semanticCommits",
