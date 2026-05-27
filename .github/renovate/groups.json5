@@ -78,8 +78,8 @@
     {
       description: "Flux components",
       groupName: "Flux",
-      matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*"],
-      matchDatasources: ["docker", "helm", "github-releases"],
+      matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*", "ghcr.io/controlplaneio-fluxcd/**"],
+      matchDatasources: ["docker", "helm", "github-releases", "oci"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
         branchTopic: "{{{groupName}}}-{{{newVersion}}}"
