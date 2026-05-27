@@ -170,12 +170,9 @@ groups:
       repo:
         allowAutoMerge: false
       labels:
-        "agent/triage":
-          color: "#ededed"
-          description: "Agent is triaging PR"
-        "agent/safe":
+        "agent/auto-approved":
           color: "#0e8a16"
-          description: "Agent approved - safe to merge"
+          description: "Automatically approved"
         "agent/fixable":
           color: "#fbca04"
           description: "Agent found fixable issues"
@@ -188,12 +185,18 @@ groups:
         "agent/revert":
           color: "#b60205"
           description: "Automated revert PR"
-        "emergency/merge":
-          color: "#b60205"
-          description: "Break glass - bypass agent triage"
+        "agent/safe":
+          color: "#0e8a16"
+          description: "Agent approved - safe to merge"
+        "agent/triage":
+          color: "#ededed"
+          description: "Agent is triaging PR"
         dequeued:
           color: "#311812"
           description: "Mergify dequeued"
+        "emergency/merge":
+          color: "#b60205"
+          description: "Break glass - bypass agent triage"
         queued:
           color: "#4f3fea"
           description: "Mergify queued"
