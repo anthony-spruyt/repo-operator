@@ -56,7 +56,9 @@ groups:
                 hooks:
                   - id: actionlint
   github-ci:
-    extends: github
+    extends:
+      - github
+      - megalinter
     files:
       .devcontainer/devcontainer.json:
         content:
