@@ -24,7 +24,7 @@
   ],
   "containerEnv": {
     "SSH_AUTH_SOCK": "/ssh-agent",
-    "NEXUS_DOCKER_URL": "${localEnv:NEXUS_DOCKER_URL}"
+    "NEXUS_DOCKER_URL": "$${localEnv:NEXUS_DOCKER_URL}"
   },
   "features": {
   },
