@@ -120,16 +120,6 @@ repos:
     files:
       .devcontainer/devcontainer.json:
         content:
-          features:
-            "ghcr.io/devcontainers-extra/features/sops":
-              version: "3.12.2"
-            "ghcr.io/eitsupi/devcontainer-features/jq-likes":
-              yqVersion: "4.52.5"
-          mounts:
-            $arrayMerge: append
-            $values:
-              - "source=${localEnv:HOME}/.secrets,target=/home/vscode/.secrets,type=bind,readonly"
-              - "source=${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
           customizations:
             vscode:
               extensions:
@@ -138,10 +128,27 @@ repos:
                   - "jetmartin.bats"
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
+          features:
+            "ghcr.io/devcontainers-extra/features/sops":
+              version: "3.12.2"
+            "ghcr.io/eitsupi/devcontainer-features/jq-likes":
+              yqVersion: "4.52.5"
+          mounts:
+            $arrayMerge: append
+            $values:
+              - "source=$${localEnv:HOME}/.secrets/age.key,target=/home/vscode/.secrets/age.key,type=bind,readonly"
+              - "source=$${localEnv:HOME}/.secrets/bgp-65000.conf,target=/home/vscode/.secrets/bgp-65000.conf,type=bind,readonly"
+              - "source=$${localEnv:HOME}/.secrets/kubeconfig,target=/home/vscode/.secrets/kubeconfig,type=bind,readonly"
+              - "source=$${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
           portsAttributes:
             "3333":
               label: "Capacitor"
               onAutoForward: "openBrowser"
+          runArgs:
+            $arrayMerge: append
+            $values:
+              - "--env-file"
+              - "$${localEnv:HOME}/.secrets/.env.spruyt-labs"
       .github/renovate.json5:
         content:
           ignorePaths:
@@ -253,6 +260,11 @@ repos:
         content:
           features:
             "ghcr.io/devcontainers/features/azure-cli": {}
+          runArgs:
+            $arrayMerge: append
+            $values:
+              - "--env-file"
+              - "$${localEnv:HOME}/.secrets/.env.xfg"
       .vscode/settings.json:
         content:
           "files.exclude":
