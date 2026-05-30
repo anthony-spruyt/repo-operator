@@ -20,17 +20,21 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 
 ### Authentication
 
-- **Phase 1**: Uses GitHub Personal Access Token (PAT) for repository access
-- **Phase 2** (planned): Migrate to GitHub App for improved security and permissions
+- **CI sync**: Uses a GitHub App (`APP_CLIENT_ID` var / `APP_PRIVATE_KEY` secret)
+- **Local/manual runs**: Use a Personal Access Token via `GH_TOKEN`
+- **Phase 2** (planned): Migrate remaining PAT usage to the GitHub App
 
 ## Development Commands
 
 ```bash
-# Run MegaLinter locally (Docker required)
+# Run MegaLinter locally with auto-fixes (Docker/podman required)
 ./lint.sh
 
+# Run MegaLinter in CI mode (no fixes, skips bot-authored commits)
+./lint.sh --ci
+
 # Run config sync manually (requires GH_TOKEN environment variable)
-GH_TOKEN=<your-token> npx @aspruyt/xfg --config ./src
+GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 # Dry-run config sync (validates config and shows planned changes without applying)
 npx --safe-chain-skip-minimum-package-age @aspruyt/xfg sync --config ./src --dry-run
@@ -58,21 +62,30 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 
 **Templates directory**: `src/templates/` Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
 
+**Key xfg mechanics**:
+
+- `createOnly: true` - file is **seeded once** and never overwritten on later syncs (use for files repos customize, e.g. `.gitignore`, `.mega-linter.yml`, `renovate-overrides.json5`). Default (omitted) overwrites on every sync.
+- `$arrayMerge: append` + `$values: [...]` - appends to an array (e.g. pre-commit `repos`, devcontainer `extensions`) instead of replacing it. Required because plain YAML keys replace.
+- **Groups** (`groups.yaml`) - named bundles of files/settings; can `extends` other groups. Repos opt in via the `groups:` list in `repos.yaml`.
+- **conditionalGroups** (`groups.yaml`) - apply files/settings based on which groups a repo has, via `allOf` / `anyOf` / `noneOf` predicates. Used for cross-cutting rules (e.g. status-check rulesets that differ when `mergify` is present).
+
 ### Renovate Configuration
 
 Modular config in `.github/renovate/` is NOT synced to repos - other repos reference it directly via `github>anthony-spruyt/repo-operator//...` extends. Changes here affect all repos immediately.
 
 - For repo-specific rules, use `matchRepositories: ["owner/repo"]` in `package-rules.json5`
 - Don't use xfg overrides for Renovate array merging (YAML syntax limitation with `$arrayMerge`)
+- **Per-repo overrides**: instead of xfg array merges, repos use a `createOnly` `.github/renovate-overrides.json5` (seeded empty) and the synced `.github/renovate.json5` appends a `local>anthony-spruyt/<repo>//.github/renovate-overrides.json5` to its `extends`. Edit the override file in the target repo, not here.
 
 ### CI/CD Pipeline
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped for renovate/dependabot commits)
-2. **sync-config** - Uses the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) via GitHub App (on push only, skipped if no `src/` changes)
-3. **summary** - Aggregates results for branch protection
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`; bot commits skipped inside `lint.sh --ci`)
+2. **xfg-plan** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) (GitHub App auth). Runs on PRs, push, and dispatch. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
+3. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, gated by the `production` environment approval (bypassable via the `skip_approval` dispatch input). Records `LAST_XFG_DEPLOY_SHA` after applying.
+4. **summary** - Aggregates results for branch protection
 
-The sync-config job creates PRs in target repositories with the updated configuration files.
+The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.
 
 Additional workflows distributed to target repos include Trivy vulnerability scanning.
