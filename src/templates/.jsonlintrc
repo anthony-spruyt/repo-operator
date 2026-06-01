@@ -1,4 +1,6 @@
 {
-  "patterns": ["**/*.json"],
+  "patterns": [
+    "**/*.json"
+  ],
   "comments": true
 }
