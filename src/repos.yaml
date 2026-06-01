@@ -130,9 +130,15 @@ repos:
                   - "tim-koehler.helm-intellisense"
           features:
             "ghcr.io/devcontainers-extra/features/sops":
-              version: "3.12.2"
+              # renovate: datasource=github-releases depName=getsops/sops
+              version: "3.13.1"
             "ghcr.io/eitsupi/devcontainer-features/jq-likes":
-              yqVersion: "4.52.5"
+              # renovate: datasource=github-releases depName=jqlang/jq
+              jqVersion: "1.8.1"
+              # renovate: datasource=github-releases depName=mikefarah/yq
+              yqVersion: "4.53.2"
+              # renovate: datasource=github-releases depName=itchyny/gojq
+              gojqVersion: "0.12.19"
           mounts:
             $arrayMerge: append
             $values:
@@ -259,7 +265,9 @@ repos:
       .devcontainer/devcontainer.json:
         content:
           features:
-            "ghcr.io/devcontainers/features/azure-cli": {}
+            "ghcr.io/devcontainers/features/azure-cli":
+              # renovate: datasource=github-releases depName=Azure/azure-cli
+              version: "2.86.0"
           runArgs:
             $arrayMerge: append
             $values:

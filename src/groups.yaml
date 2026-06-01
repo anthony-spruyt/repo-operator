@@ -94,7 +94,8 @@ groups:
         content:
           features:
             "ghcr.io/devcontainers/features/go":
-              version: "1.26.2"
+              # renovate: datasource=golang-version depName=go
+              version: "1.26.3"
           customizations:
             vscode:
               extensions:
@@ -266,7 +267,8 @@ groups:
         content:
           features:
             "ghcr.io/devcontainers-extra/features/renovate-cli":
-              version: "43.122.0"
+              # renovate: datasource=npm depName=renovate
+              version: "43.205.3"
       .github/renovate.json5:
         content: "@templates/.github/renovate.json5"
     settings:
@@ -313,7 +315,8 @@ groups:
         content:
           features:
             "ghcr.io/devcontainers/features/terraform":
-              version: "1.14.8"
+              # renovate: datasource=github-releases depName=hashicorp/terraform
+              version: "1.15.5"
           mounts:
             $arrayMerge: append
             $values:
