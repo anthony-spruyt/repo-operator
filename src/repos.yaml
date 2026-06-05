@@ -15,6 +15,10 @@ repos:
       - python
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: claude-plugins"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -37,6 +41,10 @@ repos:
       - mergify
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: container-images"
       .github/renovate.json5:
         content:
           extends:
@@ -67,6 +75,10 @@ repos:
       - mergify
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: esphome"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -93,6 +105,11 @@ repos:
       - python
       - mergify
       - renovate
+    files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: firemerge"
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
@@ -103,6 +120,11 @@ repos:
       - megalinter
       - mergify
       - renovate
+    files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: repo-operator"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
@@ -119,6 +141,10 @@ repos:
       - mergify
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: spruyt-labs"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -241,6 +267,10 @@ repos:
       - mergify
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: SunGather"
       .mcp.json:
         content:
           mcpServers:
@@ -263,6 +293,10 @@ repos:
       - mergify
       - renovate
     files:
+      .claude/settings.json:
+        content:
+          env:
+            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: xfg"
       .devcontainer/devcontainer.json:
         content:
           features:
