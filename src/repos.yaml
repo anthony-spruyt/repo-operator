@@ -113,6 +113,7 @@ repos:
       - megalinter
       - docker
       - go
+      - python
       - terraform
       - biome
       - mergify
