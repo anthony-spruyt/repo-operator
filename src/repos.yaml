@@ -18,7 +18,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: claude-plugins"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: claude-plugins"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -44,7 +44,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: container-images"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: container-images"
       .github/renovate.json5:
         content:
           extends:
@@ -78,7 +78,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: esphome"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: esphome"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -109,7 +109,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: firemerge"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: firemerge"
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
@@ -124,7 +124,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: repo-operator"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: repo-operator"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
@@ -144,7 +144,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: spruyt-labs"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: spruyt-labs"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -270,7 +270,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: SunGather"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: SunGather"
       .mcp.json:
         content:
           mcpServers:
@@ -296,7 +296,7 @@ repos:
       .claude/settings.json:
         content:
           env:
-            ANTHROPIC_CUSTOM_HEADERS: "X-Hindsight-Bank: xfg"
+            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: xfg"
       .devcontainer/devcontainer.json:
         content:
           features:
