@@ -95,7 +95,7 @@ groups:
           features:
             "ghcr.io/devcontainers/features/go":
               # renovate: datasource=golang-version depName=go
-              version: "1.26.3"
+              version: "1.26.4"
           customizations:
             vscode:
               extensions:
