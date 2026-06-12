@@ -335,7 +335,7 @@ groups:
               # NOTE: files pattern assumes infra/terraform/ directory structure - override per-repo if needed
               - repo: https://github.com/antonbabenko/pre-commit-terraform
                 # renovate: depName=antonbabenko/pre-commit-terraform datasource=github-tags
-                rev: v1.105.0
+                rev: v1.106.0
                 hooks:
                   - id: terraform_fmt
                     files: "^(infra/terraform|coder)/"
