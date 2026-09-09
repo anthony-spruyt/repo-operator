@@ -95,7 +95,8 @@ is not among them and is silently ignored there.
 Renovate pins images with both a tag and a digest by design. Re-apply after recreating a project:
 
 ```bash
-curl -u "$SONAR_TOKEN:" -X POST https://sonarcloud.io/api/settings/set \
+curl -X POST https://sonarcloud.io/api/settings/set \
+  --header "Authorization: Bearer $SONAR_TOKEN" \
   --data-urlencode "key=sonar.issue.ignore.multicriteria" \
   --data-urlencode "component=anthony-spruyt_<repo>" \
   --data-urlencode 'fieldValues={"ruleKey":"*:S8431","resourceKey":"**/*"}'
