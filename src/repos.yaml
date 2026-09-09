@@ -14,6 +14,7 @@ repos:
       - protected-main-branch
       - python
       - renovate
+      - sonar
     files:
       # .claude/settings.json:
       #   content:
@@ -40,6 +41,7 @@ repos:
       - python
       - mergify
       - renovate
+      - sonar
     files:
       # .claude/settings.json:
       #   content:
@@ -105,6 +107,7 @@ repos:
       - python
       - mergify
       - renovate
+      - sonar
     files:
       .claude/settings.json:
         content:
@@ -120,6 +123,7 @@ repos:
       - megalinter
       - mergify
       - renovate
+      - sonar
     # files:
     #   .claude/settings.json:
     #     content:
@@ -140,6 +144,7 @@ repos:
       - biome
       - mergify
       - renovate
+      - sonar
     files:
       # .claude/settings.json:
       #   content:
@@ -266,6 +271,7 @@ repos:
       - python
       - mergify
       - renovate
+      - sonar
     files:
       # .claude/settings.json:
       #   content:
@@ -292,6 +298,7 @@ repos:
       - eslint
       - mergify
       - renovate
+      - sonar
     files:
       # .claude/settings.json:
       #   content:
