@@ -85,6 +85,25 @@ Modular Renovate config in `.github/renovate/` is **not** synced via xfg — tar
 
 For repo-specific Renovate rules, use `matchRepositories` in `.github/renovate/package-rules.json5`.
 
+## SonarQube Cloud Configuration
+
+Rule exclusions live in SonarQube Cloud project settings, **not** in Git. Automatic analysis
+only honours a fixed set of properties in `.sonarcloud.properties` — `sonar.issue.ignore.multicriteria`
+is not among them and is silently ignored there.
+
+`docker:S8431` ("Use either the version tag or the digest") is excluded on every project, because
+Renovate pins images with both a tag and a digest by design. Re-apply after recreating a project:
+
+```bash
+curl -X POST https://sonarcloud.io/api/settings/set \
+  --header "Authorization: Bearer $SONAR_TOKEN" \
+  --data-urlencode "key=sonar.issue.ignore.multicriteria" \
+  --data-urlencode "component=anthony-spruyt_<repo>" \
+  --data-urlencode 'fieldValues={"ruleKey":"*:S8431","resourceKey":"**/*"}'
+```
+
+Custom quality profiles would be the tidier fix, but assigning one requires a paid plan.
+
 ## Related Projects
 
 - [xfg](https://github.com/anthony-spruyt/xfg) — The sync engine
