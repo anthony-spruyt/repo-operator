@@ -316,7 +316,6 @@ groups:
   sonar:
     files:
       .sonarcloud.properties:
-        createOnly: true
         content: "@templates/.sonarcloud.properties"
   terraform:
     files:
