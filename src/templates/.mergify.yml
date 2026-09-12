@@ -1,10 +1,18 @@
+merge_queue:
+  # Batches can fail on a flaky mid-batch state; trust the later batch that
+  # contains the same PR rather than dequeuing it.
+  skip_intermediate_results: true
+
 queue_rules:
   # auto_merge_conditions queues via merge protections, which always uses this
   # queue, so the release-please exception has to live here rather than in a
   # queue of its own.
   - name: default
     merge_method: squash
-    batch_size: 1
+    batch_size:
+      min: 1
+      max: 10
+    batch_max_wait_time: 5 min
     max_checks_retries: 3
     merge_conditions:
       - -draft
