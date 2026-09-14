@@ -1,5 +1,5 @@
 # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/devcontainer-common versioning=semver
-FROM ghcr.io/anthony-spruyt/devcontainer-common@sha256:d91e5afb083a3ddbf8161dde30f37597a9b41177c8feefadbd14e138ffac85dc
+FROM ghcr.io/anthony-spruyt/devcontainer-common@sha256:0185f277aed54e7e4463aae9e40e1e2a4b302bf5181ff16b188413b08b716953
 
 # Route Ubuntu archive through Nexus apt-ubuntu-proxy when NEXUS_URL is
 # supplied at build time. Coder workspaces inject it via envbuilder_env.
