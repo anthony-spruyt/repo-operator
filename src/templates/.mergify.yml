@@ -125,4 +125,5 @@ merge_protections:
 
 merge_protections_settings:
   reporting_method: check-runs
-  auto_merge_conditions: true
+  auto_merge_conditions:
+    - "-author = xfg-release-bot[bot]"
