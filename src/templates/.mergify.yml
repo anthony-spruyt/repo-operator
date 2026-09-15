@@ -103,9 +103,6 @@ merge_protections:
       - base = main
       - "label=autorelease: pending"
     success_conditions:
-      # Each repo releases under its own app. Auto-merge (pull_request_rules)
-      # stays scoped to repo-operator-release-bot[bot] — xfg merges its release
-      # PR by hand, so it only needs the check to pass, not to be queued.
       - or:
           - author = repo-operator-release-bot[bot]
           - author = xfg-release-bot[bot]
