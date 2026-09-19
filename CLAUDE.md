@@ -70,12 +70,6 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - **conditionalGroups** (`groups.yaml`) - apply files/settings based on which groups a repo has, via `allOf` / `anyOf` / `noneOf` predicates. Used for cross-cutting rules (e.g. status-check rulesets that differ when `mergify` is present).
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
-### MegaLinter secret scanning
-
-`src/templates/.mega-linter-base.yml` enables `REPOSITORY_BETTERLEAKS`. Betterleaks replaced gitleaks in MegaLinter v10.0.0 and needs no arguments - it runs `betterleaks dir --redact --verbose .`, already filesystem-only - and reads `.gitleaks.toml` / `.gitleaksignore` unchanged.
-
-When changing a linter key, check it exists in the image pinned by `lint-config.sh` -> `MEGALINTER_IMAGE`. An unknown key passes schema validation and is **silently skipped** at runtime, leaving a repo green in CI with no secret scanning. Confirm the linter appears as its own check run (`betterleaks (MegaLinter REPOSITORY_BETTERLEAKS)`) rather than trusting a green `lint / MegaLinter`.
-
 ### Renovate Configuration
 
 Modular config in `.github/renovate/` is NOT synced to repos - other repos reference it directly via `github>anthony-spruyt/repo-operator//...` extends. Changes here affect all repos immediately.
