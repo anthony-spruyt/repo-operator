@@ -70,15 +70,6 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - **conditionalGroups** (`groups.yaml`) - apply files/settings based on which groups a repo has, via `allOf` / `anyOf` / `noneOf` predicates. Used for cross-cutting rules (e.g. status-check rulesets that differ when `mergify` is present).
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
-### MegaLinter secret scanning - temporary dual-linter state
-
-`src/templates/.mega-linter-base.yml` enables **both** `REPOSITORY_BETTERLEAKS` and `REPOSITORY_GITLEAKS`, and keeps `REPOSITORY_GITLEAKS_ARGUMENTS: ["--no-git"]`.
-
-Gitleaks was removed in MegaLinter v10.0.0 in favour of betterleaks. An unknown linter key passes schema validation and is **silently skipped** at runtime, so a config/image mismatch leaves a repo green in CI with no secret scanning. Consumers still pin v9-base images (`lint-config.sh` -> `MEGALINTER_IMAGE`) and move to v10 via
-[container-images#1775](https://github.com/anthony-spruyt/container-images/issues/1775); listing both keys means whichever linter the running image has is the one that scans. Betterleaks needs no `--no-git` equivalent - it runs `betterleaks dir --redact --verbose .`, already filesystem-only - and reads `.gitleaks.toml` / `.gitleaksignore` unchanged.
-
-**Once every consumer is on a v10 base image**: delete `REPOSITORY_GITLEAKS` and its arguments block, and delete this whole section. Dropping `--no-git` any earlier flips gitleaks to scanning full git history on v9 images.
-
 ### Renovate Configuration
 
 Modular config in `.github/renovate/` is NOT synced to repos - other repos reference it directly via `github>anthony-spruyt/repo-operator//...` extends. Changes here affect all repos immediately.
