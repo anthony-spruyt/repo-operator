@@ -30,7 +30,43 @@
       matchPackageNames: ["renovate"],
       matchDatasources: ["npm", "docker"],
       schedule: ["before 9am on monday"],
-      labels: ["renovate/renovate-cli"]
+      labels: ["renovate/renovate-cli"],
+      groupName: "renovate-cli",
+      group: {
+        commitMessageTopic: "Renovate CLI"
+      }
+    },
+
+    // ============ Mainline / prerelease guards ============
+    {
+      // n8n tags beta builds with plain semver, so no versioning scheme can tell
+      // them apart from a stable release. Dashboard approval is the only gate.
+      description: "Require dashboard approval for n8n images (beta builds are indistinguishable by version string)",
+      matchPackageNames: ["n8nio/**"],
+      matchDatasources: ["docker"],
+      dependencyDashboardApproval: true
+    },
+    {
+      // The helm datasource sees every published chart, mainline included, and
+      // ranks e.g. 2.36.1 above the stable 2.35.6 pin. The annotated custom.regex
+      // manager owns the version instead, backed by custom.coder-stable.
+      // Ref anthony-spruyt/spruyt-labs#2640
+      description: "Disable flux manager for the Coder chart (version tracked via the coder-stable custom datasource)",
+      matchManagers: ["flux"],
+      matchPackageNames: ["coder"],
+      matchDatasources: ["helm"],
+      enabled: false
+    },
+
+    // ============ Go builder images ============
+    {
+      // Builder stages use FROM golang:${GO_VERSION}-alpine; the dockerfile
+      // manager cannot resolve the ARG, so the annotated custom.regex manager on
+      // the ARG line owns these instead.
+      description: "Disable dockerfile manager for golang (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
+      matchManagers: ["dockerfile"],
+      matchPackageNames: ["golang"],
+      enabled: false
     },
 
     // ============ Devcontainer base image (managed via xfg sync) ============

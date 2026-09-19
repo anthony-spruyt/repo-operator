@@ -7,6 +7,19 @@
       transformTemplates: [
         "{ \"releases\": [$map(available_versions, function($v) { { \"version\": $v.version } })] }"
       ]
+    },
+    // Coder publishes mainline and stable releases to the same tag namespace with
+    // indistinguishable semver, so github-releases and helm both rank mainline
+    // highest. The GitHub "latest release" marker is the authoritative stable
+    // pointer — Coder's own install.sh resolves --stable by following it.
+    // Emits a bare semver (no leading "v"); consumers that need the git tag
+    // prepend it themselves.
+    "coder-stable": {
+      defaultRegistryUrlTemplate: "https://api.github.com/repos/coder/coder/releases/latest",
+      format: "json",
+      transformTemplates: [
+        "{ \"releases\": [{ \"version\": $substring(tag_name, 1) }], \"sourceUrl\": \"https://github.com/coder/coder\", \"homepage\": \"https://coder.com\" }"
+      ]
     }
   }
 }
