@@ -8,6 +8,11 @@ set -euo pipefail
 # Usage:
 #   ./lint.sh       - Local mode (with fixes, user permissions)
 #   ./lint.sh --ci  - CI mode (no fixes, passes GitHub env vars)
+#
+# Local mode env vars:
+#   APPLY_FIXES=none          - run read-only (default: all)
+#   COPY_FIXED_SOURCES=false  - keep fixes in .output/, do not write the tree
+#                               (default: true)
 
 REPO_ROOT="$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"
 
@@ -81,7 +86,7 @@ else
     -e HOME=/tmp \
     -e MEGALINTER_FLAVOR="$MEGALINTER_FLAVOR" \
     -e VALIDATE_ALL_CODEBASE="true" \
-    -e APPLY_FIXES="all" \
+    -e APPLY_FIXES="$${APPLY_FIXES:-all}" \
     -e UPDATED_SOURCES_REPORTER="true" \
     -e REPORT_OUTPUT_FOLDER="/tmp/lint/.output" \
     -v "$REPO_ROOT:/tmp/lint:rw" \
@@ -89,9 +94,17 @@ else
     "$MEGALINTER_IMAGE" >/dev/null 2>&1 ||
     LINT_EXIT_CODE=$?
 
-  # Copy fixed files back to workspace
-  if compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
+  copied_fixes=false
+  if [[ "$${COPY_FIXED_SOURCES:-true}" == "true" ]] &&
+    compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
     cp -r "$REPO_ROOT/.output/updated_sources"/* "$REPO_ROOT/"
+    copied_fixes=true
+  fi
+
+  if [[ "$copied_fixes" == "true" ]]; then
+    fixes_note="Auto-fixed files (already copied back)"
+  else
+    fixes_note="Auto-fixed files (NOT copied back)"
   fi
 
   if [[ "$LINT_EXIT_CODE" -eq 0 ]]; then
@@ -100,7 +113,7 @@ else
     echo "MegaLinter failed (exit code $LINT_EXIT_CODE). Check .output/ for details:"
     echo "  .output/megalinter.log        - Full run log"
     echo "  .output/linters_logs/          - Per-linter logs"
-    echo "  .output/updated_sources/       - Auto-fixed files (already copied back)"
+    echo "  .output/updated_sources/       - $fixes_note"
   fi
 
   exit "$LINT_EXIT_CODE"
