@@ -175,6 +175,29 @@
       }
     },
     {
+      // The feature image and the gh release it installs are separate packages,
+      // so a split would ship a feature version mismatched with its gh binary.
+      description: "GitHub CLI devcontainer feature and the gh release it installs",
+      groupName: "github-cli",
+      matchPackageNames: ["ghcr.io/devcontainers/features/github-cli", "cli/cli"],
+      matchDatasources: ["docker", "github-releases"],
+      group: {
+        commitMessageTopic: "GitHub CLI (feature + gh)"
+      }
+    },
+    {
+      // Both images ship the same upstream curl release to the same app, so a
+      // split would let the two pins drift apart.
+      // Ref anthony-spruyt/spruyt-labs#2786
+      description: "curl images (same upstream release via two registries)",
+      groupName: "curl",
+      matchPackageNames: ["alpine/curl", "docker.io/curlimages/curl"],
+      matchDatasources: ["docker"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group"
+      }
+    },
+    {
       description: "Go toolchain (go.mod directive + Dockerfile builder image stay in sync)",
       groupName: "Go toolchain",
       matchPackageNames: ["golang", "go"],
