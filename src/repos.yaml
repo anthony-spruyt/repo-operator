@@ -108,11 +108,11 @@ repos:
       - mergify
       - renovate
       - sonar
-    files:
-      .claude/settings.json:
-        content:
-          env:
-            ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: firemerge"
+    # files:
+    #   .claude/settings.json:
+    #     content:
+    #       env:
+    #         ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: firemerge"
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
