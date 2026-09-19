@@ -16,4 +16,4 @@ RUN set -eu; \
 
 HEALTHCHECK NONE
 
-USER vscode
+USER 1001
