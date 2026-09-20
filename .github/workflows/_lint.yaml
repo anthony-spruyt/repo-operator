@@ -31,7 +31,8 @@ jobs:
       - name: Run MegaLinter
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          VALIDATE_ALL_CODEBASE: ${{ github.event_name != 'pull_request' }}
+          # Changed-files-only hides breakage in file types absent from a diff
+          VALIDATE_ALL_CODEBASE: true
         run: ./lint.sh --ci
 
       - name: Upload SARIF to GitHub Security
