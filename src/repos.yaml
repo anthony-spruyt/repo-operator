@@ -95,25 +95,6 @@ repos:
             "*.yaml": "esphome"
           esphome.dashboard.url: "http://localhost:6052"
 
-  - git: https://github.com/anthony-spruyt/firemerge.git
-    groups:
-      - claude
-      - mcp
-      - github-ci
-      - github-trivy
-      - megalinter
-      - protected-main-branch
-      - docker
-      - python
-      - mergify
-      - renovate
-      - sonar
-    # files:
-    #   .claude/settings.json:
-    #     content:
-    #       env:
-    #         ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: firemerge"
-
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
