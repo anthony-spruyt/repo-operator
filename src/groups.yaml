@@ -274,7 +274,7 @@ groups:
           features:
             "ghcr.io/devcontainers-extra/features/renovate-cli":
               # renovate: datasource=npm depName=renovate
-              version: "44.69.8"
+              version: "44.83.1"
       .github/renovate.json5:
         content: "@templates/.github/renovate.json5"
     settings:
