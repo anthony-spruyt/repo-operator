@@ -1,5 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/pre-commit-config.json
 
+exclude: "(^|/)CHANGELOG\\.md$"
 fail_fast: false
 repos:
   - repo: "https://github.com/adrienverge/yamllint"
