@@ -26,7 +26,7 @@
   ],
   "features": {
     "ghcr.io/devcontainers-extra/features/renovate-cli": {
-      "version": "44.69.8"
+      "version": "44.83.2"
     }
   },
   "initializeCommand": "bash ${localWorkspaceFolder}/.devcontainer/initialize.sh",
