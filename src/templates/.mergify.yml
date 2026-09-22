@@ -44,6 +44,8 @@ pull_request_rules:
           - agent/needs-review
 
 merge_protections:
+  # This is the only approval gate for repos without GitHub branch protection.
+  # Removing it lets auto_merge_conditions queue unapproved PRs.
   - name: default
     if:
       - base = main
