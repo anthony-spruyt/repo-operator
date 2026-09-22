@@ -336,3 +336,10 @@ repos:
               - actorId: 2719952 # xfg release bot
                 actorType: Integration
                 bypassMode: always
+        branch-signatures:
+          conditions:
+            refName:
+              exclude:
+                $arrayMerge: append
+                $values:
+                  - "refs/heads/gh-pages"
