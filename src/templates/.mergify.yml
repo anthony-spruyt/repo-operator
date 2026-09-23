@@ -92,5 +92,9 @@ merge_protections:
 merge_protections_settings:
   reporting_method: check-runs
   auto_merge_conditions:
-    - "-author = xfg-release-bot[bot]"
+    # Release PRs wait for a manual merge so Renovate bumps batch into one
+    # release; the weekly window caps how long a pending fix can sit unreleased.
+    - or:
+        - "-label=autorelease: pending"
+        - schedule = Mon 09:00-12:00[Australia/Melbourne]
     - -label = blocked
