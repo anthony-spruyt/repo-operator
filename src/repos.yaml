@@ -281,6 +281,7 @@ repos:
       - python
       - eslint
       - mergify
+      - release-please
       - renovate
       - sonar
     files:
@@ -337,6 +338,9 @@ repos:
             $arrayMerge: append
             $values:
               - actorId: 2719952 # xfg release bot
+                actorType: Integration
+                bypassMode: always
+              - actorId: 4745999 # repo-operator-release-bot: creates release tags and moves the floating vN tag
                 actorType: Integration
                 bypassMode: always
         branch-signatures:
