@@ -25,3 +25,7 @@ https://127\.0\.0\.1.*
 
 # Schema store times out intermittently in CI
 https://json\.schemastore\.org/.*
+
+# Renovate customDatasources registry URLs carry a {{packageName}} placeholder
+# that only resolves at lookup time, so the literal is never a fetchable URL
+.*(%7B%7B|\{\{).*
