@@ -216,15 +216,13 @@
 
     // ============ n8n stable pins ============
     {
-      // Must stay after the custom.regex block: that rule disables digest
-      // pinning because regex replacement cannot insert a new digest, but these
-      // pins already carry one and custom.n8n-stable supplies its replacement.
-      description: "n8n images resolve through custom.n8n-stable and carry a digest",
+      // pinDigests must stay false, like the coder-stable pins: a custom
+      // datasource returns null from getDigest, so any digest on these pins can
+      // never be refreshed and warns "Could not determine new digest" on the
+      // dashboard forever. Re-enabling it reintroduces that warning. Ref #397
+      description: "n8n images resolve through custom.n8n-stable, tag-pinned without a digest",
       matchDatasources: ["custom.n8n-stable"],
-      // The datasource emits every semver tag so the pinned version resolves its
-      // own digest; followTag filters the offer back down to the stable one.
-      followTag: "stable",
-      pinDigests: true,
+      pinDigests: false,
       commitMessageTopic: "container image {{depName}}",
       commitMessageExtra: "to v{{{newVersion}}}",
       addLabels: ["renovate/image"]

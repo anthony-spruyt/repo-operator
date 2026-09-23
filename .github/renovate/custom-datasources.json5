@@ -21,22 +21,22 @@
         "{ \"releases\": [{ \"version\": $substring(tag_name, 1) }], \"sourceUrl\": \"https://github.com/coder/coder\", \"homepage\": \"https://coder.com\" }"
       ]
     },
-    // n8n publishes prereleases with indistinguishable semver, so the docker
-    // datasource ranks a prerelease above stable. n8n's "stable" tag is the
-    // authoritative pointer, but the docker datasource never populates the tags
-    // field followTag reads; this emits it, so followTag: stable works here.
-    // {{packageName}} serves both n8n images.
+    // n8n tags prereleases with plain semver, so the docker datasource ranks
+    // them above stable. GitHub releases flag them explicitly, so filtering on
+    // prerelease=false is enough — no tag/digest correlation needed.
     //
-    // Every plain-semver tag is emitted, not just the stable one: custom
-    // datasources return null from getDigest, so the pinned version must appear
-    // as a release carrying its own digest or Renovate's separate "refresh the
-    // current digest" update fails with "Could not determine new digest" and
-    // warns on the dashboard. Ref #395, #397
+    // Docker Hub is deliberately not the source: it caps tag listings at 100
+    // (~2 days), shorter than minimumReleaseAge, so the version being upgraded
+    // *from* has always aged out. Custom datasources return null from
+    // getDigest, so a pin carrying a digest could never refresh it and warned
+    // "Could not determine new digest" on the dashboard forever. These pins
+    // carry no digest (see the pinDigests: false rule) and the full release
+    // history here keeps the current version resolvable. Ref #395, #397
     "n8n-stable": {
-      defaultRegistryUrlTemplate: "https://hub.docker.com/v2/repositories/{{packageName}}/tags/?page_size=100&ordering=last_updated",
+      defaultRegistryUrlTemplate: "https://api.github.com/repos/n8n-io/n8n/releases?per_page=100",
       format: "json",
       transformTemplates: [
-        "( $d := results[name='stable'].digest; { \"releases\": [results[$count($match(name, /^[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].{ \"version\": name, \"digest\": digest, \"releaseTimestamp\": last_updated }], \"tags\": { \"stable\": results[digest=$d and $count($match(name, /^[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].name[0] }, \"sourceUrl\": \"https://github.com/n8n-io/n8n\", \"homepage\": \"https://n8n.io\" } )"
+        "{ \"releases\": [$[draft=false and prerelease=false and $count($match(tag_name, /^n8n@[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].{ \"version\": $substring(tag_name, 4), \"releaseTimestamp\": published_at, \"changelogUrl\": html_url }], \"sourceUrl\": \"https://github.com/n8n-io/n8n\", \"homepage\": \"https://n8n.io\" }"
       ]
     }
   }
