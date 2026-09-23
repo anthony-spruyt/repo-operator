@@ -151,7 +151,7 @@ jobs:
       - name: "Apply Secrets Sync"
         env:
           GH_TOKEN: "${{ steps.secrets-token.outputs.token }}"
-          RELEASE_PLEASE_APP_CLIENT_ID: "${{ vars.RELEASE_PLEASE_APP_CLIENT_ID }}"
+          RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
         run: xfg secrets sync --config ./src
 

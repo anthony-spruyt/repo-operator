@@ -7,7 +7,6 @@ self-hosted-runner:
 config-variables:
   - APP_CLIENT_ID
   - LAST_XFG_DEPLOY_SHA
-  - RELEASE_PLEASE_APP_CLIENT_ID
 paths:
   .github/workflows/**/*.{yml,yaml}:
     ignore:
