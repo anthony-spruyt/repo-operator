@@ -23,19 +23,20 @@
     },
     // n8n publishes prereleases with indistinguishable semver, so the docker
     // datasource ranks a prerelease above stable. n8n's "stable" tag is the
-    // authoritative pointer, but followTag cannot read it — the docker
-    // datasource never populates the tags field followTag consults. Resolve it
-    // from the Docker Hub tag list: take the digest "stable" points at, report
-    // the plain-semver tag sharing it. {{packageName}} serves both n8n images.
+    // authoritative pointer, but the docker datasource never populates the tags
+    // field followTag reads; this emits it, so followTag: stable works here.
+    // {{packageName}} serves both n8n images.
     //
-    // Emitting the digest is load-bearing: custom datasources return null from
-    // getDigest, so under pinDigests a release without one silently stops
-    // updating with "Could not determine new digest". Ref #395
+    // Every plain-semver tag is emitted, not just the stable one: custom
+    // datasources return null from getDigest, so the pinned version must appear
+    // as a release carrying its own digest or Renovate's separate "refresh the
+    // current digest" update fails with "Could not determine new digest" and
+    // warns on the dashboard. Ref #395, #397
     "n8n-stable": {
       defaultRegistryUrlTemplate: "https://hub.docker.com/v2/repositories/{{packageName}}/tags/?page_size=100&ordering=last_updated",
       format: "json",
       transformTemplates: [
-        "( $d := results[name='stable'].digest; { \"releases\": [{ \"version\": results[digest=$d and $count($match(name, /^[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].name[0], \"digest\": $d }], \"sourceUrl\": \"https://github.com/n8n-io/n8n\", \"homepage\": \"https://n8n.io\" } )"
+        "( $d := results[name='stable'].digest; { \"releases\": [results[$count($match(name, /^[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].{ \"version\": name, \"digest\": digest, \"releaseTimestamp\": last_updated }], \"tags\": { \"stable\": results[digest=$d and $count($match(name, /^[0-9]+\\.[0-9]+\\.[0-9]+$/)) > 0].name[0] }, \"sourceUrl\": \"https://github.com/n8n-io/n8n\", \"homepage\": \"https://n8n.io\" } )"
       ]
     }
   }

@@ -221,6 +221,9 @@
       // pins already carry one and custom.n8n-stable supplies its replacement.
       description: "n8n images resolve through custom.n8n-stable and carry a digest",
       matchDatasources: ["custom.n8n-stable"],
+      // The datasource emits every semver tag so the pinned version resolves its
+      // own digest; followTag filters the offer back down to the stable one.
+      followTag: "stable",
       pinDigests: true,
       commitMessageTopic: "container image {{depName}}",
       commitMessageExtra: "to v{{{newVersion}}}",
