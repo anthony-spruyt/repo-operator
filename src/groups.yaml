@@ -267,6 +267,13 @@ groups:
     files:
       .pylintrc:
         createOnly: true
+  release-please:
+    settings:
+      secrets:
+        RELEASE_PLEASE_APP_PRIVATE_KEY:
+          env: RELEASE_PLEASE_APP_PRIVATE_KEY
+      variables:
+        RELEASE_PLEASE_APP_CLIENT_ID: "Iv23li3wrzSduktI53sa"
   renovate:
     files:
       .devcontainer/devcontainer.json:
