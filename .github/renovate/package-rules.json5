@@ -50,17 +50,6 @@
       enabled: false
     },
 
-    // ============ Go builder images ============
-    {
-      // Builder stages use FROM golang:${GO_VERSION}-alpine; the dockerfile
-      // manager cannot resolve the ARG, so the annotated custom.regex manager on
-      // the ARG line owns these instead.
-      description: "Disable dockerfile manager for golang (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
-      matchManagers: ["dockerfile"],
-      matchPackageNames: ["golang"],
-      enabled: false
-    },
-
     // ============ Devcontainer base image (managed via xfg sync) ============
     {
       description: "Disable devcontainer updates in all repos except repo-operator (xfg syncs the devcontainer config)",
@@ -105,6 +94,16 @@
       description: "Disable built-in managers for n8n images (version tracked via the n8n-stable custom datasource)",
       matchPackageNames: ["n8nio/**"],
       matchDatasources: ["docker"],
+      enabled: false
+    },
+    {
+      // Must stay after the blanket "enabled: true" above: re-enabled, it pins a
+      // digest onto golang:<version>, absent from Dockerfiles that use
+      // ${GO_VERSION}, so the branch commits nothing and never opens a PR.
+      // Ref anthony-spruyt/spruyt-labs#3086
+      description: "Disable dockerfile manager for golang (ARG interpolation breaks updates; custom.regex manager handles these via annotations)",
+      matchManagers: ["dockerfile"],
+      matchPackageNames: ["golang"],
       enabled: false
     },
     {
