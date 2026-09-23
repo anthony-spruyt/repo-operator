@@ -39,14 +39,6 @@
 
     // ============ Mainline / prerelease guards ============
     {
-      // n8n tags beta builds with plain semver, so no versioning scheme can tell
-      // them apart from a stable release. Dashboard approval is the only gate.
-      description: "Require dashboard approval for n8n images (beta builds are indistinguishable by version string)",
-      matchPackageNames: ["n8nio/**"],
-      matchDatasources: ["docker"],
-      dependencyDashboardApproval: true
-    },
-    {
       // The helm datasource sees every published chart, mainline included, and
       // ranks e.g. 2.36.1 above the stable 2.35.6 pin. The annotated custom.regex
       // manager owns the version instead, backed by custom.coder-stable.
@@ -102,6 +94,18 @@
       matchDatasources: ["docker", "oci"],
       matchUpdateTypes: ["minor"],
       labels: ["renovate/image", "dep/minor"]
+    },
+    {
+      // Must stay after the blanket "enabled: true" above, which would
+      // otherwise re-enable these. n8n tags beta builds with plain semver, so
+      // the docker datasource ranks them above stable; custom.n8n-stable
+      // resolves the stable tag and the annotated pins own these instead.
+      // Leaving the built-in managers on re-offers the prerelease as a second
+      // dep on the same line, which Renovate drops as an upgrade collision.
+      description: "Disable built-in managers for n8n images (version tracked via the n8n-stable custom datasource)",
+      matchPackageNames: ["n8nio/**"],
+      matchDatasources: ["docker"],
+      enabled: false
     },
     {
       matchDatasources: ["docker", "oci"],
@@ -208,6 +212,19 @@
       matchManagers: ["custom.regex"],
       matchFileNames: ["talos/**"],
       addLabels: ["renovate/talos"]
+    },
+
+    // ============ n8n stable pins ============
+    {
+      // Must stay after the custom.regex block: that rule disables digest
+      // pinning because regex replacement cannot insert a new digest, but these
+      // pins already carry one and custom.n8n-stable supplies its replacement.
+      description: "n8n images resolve through custom.n8n-stable and carry a digest",
+      matchDatasources: ["custom.n8n-stable"],
+      pinDigests: true,
+      commitMessageTopic: "container image {{depName}}",
+      commitMessageExtra: "to v{{{newVersion}}}",
+      addLabels: ["renovate/image"]
     }
   ]
 }

@@ -50,13 +50,19 @@
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     },
-    // YAML: version/key field. The space after the colon keeps bare URLs out.
+    // YAML: version/key field. The space after the colon keeps bare URLs out,
+    // and currentValue excludes "@" so a digest-bearing value falls through to
+    // the "YAML tag with digest" managers below — a whole-value capture would
+    // otherwise take "version@sha256:..." as the version, which no datasource
+    // can look up. RE2 has no lookahead, so the quoted and bare forms are
+    // spelled as separate alternatives rather than an optional quote.
     {
       customType: "regex",
       description: ["Annotated YAML field (depName first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+\"?(?<currentValue>[^\"\\s]+)\"?"
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+\"(?<currentValue>[^\"\\s@]+)\"",
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+(?<currentValue>[^\"\\s@]+)\\n"
       ],
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
@@ -66,7 +72,8 @@
       description: ["Annotated YAML field (datasource first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+\"?(?<currentValue>[^\"\\s]+)\"?"
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+\"(?<currentValue>[^\"\\s@]+)\"",
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*\\w+:[ \\t]+(?<currentValue>[^\"\\s@]+)\\n"
       ],
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
@@ -137,9 +144,9 @@
       description: ["Annotated kustomize images entry (depName first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n\\s*-\\s*name:\\s*\\S+\\n\\s*newTag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?(?:\\n\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]{64})\"?)?"
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)\\n\\s*-\\s*name:\\s*\\S+\\n\\s*newTag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?(?:\\n\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]{64})\"?)?"
       ],
-      datasourceTemplate: "docker",
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}docker{{/if}}",
       versioningTemplate: "docker"
     },
     {
@@ -147,9 +154,9 @@
       description: ["Annotated kustomize images entry (datasource first)."],
       managerFilePatterns: ["/\\.ya?ml$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*-\\s*name:\\s*\\S+\\n\\s*newTag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?(?:\\n\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]{64})\"?)?"
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n\\s*-\\s*name:\\s*\\S+\\n\\s*newTag:\\s*\"?(?<currentValue>[^\"\\s]+)\"?(?:\\n\\s*digest:\\s*\"?(?<currentDigest>sha256:[a-f0-9]{64})\"?)?"
       ],
-      datasourceTemplate: "docker",
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}docker{{/if}}",
       versioningTemplate: "docker"
     },
     // Dockerfile: ARG VAR="version"
@@ -216,6 +223,30 @@
         "#\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n\\s*\\w+:\\s*\"[^:\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
       ],
       datasourceTemplate: "docker",
+      versioningTemplate: "docker"
+    },
+    // YAML: bare "tag: version@digest", as a Helm values image block splits the
+    // repository onto its own key. The "Annotated Docker image" managers above
+    // require "repo:tag" in the value and so cannot reach it. currentValue
+    // excludes ":" so a "repo:tag@digest" value stays with those managers.
+    {
+      customType: "regex",
+      description: ["Annotated YAML tag with digest (depName first)."],
+      managerFilePatterns: ["/\\.ya?ml$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)\\n\\s*\\w+:\\s*\"(?<currentValue>[^@\":\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}docker{{/if}}",
+      versioningTemplate: "docker"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated YAML tag with digest (datasource first)."],
+      managerFilePatterns: ["/\\.ya?ml$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)\\n\\s*\\w+:\\s*\"(?<currentValue>[^@\":\\s]+)@(?<currentDigest>sha256:[a-f0-9]{64})\""
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}docker{{/if}}",
       versioningTemplate: "docker"
     },
     // Terraform: Docker image string with optional digest

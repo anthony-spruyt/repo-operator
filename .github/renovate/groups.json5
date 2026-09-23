@@ -165,13 +165,16 @@
       }
     },
     {
+      // Same rolling-branch reasoning as the Talos and Kubernetes groups below:
+      // a versioned branchTopic splits the group whenever the two images are
+      // momentarily offered different versions.
       description: "n8n app and runner images (versions must match)",
       groupName: "n8n",
       matchPackageNames: ["n8nio/**"],
-      matchDatasources: ["docker"],
+      matchDatasources: ["docker", "custom.n8n-stable"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
-        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
+        branchTopic: "{{{groupName}}}"
       }
     },
     {
