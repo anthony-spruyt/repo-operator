@@ -21,8 +21,8 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 ### Authentication
 
 - **CI sync**: Uses a GitHub App (`APP_CLIENT_ID` var / `APP_PRIVATE_KEY` secret)
-- **Local/manual runs**: Use a Personal Access Token via `GH_TOKEN`
-- **Phase 2** (planned): Migrate remaining PAT usage to the GitHub App
+- **Local/manual runs**: Use the fine-grained PAT in `GH_TOKEN` (from `~/.secrets/.env.common`). It is kept on purpose: `gh` needs a user identity for issues and PRs, so it is not being migrated to the app.
+- **Secrets sync** (`xfg secrets sync`): CI only, via the xfg action with GitHub App auth. The PAT has no secrets access.
 
 ## Development Commands
 
