@@ -1,0 +1,63 @@
+---
+# Throwaway spike for #390 step 5 / #120. Never merge.
+name: "Spike: packages API auth"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/workflows/spike-packages.yaml"
+
+permissions:
+  contents: "read"
+  packages: "read"
+
+jobs:
+  probe:
+    runs-on: "ubuntu-latest"
+    steps:
+      - name: "App token, all installed permissions"
+        id: "app-all"
+        continue-on-error: true
+        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
+        with:
+          client-id: "${{ vars.APP_CLIENT_ID }}"
+          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
+          owner: "${{ github.repository_owner }}"
+
+      - name: "App token, packages read"
+        id: "app-pkg"
+        continue-on-error: true
+        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
+        with:
+          client-id: "${{ vars.APP_CLIENT_ID }}"
+          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
+          owner: "${{ github.repository_owner }}"
+          permission-packages: "read"
+
+      - name: "Probe"
+        env:
+          T_APP_ALL: "${{ steps.app-all.outputs.token }}"
+          T_APP_PKG: "${{ steps.app-pkg.outputs.token }}"
+          T_GITHUB: "${{ github.token }}"
+          OWNER: "${{ github.repository_owner }}"
+        run: |
+          probe() {
+            local label="$1" tok="$2" url="$3"
+            if [ -z "$tok" ]; then echo "$label: no token"; return; fi
+            code=$(curl -s -o /tmp/body.json -w '%{http_code}' \
+              -H "Authorization: Bearer $tok" \
+              -H "Accept: application/vnd.github+json" \
+              -H "X-GitHub-Api-Version: 2022-11-28" "$url")
+            count=$(jq 'if type=="array" then length else "-" end' /tmp/body.json 2>/dev/null)
+            msg=$(jq -r '.message? // empty' /tmp/body.json 2>/dev/null)
+            echo "$label: HTTP $code count=$count $msg"
+          }
+          list="https://api.github.com/users/$OWNER/packages?package_type=container&per_page=100"
+          versions="https://api.github.com/users/$OWNER/packages/container/devcontainer-common/versions?per_page=1"
+          for t in APP_ALL APP_PKG GITHUB; do
+            var="T_$t"
+            probe "$t list" "${!var}" "$list"
+            probe "$t versions" "${!var}" "$versions"
+          done
