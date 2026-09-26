@@ -67,7 +67,7 @@ repos:
           bypassActors:
             $arrayMerge: append
             $values:
-              - actorId: 3215096 # container-images-garbo
+              - actorId: 3215096 # container-images-garbo: deletes old release git tags (deletion rule)
                 actorType: Integration
                 bypassMode: always
 
