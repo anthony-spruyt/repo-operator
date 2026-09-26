@@ -228,10 +228,7 @@ groups:
           bypassActors:
             $arrayMerge: append
             $values:
-              - actorId: 2740 # renovate
-                actorType: Integration
-                bypassMode: always
-              - actorId: 2758555 # repo-operator
+              - actorId: 2758555 # repo-operator: xfg sync pushes straight to main (prOptions.merge: direct)
                 actorType: Integration
                 bypassMode: always
           conditions:
@@ -456,6 +453,6 @@ conditionalGroups:
           bypassActors:
             $arrayMerge: append
             $values:
-              - actorId: 10562 # mergify
+              - actorId: 10562 # mergify: merges PRs and manages queue branches; exempt per Mergify rulesets docs
                 actorType: Integration
-                bypassMode: always
+                bypassMode: exempt
