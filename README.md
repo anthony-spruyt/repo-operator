@@ -107,15 +107,15 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### GitHub Apps and bots
 
-| Actor                            | ID      | Credential                                         | Can do                                           | Bypass                                      |
-| -------------------------------- | ------- | -------------------------------------------------- | ------------------------------------------------ | ------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator only                        | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)      |
-| `repo-operator-release-bot[bot]` | 4745999 | `RELEASE_PLEASE_APP_*`, synced to `release-please` | contents, issues, PRs: write                     | `tag-rules` `always` on xfg; Mergify author |
-| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images    |
-| `renovate[bot]`                  | 2740    | Mend-hosted                                        | Opens PRs                                        | none                                        |
-| `mergify[bot]`                   | 10562   | Mergify-hosted                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                         |
+| Actor                            | ID      | Credential                                         | Can do                                           | Bypass                                              |
+| -------------------------------- | ------- | -------------------------------------------------- | ------------------------------------------------ | --------------------------------------------------- |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator only                        | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)              |
+| `repo-operator-release-bot[bot]` | 4745999 | `RELEASE_PLEASE_APP_*`, synced to `release-please` | contents, issues, PRs: write                     | `tag-rules` `always` on xfg only (force-moves `vN`) |
+| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images            |
+| `renovate[bot]`                  | 2740    | Mend-hosted                                        | Opens PRs                                        | none                                                |
+| `mergify[bot]`                   | 10562   | Mergify-hosted                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                 |
 
-`pr-rules` only exists on `protected-main-branch` repos.
+`pr-rules` only exists on `protected-main-branch` repos. Other release repos only create new tags, which `tag-rules` allows without a bypass. Mergify merge protections trust PRs authored by `repo-operator-release-bot[bot]` (`release-please`, `megalinter-refresh`); that is an author match, not a ruleset bypass.
 
 ### Tokens
 
