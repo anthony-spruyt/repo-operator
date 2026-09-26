@@ -80,29 +80,22 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@a595cf9f41f05ca56bcf3cb98aeb6948d63ad7eb" # v7.1.0
+        uses: "anthony-spruyt/xfg@afa1ec37ddba789d295203751b22861e9d3190a9" # v7.2.0
         with:
           config: "./src"
           dry-run: true
           github-client-id: "${{ vars.APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
-      - name: "Generate app token"
-        if: "steps.changes.outputs.run_sync == 'true'"
-        id: "app-token"
-        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
-        with:
-          client-id: "${{ vars.APP_CLIENT_ID }}"
-          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
-          owner: "${{ github.repository_owner }}"
-          permission-secrets: "read"
-
-      # xfg is on PATH from the action's global install; secrets sync only reads GH_TOKEN
       - name: "Plan Secrets Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        env:
-          GH_TOKEN: "${{ steps.app-token.outputs.token }}"
-        run: xfg secrets sync --config ./src --dry-run
+        uses: "anthony-spruyt/xfg@afa1ec37ddba789d295203751b22861e9d3190a9" # v7.2.0
+        with:
+          command: "secrets-sync"
+          config: "./src"
+          dry-run: true
+          github-client-id: "${{ vars.APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
   xfg-apply:
     name: "XFG Apply"
@@ -132,28 +125,22 @@ jobs:
           fetch-depth: 2
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@a595cf9f41f05ca56bcf3cb98aeb6948d63ad7eb" # v7.1.0
+        uses: "anthony-spruyt/xfg@afa1ec37ddba789d295203751b22861e9d3190a9" # v7.2.0
         with:
           config: "./src"
           github-client-id: "${{ vars.APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
-      - name: "Generate secrets token"
-        id: "secrets-token"
-        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
-        with:
-          client-id: "${{ vars.APP_CLIENT_ID }}"
-          private-key: "${{ secrets.APP_PRIVATE_KEY }}"
-          owner: "${{ github.repository_owner }}"
-          permission-secrets: "write"
-
-      # xfg is on PATH from the action's global install; secrets sync only reads GH_TOKEN
       - name: "Apply Secrets Sync"
+        uses: "anthony-spruyt/xfg@afa1ec37ddba789d295203751b22861e9d3190a9" # v7.2.0
         env:
-          GH_TOKEN: "${{ steps.secrets-token.outputs.token }}"
           RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
-        run: xfg secrets sync --config ./src
+        with:
+          command: "secrets-sync"
+          config: "./src"
+          github-client-id: "${{ vars.APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Generate app token"
         id: "app-token"
