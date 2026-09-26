@@ -101,6 +101,37 @@ curl -X POST https://sonarcloud.io/api/settings/set \
 
 Custom quality profiles would be the tidier fix, but assigning one requires a paid plan.
 
+## Credentials
+
+Every credential that can act on the managed repos. Keep this current when adding an app, token, or bypass actor.
+
+### GitHub Apps and bots
+
+| Actor                            | ID      | Credential                                         | Can do                                           | Bypass                                      |
+| -------------------------------- | ------- | -------------------------------------------------- | ------------------------------------------------ | ------------------------------------------- |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator only                        | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)      |
+| `repo-operator-release-bot[bot]` | 4745999 | `RELEASE_PLEASE_APP_*`, synced to `release-please` | contents, issues, PRs: write                     | `tag-rules` `always` on xfg; Mergify author |
+| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images    |
+| `renovate[bot]`                  | 2740    | Mend-hosted                                        | Opens PRs                                        | none                                        |
+| `mergify[bot]`                   | 10562   | Mergify-hosted                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                         |
+
+`pr-rules` only exists on `protected-main-branch` repos.
+
+### Tokens
+
+| Token                       | Type                                                           | Where                    | Can do                                                           |
+| --------------------------- | -------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------- |
+| `GHCR_READ_TOKEN`           | Classic PAT, `read:packages` only                              | Synced to `github-trivy` | Read every package; the list API rejects app tokens              |
+| `GH_TOKEN` (local)          | Fine-grained PAT                                               | `~/.secrets/.env.common` | `gh` and local dry-runs; no secrets or packages access           |
+| `CONTAINER_RETENTION_TOKEN` | PAT                                                            | container-images only    | Deletes old versions of packages in `release-please-config.json` |
+| xfg test creds              | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                 | Integration tests against test orgs                              |
+
+The local PAT stays on purpose: `gh` needs a user identity.
+
+### Rotating a synced secret
+
+Secrets in `settings.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in repo-operator, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
+
 ## Related Projects
 
 - [xfg](https://github.com/anthony-spruyt/xfg) — The sync engine
