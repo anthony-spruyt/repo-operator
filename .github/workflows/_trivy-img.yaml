@@ -3,7 +3,11 @@
 name: Trivy Container Image Scan
 
 on:
-  workflow_call: {}
+  workflow_call:
+    secrets:
+      # Optional so callers synced before the secret existed still parse; the step fails loudly instead.
+      GHCR_READ_TOKEN:
+        required: false
 
 permissions:
   contents: read
@@ -25,27 +29,25 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Checkout
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
-        with:
-          sparse-checkout: .trivy-images.yaml
-          sparse-checkout-cone-mode: false
-
-      - name: Read image list from config
+      # The list endpoint rejects GITHUB_TOKEN and app tokens (HTTP 400), so this
+      # needs a classic PAT with only read:packages. See repo-operator#390 step 5.
+      - name: List this repo's images from GHCR
         id: discover
+        env:
+          GH_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
         run: |
-          CONFIG=".trivy-images.yaml"
-
-          if [ ! -f "$CONFIG" ]; then
-            echo "No $CONFIG found, skipping image scanning"
-            echo "images=[]" >> "$GITHUB_OUTPUT"
-            exit 0
+          if [ -z "$GH_TOKEN" ]; then
+            echo "::error::GHCR_READ_TOKEN is not set. repo-operator syncs it to github-trivy repos."
+            exit 1
           fi
 
-          IMAGES=$(yq -o=json -I=0 '.images // []' "$CONFIG")
+          REPO="${GITHUB_REPOSITORY#*/}"
+          IMAGES=$(gh api --paginate \
+            "users/${GITHUB_REPOSITORY_OWNER}/packages?package_type=container&per_page=100" \
+            --jq ".[] | select(.repository.name == \"$REPO\") | .name" | jq -Rsc 'split("\n") | map(select(. != "")) | sort')
 
           COUNT=$(echo "$IMAGES" | jq 'length')
-          echo "Found $COUNT images in $CONFIG"
+          echo "Found $COUNT images linked to $REPO"
           echo "$IMAGES" | jq .
 
           echo "images=$IMAGES" >> "$GITHUB_OUTPUT"
