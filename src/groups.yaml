@@ -378,6 +378,16 @@ conditionalGroups:
                   - id: remove-tabs
                     args: [--whitespaces-count, "2"]
   - when:
+      allOf: [claude, terraform]
+    files:
+      .claude/settings.json:
+        content:
+          permissions:
+            deny:
+              $arrayMerge: append
+              $values:
+                - "Read(~/.terraform.d/**)"
+  - when:
       anyOf: [megalinter, github-trivy]
     files:
       .trivyignore.yaml:
