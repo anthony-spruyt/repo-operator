@@ -326,20 +326,10 @@ repos:
           color: "#0E8A16"
           description: "Trigger integration tests on this PR"
       rulesets:
-        pr-rules:
-          bypassActors:
-            $arrayMerge: append
-            $values:
-              - actorId: 2719952 # xfg release bot
-                actorType: Integration
-                bypassMode: always
         tag-rules:
           bypassActors:
             $arrayMerge: append
             $values:
-              - actorId: 2719952 # xfg release bot
-                actorType: Integration
-                bypassMode: always
               - actorId: 4745999 # repo-operator-release-bot: creates release tags and moves the floating vN tag
                 actorType: Integration
                 bypassMode: always
