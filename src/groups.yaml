@@ -1,15 +1,6 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 # Configuration for repo-operator - syncs files to target repositories
 groups:
-  # c:
-  #   files:
-  #     TODO
-  # "c++":
-  #   files:
-  #     TODO
-  # "c#":
-  #   files:
-  #     TODO
   biome:
     files:
       biome.json:
@@ -30,8 +21,6 @@ groups:
         content: "@templates/.claude/rules/tdd.md"
       .claude/settings.json:
         content: "@templates/.claude/settings.json"
-      .claude/statusline.sh:
-        content: "@templates/.claude/statusline.sh"
   eslint:
     files:
       eslint.config.js:
