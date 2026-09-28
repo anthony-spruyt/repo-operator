@@ -161,10 +161,6 @@ repos:
               - "source=$${localEnv:HOME}/.secrets/bgp-65000.conf,target=/home/vscode/.secrets/bgp-65000.conf,type=bind,readonly"
               - "source=$${localEnv:HOME}/.secrets/kubeconfig,target=/home/vscode/.secrets/kubeconfig,type=bind,readonly"
               - "source=$${localEnv:HOME}/.secrets/talosconfig,target=/home/vscode/.secrets/talosconfig,type=bind"
-          portsAttributes:
-            "3333":
-              label: "Capacitor"
-              onAutoForward: "openBrowser"
           runArgs:
             $arrayMerge: append
             $values:
