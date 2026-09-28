@@ -11,8 +11,14 @@ RUN set -eu; \
     else \
         echo "Routing Ubuntu archive through $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
         . /etc/os-release; \
-        printf 'Types: deb\nURIs: %s/repository/apt-ubuntu-proxy/\nSuites: %s %s-updates %s-security %s-backports\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' \
-            "$${NEXUS_URL}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" > /etc/apt/sources.list.d/ubuntu.sources; \
+        c="$${VERSION_CODENAME}"; \
+        { \
+            echo "Types: deb"; \
+            echo "URIs: $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
+            echo "Suites: $${c} $${c}-updates $${c}-security $${c}-backports"; \
+            echo "Components: main restricted universe multiverse"; \
+            echo "Signed-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg"; \
+        } > /etc/apt/sources.list.d/ubuntu.sources; \
         : > /etc/apt/sources.list; \
     fi
 
