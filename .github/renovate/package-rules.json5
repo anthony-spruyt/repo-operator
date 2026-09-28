@@ -228,6 +228,14 @@
       addLabels: ["renovate/talos"]
     },
 
+    // ============ Prefixed release tags ============
+    {
+      description: "Azure CLI release tags are prefixed (azure-cli-2.90.0)",
+      matchPackageNames: ["Azure/azure-cli"],
+      matchDatasources: ["github-releases"],
+      extractVersion: "^azure-cli-(?<version>.+)$"
+    },
+
     // ============ n8n stable pins ============
     {
       // pinDigests must stay false, like the coder-stable pins: a custom
