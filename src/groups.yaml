@@ -11,6 +11,8 @@ groups:
         content: "@templates/.claude/output-styles/eli5.md"
       .claude/hookify-plus/warn-comment-density.md:
         content: "@templates/.claude/hookify-plus/warn-comment-density.md"
+      .claude/hookify-plus/warn-raw-container-run.md:
+        content: "@templates/.claude/hookify-plus/warn-raw-container-run.md"
       .claude/rules/comments.md:
         content: "@templates/.claude/rules/comments.md"
       .claude/rules/github.md:
