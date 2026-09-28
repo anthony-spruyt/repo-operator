@@ -172,8 +172,6 @@ repos:
               - "$${localEnv:HOME}/.secrets/.env.spruyt-labs"
       .github/renovate.json5:
         content:
-          ignorePaths:
-            - "talos/helmfile"
           extends:
             $arrayMerge: append
             $values:
