@@ -7,11 +7,13 @@ FROM ghcr.io/anthony-spruyt/devcontainer-common:1.2.48@sha256:0203fbcf8fbba2ff82
 ARG NEXUS_URL=""
 RUN set -eu; \
     if [ -z "$${NEXUS_URL}" ]; then \
-        echo "NEXUS_URL unset — leaving /etc/apt/sources.list unchanged"; \
+        echo "NEXUS_URL unset — leaving apt sources unchanged"; \
     else \
         echo "Routing Ubuntu archive through $${NEXUS_URL}/repository/apt-ubuntu-proxy/"; \
-        printf 'deb %s/repository/apt-ubuntu-proxy/ jammy main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-updates main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-security main restricted universe multiverse\ndeb %s/repository/apt-ubuntu-proxy/ jammy-backports main restricted universe multiverse\n' \
-            "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" "$${NEXUS_URL}" > /etc/apt/sources.list; \
+        . /etc/os-release; \
+        printf 'Types: deb\nURIs: %s/repository/apt-ubuntu-proxy/\nSuites: %s %s-updates %s-security %s-backports\nComponents: main restricted universe multiverse\nSigned-By: /usr/share/keyrings/ubuntu-archive-keyring.gpg\n' \
+            "$${NEXUS_URL}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" "$${VERSION_CODENAME}" > /etc/apt/sources.list.d/ubuntu.sources; \
+        : > /etc/apt/sources.list; \
     fi
 
 HEALTHCHECK NONE
