@@ -209,6 +209,13 @@ repos:
                 rev: v2.1.1
                 hooks:
                   - id: forbid-secrets
+              - repo: local
+                hooks:
+                  - id: grafana-dashboard-unescaped-vars
+                    name: Grafana dashboard variables must be escaped with a double $ (Flux substitution blanks them)
+                    language: pygrep
+                    entry: '(^|[^$])\$\{'
+                    files: '^cluster/apps/observability/victoria-metrics-k8s-stack/app/dashboards/.*\.json$'
       .yamllint.yml:
         content:
           ignore: |
