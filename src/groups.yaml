@@ -7,12 +7,8 @@ groups:
         content: "@templates/biome.json"
   claude:
     files:
-      .devcontainer/devcontainer.json:
-        content:
-          waitFor: postStartCommand
-          postStartCommand: bash -lc "cd $${containerWorkspaceFolder} && bash .devcontainer/update-claude-plugins.sh"
-      .devcontainer/update-claude-plugins.sh:
-        content: "@templates/.devcontainer/update-claude-plugins.sh"
+      .devcontainer/post-start.d/claude-plugins.sh:
+        content: "@templates/.devcontainer/post-start.d/claude-plugins.sh"
       .claude/output-styles/eli5.md:
         content: "@templates/.claude/output-styles/eli5.md"
       .claude/hookify-plus/warn-comment-density.md:

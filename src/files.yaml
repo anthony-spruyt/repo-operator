@@ -16,6 +16,8 @@ files:
   .devcontainer/setup-devcontainer.sh:
     createOnly: true
     content: "@templates/.devcontainer/setup-devcontainer.sh"
+  .devcontainer/post-start.sh:
+    content: "@templates/.devcontainer/post-start.sh"
   .vscode/settings.json:
     content: "@templates/.vscode/settings.json"
   .jsonlintrc:
