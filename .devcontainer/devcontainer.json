@@ -43,5 +43,7 @@
         "github.vscode-github-actions"
       ]
     }
-  }
+  },
+  "waitFor": "postStartCommand",
+  "postStartCommand": "bash -lc \"cd ${containerWorkspaceFolder} && bash .devcontainer/update-claude-plugins.sh\""
 }
