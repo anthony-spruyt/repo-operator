@@ -28,6 +28,8 @@ repos:
                 $arrayMerge: append
                 $values:
                   - "jetmartin.bats"
+      .gitleaks.toml:
+        createOnly: true
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
@@ -176,6 +178,8 @@ repos:
       .github/renovate-overrides.json5:
         createOnly: true
         content: "@templates/.github/renovate-overrides.json5"
+      .gitleaks.toml:
+        createOnly: true
       .vscode/settings.json:
         content:
           "search.exclude":
@@ -295,6 +299,8 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.xfg"
+      .gitleaks.toml:
+        createOnly: true
       .vscode/settings.json:
         content:
           "files.exclude":
