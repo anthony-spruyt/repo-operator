@@ -82,6 +82,7 @@ repos:
       #   content:
       #     env:
       #       ANTHROPIC_CUSTOM_HEADERS: "x-hindsight-bank: esphome"
+      .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
         content:
           customizations:
