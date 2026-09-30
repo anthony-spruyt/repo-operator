@@ -3,6 +3,26 @@
 repos:
   #- git: https://github.com/anthony-spruyt/bai2csv.git
 
+  - git: https://github.com/anthony-spruyt/Chromance.git
+    groups:
+      - claude
+      - mcp
+      - renovate
+    files:
+      .claude/rules/tdd.md: false
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "ms-vscode.cpptools"
+                  - "platformio.platformio-ide"
+      .github/renovate.json5:
+        content:
+          forkProcessing: "enabled"
+
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
       - claude
