@@ -19,12 +19,12 @@ jobs:
       cancel-in-progress: ${{ github.event_name == 'pull_request' }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d
+        uses: step-security/harden-runner@fe104658747b27e96e4f7e80cd0a94068e53901d # v2.16.1
         with:
           egress-policy: audit
 
       - name: Checkout
-        uses: actions/checkout@0c366fd6a839edf440554fa01a7085ccba70ac98
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           fetch-depth: 0
 
@@ -40,6 +40,6 @@ jobs:
           (success() || failure())
           && hashFiles('megalinter-reports/megalinter-report.sarif') != ''
           && github.event.repository.visibility == 'public'
-        uses: github/codeql-action/upload-sarif@1065967b50e179b7e74048c2277d849911c549cb
+        uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
         with:
           sarif_file: megalinter-reports/megalinter-report.sarif

@@ -50,7 +50,7 @@ runs:
   steps:
     - name: Trivy scan (SARIF with ignores)
       if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         scan-type: ${{ inputs.scan-type }}
         trivy-config: ${{ inputs.trivy-config }}
@@ -66,7 +66,7 @@ runs:
 
     - name: Trivy scan (SARIF)
       if: ${{ (success() || failure()) && inputs.trivyignores == '' }}
-      uses: aquasecurity/trivy-action@57a97c7e7821a5776cebc9bb87c984fa69cba8f1
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         scan-type: ${{ inputs.scan-type }}
         trivy-config: ${{ inputs.trivy-config }}
@@ -104,7 +104,7 @@ runs:
     - name: Upload SARIF to GitHub Security
       id: sarif-upload
       if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' }}
-      uses: github/codeql-action/upload-sarif@1065967b50e179b7e74048c2277d849911c549cb
+      uses: github/codeql-action/upload-sarif@2892aa5e19bbd11bc0cff5427e3b750a04d9e3c2 # v4.38.2
       continue-on-error: true
       with:
         sarif_file: trivy-results.sarif
