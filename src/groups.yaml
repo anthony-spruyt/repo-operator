@@ -25,6 +25,8 @@ groups:
         content: "@templates/.claude/rules/tdd.md"
       .claude/settings.json:
         content: "@templates/.claude/settings.json"
+      .claude/statusline.sh:
+        content: "@templates/.claude/statusline.sh"
   eslint:
     files:
       eslint.config.js:
