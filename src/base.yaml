@@ -4,3 +4,8 @@ id: repo-operator
 deleteOrphaned: true
 prOptions:
   merge: direct
+  ai:
+    provider: openai
+    baseUrl: https://openrouter.ai/api/v1
+    model: openai/gpt-4o-mini
+    apiKeyEnv: OPENROUTER_API_KEY
