@@ -29,3 +29,6 @@ https://json\.schemastore\.org/.*
 # Renovate customDatasources registry URLs carry a {{packageName}} placeholder
 # that only resolves at lookup time, so the literal is never a fetchable URL
 .*(%7B%7B|\{\{).*
+
+# API base URLs 404 on a bare GET
+https://openrouter\.ai/api.*
