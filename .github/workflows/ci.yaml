@@ -126,6 +126,8 @@ jobs:
 
       - name: "Apply Sync"
         uses: "anthony-spruyt/xfg@3e04be27d7a4860ec703157004c4b674b6db580f" # v7.3.0
+        env:
+          OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
         with:
           config: "./src"
           github-client-id: "${{ vars.APP_CLIENT_ID }}"
