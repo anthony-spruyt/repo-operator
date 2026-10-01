@@ -5,7 +5,7 @@ deleteOrphaned: true
 prOptions:
   merge: direct
   ai:
-    provider: anthropic
-    baseUrl: https://openrouter.ai/api
-    model: anthropic/claude-haiku-4.5
+    provider: openai
+    baseUrl: https://openrouter.ai/api/v1
+    model: openai/gpt-4o-mini
     apiKeyEnv: OPENROUTER_API_KEY
