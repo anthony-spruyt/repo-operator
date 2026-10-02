@@ -71,6 +71,16 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - `.prettierrc.yaml` uses `requirePragma` overrides to skip md/json/yaml because prettier only reads `.prettierignore` from the cwd (subdirectory runs ignore it). `*.json` needs `parser: json5` since the `json` parser ignores `requirePragma`. mdformat owns markdown.
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
+### Adding a New Repository
+
+xfg lifecycle `create` does not work here: the GitHub App cannot create repos on a personal account (fails with `403 Rate Limit Exceeded` after long retries, see [xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Manual steps:
+
+1. **Create the repo in the GitHub UI** - public, nothing ticked (no README, `.gitignore`, or license).
+2. **Import history first, if any** - push it (e.g. `git filter-repo --subdirectory-filter <dir>`) **before** adding the repo to `repos.yaml`. Once synced, rulesets require signed commits and PRs, and rewritten history cannot be pushed.
+3. **Add to `src/repos.yaml`** with groups and `settings.repo.description`, dry-run, push.
+4. **Invite `spruyt-labs-bot`** as a collaborator and accept the invite as the bot (xfg cannot manage collaborators yet, see [xfg#141](https://github.com/anthony-spruyt/xfg/issues/141)).
+5. **Enable the repo in the Mergify portal** (dashboard.mergify.com) - installing the GitHub App is not enough. Without it, the `Mergify Merge Protections` required check never runs and every PR is blocked.
+
 ### Renovate Configuration
 
 Modular config in `.github/renovate/` is NOT synced to repos - other repos reference it directly via `github>anthony-spruyt/repo-operator//...` extends. Changes here affect all repos immediately.
