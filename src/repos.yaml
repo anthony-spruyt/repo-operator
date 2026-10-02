@@ -109,6 +109,42 @@ repos:
             "*.yaml": "esphome"
           esphome.dashboard.url: "http://localhost:6052"
 
+  - git: https://github.com/anthony-spruyt/kata-tap-qdisc-fix.git
+    files:
+      inherit: false
+    settings:
+      codeScanning: false
+      labels:
+        inherit: false
+      repo:
+        description: "DaemonSet that fixes tap device qdiscs for Kata Containers on Cilium."
+      rulesets:
+        inherit: false
+
+  - git: https://github.com/anthony-spruyt/litellm-middleware.git
+    files:
+      inherit: false
+    settings:
+      codeScanning: false
+      labels:
+        inherit: false
+      repo:
+        description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
+      rulesets:
+        inherit: false
+
+  - git: https://github.com/anthony-spruyt/mcp-header-proxy.git
+    files:
+      inherit: false
+    settings:
+      codeScanning: false
+      labels:
+        inherit: false
+      repo:
+        description: "Sidecar proxy that injects headers into MCP requests."
+      rulesets:
+        inherit: false
+
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
@@ -270,6 +306,18 @@ repos:
               command: "cclsp"
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/SunGather/.claude/cclsp.json"
+
+  - git: https://github.com/anthony-spruyt/traefik-api-key-auth.git
+    files:
+      inherit: false
+    settings:
+      codeScanning: false
+      labels:
+        inherit: false
+      repo:
+        description: "Traefik middleware plugin for API key authentication."
+      rulesets:
+        inherit: false
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
