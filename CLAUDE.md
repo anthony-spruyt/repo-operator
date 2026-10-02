@@ -73,13 +73,15 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 
 ### Adding a New Repository
 
-xfg lifecycle `create` does not work here: the GitHub App cannot create repos on a personal account (fails with `403 Rate Limit Exceeded` after long retries, see [xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Manual steps:
+xfg [lifecycle](https://github.com/anthony-spruyt/xfg/blob/main/docs/configuration/lifecycle.md) creates a missing repo on sync: empty by default, a fork with `upstream`, or a full mirror of another repo with `source`.
 
-1. **Create the repo in the GitHub UI** - public, nothing ticked (no README, `.gitignore`, or license).
-2. **Import history first, if any** - push it (e.g. `git filter-repo --subdirectory-filter <dir>`) **before** adding the repo to `repos.yaml`. Once synced, rulesets require signed commits and PRs, and rewritten history cannot be pushed.
-3. **Add to `src/repos.yaml`** with groups and `settings.repo.description`, dry-run, push.
-4. **Invite `spruyt-labs-bot`** as a collaborator and accept the invite as the bot (xfg cannot manage collaborators yet, see [xfg#141](https://github.com/anthony-spruyt/xfg/issues/141)).
-5. **Enable the repo in the Mergify portal** (dashboard.mergify.com) - installing the GitHub App is not enough. Without it, the `Mergify Merge Protections` required check never runs and every PR is blocked.
+- **Splitting a subfolder out with its history is not a lifecycle mode.** Create the repo empty in the GitHub UI (nothing ticked), push the filtered history (`git filter-repo --subdirectory-filter <dir>`), and only then add it to `repos.yaml`. Once synced, rulesets require signed commits and PRs, so rewritten history can no longer be pushed.
+- **App-auth create failed on this personal account** with `403 Rate Limit Exceeded` after long retries ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070), cause unconfirmed). If it happens again, create the repo in the UI and re-run the sync.
+
+After the repo exists:
+
+1. **Invite `spruyt-labs-bot`** as a collaborator and accept the invite as the bot (xfg cannot manage collaborators yet, see [xfg#141](https://github.com/anthony-spruyt/xfg/issues/141)).
+2. **Enable the repo in the Mergify portal** (dashboard.mergify.com) - installing the GitHub App is not enough. Without it, the `Mergify Merge Protections` required check never runs and every PR is blocked.
 
 ### Renovate Configuration
 
