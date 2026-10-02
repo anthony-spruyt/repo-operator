@@ -76,7 +76,7 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 xfg [lifecycle](https://github.com/anthony-spruyt/xfg/blob/main/docs/configuration/lifecycle.md) creates a missing repo on sync: empty by default, a fork with `upstream`, or a full mirror of another repo with `source`.
 
 - **Splitting a subfolder out with its history is not a lifecycle mode.** Create the repo empty in the GitHub UI (nothing ticked), push the filtered history (`git filter-repo --subdirectory-filter <dir>`), and only then add it to `repos.yaml`. Once synced, rulesets require signed commits and PRs, so rewritten history can no longer be pushed.
-- **App-auth create failed on this personal account** with `403 Rate Limit Exceeded` after long retries ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070), cause unconfirmed). If it happens again, create the repo in the UI and re-run the sync.
+- **CI cannot create repos.** The `repo-operator` GitHub App fails with `403 Rate Limit Exceeded` after long retries, and the same limit has been seen on org accounts ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Create the repo in the UI first, or run the sync locally with the PAT, then let CI manage it.
 
 After the repo exists:
 
