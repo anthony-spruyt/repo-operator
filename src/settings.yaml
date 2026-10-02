@@ -5,6 +5,10 @@ settings:
   codeScanning:
     state: configured
     querySuite: extended
+  collaborators:
+    deleteOrphaned: true
+    users:
+      - spruyt-labs-bot
   labels:
     "autorelease: pending":
       color: "#ededed"

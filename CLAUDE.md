@@ -81,7 +81,7 @@ xfg [lifecycle](https://github.com/anthony-spruyt/xfg/blob/main/docs/configurati
 
 After the repo exists:
 
-1. **Invite `spruyt-labs-bot`** as a collaborator and accept the invite as the bot (xfg cannot manage collaborators yet, see [xfg#141](https://github.com/anthony-spruyt/xfg/issues/141)).
+1. **Accept the `spruyt-labs-bot` collaborator invite** as the bot. xfg sends it on sync (`settings.collaborators` in `settings.yaml`), but GitHub needs the bot to accept it. `collaborators.deleteOrphaned` is on, so anyone added by hand gets removed.
 2. **Enable the repo in the Mergify portal** (dashboard.mergify.com) - installing the GitHub App is not enough. Without it, the `Mergify Merge Protections` required check never runs and every PR is blocked.
 
 ### Renovate Configuration
