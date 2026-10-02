@@ -110,40 +110,58 @@ repos:
           esphome.dashboard.url: "http://localhost:6052"
 
   - git: https://github.com/anthony-spruyt/kata-tap-qdisc-fix.git
-    files:
-      inherit: false
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - docker
+      - go
+      - release-please
+      - mergify
+      - renovate
+      - sonar
     settings:
-      codeScanning: false
-      labels:
-        inherit: false
       repo:
         description: "DaemonSet that fixes tap device qdiscs for Kata Containers on Cilium."
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/litellm-middleware.git
-    files:
-      inherit: false
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - docker
+      - python
+      - release-please
+      - mergify
+      - renovate
+      - sonar
     settings:
-      codeScanning: false
-      labels:
-        inherit: false
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/mcp-header-proxy.git
-    files:
-      inherit: false
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - docker
+      - go
+      - release-please
+      - mergify
+      - renovate
+      - sonar
     settings:
-      codeScanning: false
-      labels:
-        inherit: false
       repo:
         description: "Sidecar proxy that injects headers into MCP requests."
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
@@ -308,16 +326,24 @@ repos:
                 CCLSP_CONFIG_PATH: "/workspaces/SunGather/.claude/cclsp.json"
 
   - git: https://github.com/anthony-spruyt/traefik-api-key-auth.git
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - protected-main-branch
+      - go
+      - release-please
+      - mergify
+      - renovate
+      - sonar
     files:
-      inherit: false
+      # Fork of linkphoenix/traefik-api-key-auth - must keep the upstream ISC license
+      LICENSE: false
     settings:
-      codeScanning: false
-      labels:
-        inherit: false
       repo:
         description: "Traefik middleware plugin for API key authentication."
-      rulesets:
-        inherit: false
 
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
