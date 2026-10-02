@@ -76,8 +76,8 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 xfg [lifecycle](https://github.com/anthony-spruyt/xfg/blob/main/docs/configuration/lifecycle.md) creates a missing repo on sync: empty by default, a fork with `upstream`, or a full mirror of another repo with `source`.
 
 - **Splitting a subfolder out with its history is not a lifecycle mode.** Create the repo empty in the GitHub UI (nothing ticked), push the filtered history (`git filter-repo --subdirectory-filter <dir>`), and only then add it to `repos.yaml`. Once synced, rulesets require signed commits and PRs, so rewritten history can no longer be pushed.
-- **CI cannot create repos.** A GitHub App can only create repos with a user access token, which needs a human to authorize it interactively. CI uses the `repo-operator` app's installation token, so create fails with `403 Rate Limit Exceeded` after long retries, on personal and org accounts alike ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Create the repo in the UI first, or
-  run the sync locally with the PAT, then let CI manage it.
+- **CI cannot create repos on this personal account.** A GitHub App installation token cannot create user-owned repos; that needs a user access token (interactive login) or a PAT. CI uses the `repo-operator` app's installation token, so create fails with `403 Rate Limit Exceeded` after long retries ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Org-owned repos do work with an
+  installation token. Create the repo in the UI first, or run the sync locally with the PAT, then let CI manage it.
 
 After the repo exists:
 
