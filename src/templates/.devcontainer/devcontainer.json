@@ -40,7 +40,10 @@
         "mhutchie.git-graph",
         "nk2552003.forest-ash-theme-vscode",
         "redhat.vscode-yaml"
-      ]
+      ],
+      "settings": {
+        "workbench.startupEditor": "none"
+      }
     }
   }
 }
