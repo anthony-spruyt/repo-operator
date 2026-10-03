@@ -58,6 +58,7 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
+      - dockerhub
       - python
       - release-please
       - mergify

@@ -139,6 +139,7 @@ jobs:
           RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
           GHCR_READ_TOKEN: "${{ secrets.GHCR_READ_TOKEN }}"
+          DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}"
         with:
           command: "secrets-sync"
           config: "./src"

@@ -36,6 +36,11 @@ groups:
       .hadolint.yaml:
         createOnly: true
         content: "@templates/.hadolint.yaml"
+  dockerhub:
+    settings:
+      secrets:
+        DOCKERHUB_TOKEN:
+          env: DOCKERHUB_TOKEN
   github:
     files:
       .github/actionlint.yaml:
