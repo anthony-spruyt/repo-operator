@@ -22,6 +22,7 @@ Repo-operator syncs a thin layer on top.
 - `initialize.sh` — host-side SSH agent socket setup (runs before container creation).
 - `post-start.sh` — runs every `post-start.d/*.sh` on each container start, before the editor or Claude attaches. Groups add hooks by syncing a file into `post-start.d/`. A failing hook only warns.
 - `post-start.d/claude-plugins.sh` (`claude` group) — refreshes plugin marketplaces and updates user-scope and this repo's Claude Code plugins. `~/.claude` persists across rebuilds (host bind mount locally, home PVC on Coder), so `claude plugin install` alone never upgrades them.
+- `post-start.d/claude-user-settings.sh` (`claude` group) — sets `includeCoAuthoredBy: false` in `~/.claude/settings.json`. Happy reads only that user-level file, not project settings, and otherwise adds its "via Happy" co-author trailer to every commit.
 - `podman-seccomp.json` — vendored podman default seccomp profile, synced by repo-operator. Applied to the outer container via `runArgs: --security-opt seccomp=<path>`.
 
 ## What `devcontainer-post-create` does at runtime

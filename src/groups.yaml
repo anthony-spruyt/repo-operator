@@ -9,6 +9,8 @@ groups:
     files:
       .devcontainer/post-start.d/claude-plugins.sh:
         content: "@templates/.devcontainer/post-start.d/claude-plugins.sh"
+      .devcontainer/post-start.d/claude-user-settings.sh:
+        content: "@templates/.devcontainer/post-start.d/claude-user-settings.sh"
       .claude/output-styles/eli5.md:
         content: "@templates/.claude/output-styles/eli5.md"
       .claude/hookify-plus/warn-comment-density.md:
