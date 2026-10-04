@@ -35,6 +35,8 @@ Repo-operator syncs a thin layer on top.
 7. Calls `setup-devcontainer.sh` for repo-specific setup
 8. Runs verification tests
 
+Steps 2–4 skip work that is already present, so a re-run on a persisted home volume (every Coder start) takes seconds. The slow verification tests (podman `hello-world`, safe-chain blocking test) run once per safe-chain version; `DEVCONTAINER_VERIFY=1` forces them.
+
 ## Security posture
 
 - Non-root by default (`USER vscode`).
