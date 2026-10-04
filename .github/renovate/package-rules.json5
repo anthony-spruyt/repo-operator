@@ -12,7 +12,7 @@
     // Split per datasource so each name only matches on the registry that owns it.
     {
       description: "Own container images: no release age wait, any-time schedule",
-      matchPackageNames: ["ghcr.io/anthony-spruyt/**"],
+      matchPackageNames: ["ghcr.io/anthony-spruyt/**", "docker.io/aspruyt/**", "aspruyt/**"],
       matchDatasources: ["docker"],
       minimumReleaseAge: "0 days",
       schedule: ["at any time"]
