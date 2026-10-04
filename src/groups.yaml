@@ -398,7 +398,7 @@ conditionalGroups:
         content: "@templates/.trivyignore.yaml"
   - when:
       allOf: [protected-main-branch, github-ci]
-      noneOf: [mergify]
+      noneOf: [mergify, sonar]
     settings:
       rulesets:
         pr-rules:
@@ -412,7 +412,40 @@ conditionalGroups:
                     - context: "summary / Check Results"
                   strictRequiredStatusChecksPolicy: false
   - when:
+      allOf: [protected-main-branch, github-ci, sonar]
+      noneOf: [mergify]
+    settings:
+      rulesets:
+        pr-rules:
+          rules:
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "summary / Check Results"
+                    - context: "SonarCloud Code Analysis"
+                  strictRequiredStatusChecksPolicy: false
+  - when:
+      allOf: [mergify, protected-main-branch, github-ci, sonar]
+    settings:
+      rulesets:
+        pr-rules:
+          rules:
+            $arrayMerge: append
+            $values:
+              - type: required_status_checks
+                parameters:
+                  doNotEnforceOnCreate: false
+                  requiredStatusChecks:
+                    - context: "summary / Check Results"
+                    - context: "Mergify Merge Protections"
+                    - context: "SonarCloud Code Analysis"
+                  strictRequiredStatusChecksPolicy: false
+  - when:
       allOf: [mergify, protected-main-branch, github-ci]
+      noneOf: [sonar]
     settings:
       rulesets:
         pr-rules:
