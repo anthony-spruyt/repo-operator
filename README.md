@@ -75,6 +75,10 @@ npx @aspruyt/xfg sync --config ./src --dry-run
 GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 ```
 
+## Shared CI
+
+Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`) and composite actions (`build-image`, `publish-release`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
+
 ## Renovate Configuration
 
 Modular Renovate config in `.github/renovate/` is **not** synced via xfg — target repos reference it directly:
