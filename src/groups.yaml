@@ -147,6 +147,9 @@ groups:
           - "ENABLE_LINTERS:"
           - "  - TYPESCRIPT_ES"
           - "  - PYTHON_PYLINT"
+          - "Exclude more directories without dropping the base ones:"
+          - "ADDITIONAL_EXCLUDED_DIRECTORIES:"
+          - "  - generated"
         content: "@templates/.mega-linter.yml"
       .mega-linter-base.yml:
         schemaUrl: https://raw.githubusercontent.com/oxsecurity/megalinter/main/megalinter/descriptors/schemas/megalinter-configuration.jsonschema.json

@@ -8,18 +8,11 @@ EXTENDS:
 # Append additional linters to base config (don't replace)
 CONFIG_PROPERTIES_TO_APPEND:
   - ENABLE_LINTERS
+  - ADDITIONAL_EXCLUDED_DIRECTORIES
 # Add project-specific linters below:
 # ENABLE_LINTERS:
 #   - TYPESCRIPT_ES
 #   - PYTHON_PYLINT
-EXCLUDED_DIRECTORIES:
-  - "coverage"
-  - "dist"
-  - "site"
-  - "tmp"
-  - ".desloppify"
-  - "worktrees"
-  - ".worktrees"
-  - ".output"
-  - "node_modules"
-  - ".git"
+# Exclude more directories without dropping the base ones:
+# ADDITIONAL_EXCLUDED_DIRECTORIES:
+#   - generated
