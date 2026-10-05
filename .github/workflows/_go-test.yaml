@@ -1,0 +1,54 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Go Tests
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        description: Module root (the directory holding go.mod)
+        required: false
+        type: string
+        default: "."
+      ref:
+        description: Git ref to check out. Defaults to the triggering ref
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Go Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          ref: ${{ inputs.ref }}
+          persist-credentials: false
+
+      - name: Setup Go
+        uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
+        with:
+          go-version-file: ${{ inputs.workdir }}/go.mod
+          # setup-go fails when no listed path exists, and dependency-free modules have no go.sum
+          cache-dependency-path: |
+            ${{ inputs.workdir }}/go.mod
+            ${{ inputs.workdir }}/go.sum
+
+      - name: Build
+        run: go build ./...
+
+      - name: Test
+        run: go test -race ./...

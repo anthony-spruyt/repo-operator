@@ -1,0 +1,198 @@
+---
+# Caller must check out the repo first. Pushing needs packages, id-token and attestations: write.
+name: Build Image
+description: >-
+  Build a container image with buildx and, when push is true, push it to GHCR
+  (and optionally Docker Hub) with an SBOM, max-mode provenance and a build
+  provenance attestation.
+inputs:
+  image:
+    description: Image name, also the GHCR package name. Defaults to the repository name
+    required: false
+    default: ${{ github.event.repository.name }}
+  context:
+    description: Build context path
+    required: false
+    default: "."
+  dockerfile:
+    description: Dockerfile path. Defaults to <context>/Dockerfile
+    required: false
+    default: ""
+  push:
+    description: Push the image, SBOM and attestation ("true"/"false")
+    required: false
+    default: "false"
+  version:
+    description: Version to tag, without a leading v (e.g. 1.2.3). Required when push is true
+    required: false
+    default: ""
+  tag-prefix:
+    description: Prefix for the version tags only ('' or 'v'). Downstream repos pin these
+    required: false
+    default: ""
+  extra-tags:
+    description: Extra docker/metadata-action tag rules, one per line
+    required: false
+    default: ""
+  build-args:
+    description: Build args, one KEY=VALUE per line
+    required: false
+    default: ""
+  go-mod:
+    description: >-
+      Path to a go.mod. When set, adds GO_VERSION (from the go directive),
+      VERSION (v<version>, or v0.0.0-ci) and COMMIT (checked-out HEAD) build args
+    required: false
+    default: ""
+  dockerhub-namespace:
+    description: Docker Hub namespace. When set, the image is also pushed to docker.io/<namespace>/<image>
+    required: false
+    default: ""
+  dockerhub-token:
+    description: Docker Hub access token. Required when dockerhub-namespace is set and push is true
+    required: false
+    default: ""
+  github-token:
+    description: Token for GHCR login
+    required: false
+    default: ${{ github.token }}
+outputs:
+  digest:
+    description: Image digest (empty when push is false)
+    value: ${{ steps.build.outputs.digest }}
+  image-ref:
+    description: GHCR reference of the version tag (e.g. ghcr.io/owner/image:1.2.3)
+    value: ${{ steps.refs.outputs.image-ref }}
+runs:
+  using: composite
+  steps:
+    - name: Validate inputs
+      shell: bash
+      env:
+        PUSH: ${{ inputs.push }}
+        VERSION: ${{ inputs.version }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+        DOCKERHUB_NAMESPACE: ${{ inputs.dockerhub-namespace }}
+        DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
+      run: |
+        if [ "$PUSH" = "true" ] && [ -z "$VERSION" ]; then
+          echo "::error::version is required when push is true"
+          exit 1
+        fi
+        if [ -n "$VERSION" ] && [ "${VERSION#v}" != "$VERSION" ]; then
+          echo "::error::version must not start with v: $VERSION"
+          exit 1
+        fi
+        case "$TAG_PREFIX" in
+          "" | v) ;;
+          *) echo "::error::tag-prefix must be '' or 'v', got '$TAG_PREFIX'"; exit 1 ;;
+        esac
+        if [ "$PUSH" = "true" ] && [ -n "$DOCKERHUB_NAMESPACE" ] && [ -z "$DOCKERHUB_TOKEN" ]; then
+          echo "::error::dockerhub-token is required to push to Docker Hub"
+          exit 1
+        fi
+
+    - name: Resolve references
+      id: refs
+      shell: bash
+      env:
+        IMAGE: ${{ inputs.image }}
+        CONTEXT: ${{ inputs.context }}
+        DOCKERFILE: ${{ inputs.dockerfile }}
+        VERSION: ${{ inputs.version }}
+        TAG_PREFIX: ${{ inputs.tag-prefix }}
+        DOCKERHUB_NAMESPACE: ${{ inputs.dockerhub-namespace }}
+        OWNER: ${{ github.repository_owner }}
+      run: |
+        GHCR_IMAGE="ghcr.io/${OWNER,,}/${IMAGE}"
+        IMAGES="$GHCR_IMAGE"
+        if [ -n "$DOCKERHUB_NAMESPACE" ]; then
+          IMAGES="$(printf '%s\ndocker.io/%s/%s' "$GHCR_IMAGE" "$DOCKERHUB_NAMESPACE" "$IMAGE")"
+        fi
+        {
+          echo "ghcr-image=$GHCR_IMAGE"
+          echo "image-ref=${GHCR_IMAGE}:${TAG_PREFIX}${VERSION:-latest}"
+          echo "dockerfile=${DOCKERFILE:-${CONTEXT%/}/Dockerfile}"
+          echo "images<<EOF"
+          echo "$IMAGES"
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Go build args
+      id: go
+      if: inputs.go-mod != ''
+      shell: bash
+      env:
+        GO_MOD: ${{ inputs.go-mod }}
+        VERSION: ${{ inputs.version }}
+        CONTEXT: ${{ inputs.context }}
+        EXTRA_BUILD_ARGS: ${{ inputs.build-args }}
+      run: |
+        GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$GO_MOD")
+        if [ -z "$GO_VERSION" ]; then
+          echo "::error::No go directive in $GO_MOD"
+          exit 1
+        fi
+        COMMIT=$(git -C "$CONTEXT" rev-parse HEAD)
+        {
+          echo "build-args<<EOF"
+          echo "GO_VERSION=$GO_VERSION"
+          echo "VERSION=v${VERSION:-0.0.0-ci}"
+          echo "COMMIT=$COMMIT"
+          if [ -n "$EXTRA_BUILD_ARGS" ]; then
+            echo "$EXTRA_BUILD_ARGS"
+          fi
+          echo "EOF"
+        } >> "$GITHUB_OUTPUT"
+
+    - name: Set up Docker Buildx
+      uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
+
+    - name: Log in to GHCR
+      if: inputs.push == 'true'
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+
+    - name: Log in to Docker Hub
+      if: inputs.push == 'true' && inputs.dockerhub-namespace != ''
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ inputs.dockerhub-namespace }}
+        password: ${{ inputs.dockerhub-token }}
+
+    - name: Docker metadata
+      id: meta
+      uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
+      with:
+        images: ${{ steps.refs.outputs.images }}
+        tags: |
+          type=raw,value=${{ inputs.tag-prefix }}${{ inputs.version }},enable=${{ inputs.version != '' }}
+          type=semver,pattern=${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v${{ inputs.version }},enable=${{ inputs.version != '' }}
+          type=raw,value=latest
+          ${{ inputs.extra-tags }}
+
+    - name: Build image
+      id: build
+      uses: docker/build-push-action@c3c9e263c25d99ce0380d002d59b67737d91b0dc # v7.4.0
+      with:
+        context: ${{ inputs.context }}
+        file: ${{ steps.refs.outputs.dockerfile }}
+        push: ${{ inputs.push == 'true' }}
+        tags: ${{ steps.meta.outputs.tags }}
+        labels: ${{ steps.meta.outputs.labels }}
+        build-args: ${{ inputs.go-mod != '' && steps.go.outputs.build-args || inputs.build-args }}
+        cache-from: type=gha,scope=${{ inputs.image }}
+        cache-to: type=gha,mode=max,scope=${{ inputs.image }}
+        sbom: ${{ inputs.push == 'true' }}
+        provenance: ${{ inputs.push == 'true' && 'mode=max' || 'false' }}
+
+    - name: Generate provenance attestation
+      if: inputs.push == 'true'
+      uses: actions/attest-build-provenance@4d101475d8b20a2381f78447822ac1eab6504dd8 # v4.2.2
+      with:
+        subject-name: ${{ steps.refs.outputs.ghcr-image }}
+        subject-digest: ${{ steps.build.outputs.digest }}
+        push-to-registry: true
