@@ -129,7 +129,7 @@ jobs:
     name: Image
     needs: release-please
     if: inputs.build-image && needs.release-please.outputs.release-created == 'true'
-    uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@shared-ci
+    uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main
     with:
       language: ${{ inputs.language }}
       workdir: ${{ inputs.workdir }}
