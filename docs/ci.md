@@ -14,20 +14,18 @@ Builds an image with buildx. With `push: "true"` it also pushes to GHCR, and to 
 
 Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. Check out the repo first. Pushing needs `packages`, `id-token` and `attestations: write`.
 
-| Input                 | Default         | Purpose                                                                 |
-| --------------------- | --------------- | ----------------------------------------------------------------------- |
-| `image`               | repository name | Image and GHCR package name                                             |
-| `context`             | `.`             | Build context                                                           |
-| `dockerfile`          | `<context>/Dockerfile` | Dockerfile path                                                  |
-| `push`                | `"false"`       | Push the image, SBOM and attestation                                    |
-| `version`             | `""`            | Version without a leading `v`. Required when pushing                    |
-| `tag-prefix`          | `""`            | `""` or `v`, applied to the version tags only                           |
-| `extra-tags`          | `""`            | Extra `docker/metadata-action` tag rules                                |
-| `build-args`          | `""`            | `KEY=VALUE` lines                                                       |
-| `go-mod`              | `""`            | Path to `go.mod`. Adds `GO_VERSION`, `VERSION` (`v<version>`) and `COMMIT` build args |
-| `dockerhub-namespace` | `""`            | Also push to `docker.io/<namespace>/<image>`                            |
-| `dockerhub-token`     | `""`            | Docker Hub token, required with a namespace when pushing                |
-| `github-token`        | `github.token`  | GHCR login                                                              |
+- `image` (default: repository name): image and GHCR package name
+- `context` (default `.`): build context
+- `dockerfile` (default `<context>/Dockerfile`): Dockerfile path
+- `push` (default `"false"`): push the image, SBOM and attestation
+- `version`: version without a leading `v`; required when pushing
+- `tag-prefix`: `""` or `v`, applied to the version tags only
+- `extra-tags`: extra `docker/metadata-action` tag rules
+- `build-args`: `KEY=VALUE` lines
+- `go-mod`: path to `go.mod`; adds `GO_VERSION`, `VERSION` (`v<version>`) and `COMMIT` build args
+- `dockerhub-namespace`: also push to `docker.io/<namespace>/<image>`
+- `dockerhub-token`: Docker Hub token; required with a namespace when pushing
+- `github-token` (default `github.token`): GHCR login
 
 The action outputs `digest` and `image-ref` (`ghcr.io/<owner>/<image>:<prefix><version>`).
 
@@ -39,15 +37,20 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 
 ## Reusable workflows
 
-| Workflow               | Purpose                                                                      | Caller permissions                                              |
-| ---------------------- | ---------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| `_go-test.yaml`        | `go build ./...` and `go test -race ./...` from `workdir` (default `.`)      | `contents: read`                                                |
-| `_python-uv-test.yaml` | `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`  | `contents: read`                                                |
-| `_build-image.yaml`    | Run the tests for `language` (`go`, `python`, `none`), then `build-image`. With `push: true`, also `publish-release` | `contents: read` for PRs. Publishing needs `contents`, `packages`, `id-token` and `attestations: write` |
-| `_release-please.yaml` | release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag | `contents`, `pull-requests`, `packages`, `id-token` and `attestations: write` |
-| `_rebuild-release.yaml` | Rebuild and publish a release whose image job failed                        | Same as publishing                                              |
+- `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
+- `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. Needs `contents: read`.
+- `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. With `push: true`, also `publish-release`. PR callers need `contents: read`.
+- `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. Needs `pull-requests: write` plus the publishing permissions.
+- `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
 
-`_build-image.yaml`, `_release-please.yaml` and `_rebuild-release.yaml` share these inputs: `language`, `workdir`, `image`, `context`, `dockerfile`, `tag-prefix`, `dockerhub-namespace`, `python-extras`, `python-test-paths` and `python-extra-commands`. Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
+Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
+
+`_build-image.yaml`, `_release-please.yaml` and `_rebuild-release.yaml` share these inputs:
+
+- `language`, `workdir`, `image`, `context`, `dockerfile`, `tag-prefix`, `dockerhub-namespace`
+- `python-extras`, `python-test-paths`, `python-extra-commands`
+
+Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 

@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       config-file:
-        description: release-please config. Must define a single root (".") package with "draft": true
+        description: release-please config with a single root (".") package and draft enabled
         required: false
         type: string
         default: release-please-config.json
