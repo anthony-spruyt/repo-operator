@@ -88,7 +88,7 @@ jobs:
   test-go:
     name: Test
     if: inputs.language == 'go'
-    uses: anthony-spruyt/repo-operator/.github/workflows/_go-test.yaml@shared-ci
+    uses: anthony-spruyt/repo-operator/.github/workflows/_go-test.yaml@main
     with:
       workdir: ${{ inputs.workdir }}
       ref: ${{ inputs.tag-name }}
@@ -96,7 +96,7 @@ jobs:
   test-python:
     name: Test
     if: inputs.language == 'python'
-    uses: anthony-spruyt/repo-operator/.github/workflows/_python-uv-test.yaml@shared-ci
+    uses: anthony-spruyt/repo-operator/.github/workflows/_python-uv-test.yaml@main
     with:
       workdir: ${{ inputs.workdir }}
       ref: ${{ inputs.tag-name }}
@@ -147,7 +147,7 @@ jobs:
 
       - name: Build image
         id: build
-        uses: anthony-spruyt/repo-operator/.github/actions/build-image@shared-ci
+        uses: anthony-spruyt/repo-operator/.github/actions/build-image@main
         with:
           image: ${{ inputs.image || github.event.repository.name }}
           context: ${{ inputs.context }}
@@ -162,7 +162,7 @@ jobs:
       # Must stay last: on failure the release stays a draft, so a published release always has an image.
       - name: Publish release
         if: inputs.push
-        uses: anthony-spruyt/repo-operator/.github/actions/publish-release@shared-ci
+        uses: anthony-spruyt/repo-operator/.github/actions/publish-release@main
         with:
           tag: ${{ inputs.tag-name }}
           image-ref: ${{ steps.build.outputs.image-ref }}
