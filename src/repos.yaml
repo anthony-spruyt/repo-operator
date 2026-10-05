@@ -39,15 +39,6 @@ repos:
       - python
       - renovate
       - sonar
-    files:
-      .devcontainer/devcontainer.json:
-        content:
-          customizations:
-            vscode:
-              extensions:
-                $arrayMerge: append
-                $values:
-                  - "jetmartin.bats"
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
@@ -199,7 +190,6 @@ repos:
               extensions:
                 $arrayMerge: append
                 $values:
-                  - "jetmartin.bats"
                   - "task.vscode-task"
                   - "tim-koehler.helm-intellisense"
           features:
