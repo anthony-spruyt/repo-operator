@@ -17,7 +17,7 @@ conditions:
 
 The default in this repo is **no comment**. Before you write it, answer:
 
-1. **Does this file already have comments?** The hook cannot see the file, only your edit. If the file has none, do not add the first one.
+1. **Does this file already have comments?** The hook cannot see the file, only your edit. If the file has none, do not add the first one unless it passes the keep test below.
 2. **Is it narration?** "Added X", "Now does Y", "Was 30s", "per user request" - delete it. Reasoning belongs in the commit body.
 3. **Does it restate the line below?** Delete it.
 4. **Is it longer than two lines?** Then it is not a comment. Put it in the commit body or a README.
