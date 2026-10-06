@@ -27,7 +27,6 @@ ADDITIONAL_EXCLUDED_DIRECTORIES:
   - "plans"
   - "site"
   - "tmp"
-  - "worktrees"
 FILTER_REGEX_EXCLUDE: "(CLAUDE\\.md$|CHANGELOG\\.md$)"
 FLAVOR_SUGGESTIONS: false
 IGNORE_GITIGNORED_FILES: true
