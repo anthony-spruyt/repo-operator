@@ -36,6 +36,21 @@ runs:
           echo "::error::No image digest; refusing to publish ${TAG}"
           exit 1
         fi
+        if ! DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft); then
+          echo "::error::No release found for ${TAG}"
+          exit 1
+        fi
+        case "$DRAFT" in
+          true) ;;
+          false)
+            echo "::notice::Release ${TAG} is already published; leaving it unchanged"
+            exit 0
+            ;;
+          *)
+            echo "::error::Unexpected isDraft '${DRAFT}' for ${TAG}"
+            exit 1
+            ;;
+        esac
         BODY=$(gh release view "$TAG" --json body --jq .body)
         NOTES=$(mktemp)
         {
