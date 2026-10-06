@@ -60,12 +60,19 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 ### Container retention
 
-`_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It keeps the newest `keep-n-tagged` tagged versions and deletes versions older than `older-than`, along with multi-arch images whose platform images are partly or wholly missing.
+`_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It deletes:
+
+- tagged versions beyond the newest `keep-n-tagged` that are older than `older-than`. Old release tags go too, so consumers that pin a release must keep up. `latest` is never deleted.
+- ghost and partial multi-arch images, whose platform images are wholly or partly missing.
+
+Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
 - `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
-- `older-than` (default `4 weeks`)
-- `keep-n-tagged` (default `5`)
+- `older-than` (default `4 weeks`): must not be empty
+- `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
+
+Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
 
 The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
 

@@ -34,6 +34,10 @@ jobs:
     runs-on: ubuntu-latest
     permissions:
       packages: write
+    # ghcr-cleanup-action is not safe to run in parallel against one package
+    concurrency:
+      group: container-retention-${{ github.repository }}
+      cancel-in-progress: false
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -44,7 +48,17 @@ jobs:
         id: packages
         env:
           PACKAGES: ${{ inputs.packages }}
+          OLDER_THAN: ${{ inputs.older-than }}
+          KEEP_N_TAGGED: ${{ inputs.keep-n-tagged }}
         run: |
+          if [ -z "${OLDER_THAN//[[:space:]]/}" ]; then
+            echo "::error::older-than must not be empty; it would skip the age filter."
+            exit 1
+          fi
+          if ! [[ "$KEEP_N_TAGGED" =~ ^[0-9]+$ ]] || [ "$KEEP_N_TAGGED" -lt 1 ]; then
+            echo "::error::keep-n-tagged must be a whole number of at least 1."
+            exit 1
+          fi
           if [ -z "$PACKAGES" ]; then
             PACKAGES="${GITHUB_REPOSITORY#*/}"
           fi
@@ -63,6 +77,7 @@ jobs:
           package: ${{ steps.packages.outputs.list }}
           older-than: ${{ inputs.older-than }}
           keep-n-tagged: ${{ inputs.keep-n-tagged }}
+          exclude-tags: latest
           delete-ghost-images: true
           delete-partial-images: true
           dry-run: ${{ inputs.dry-run }}
