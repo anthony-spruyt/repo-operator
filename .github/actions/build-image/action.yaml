@@ -178,8 +178,9 @@ runs:
       uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
       with:
         images: ${{ steps.refs.outputs.images }}
+        # The highest-priority tag becomes the version label; semver rules default to 900
         tags: |
-          type=raw,value=${{ inputs.tag-prefix }}${{ inputs.version }},enable=${{ inputs.version != '' }}
+          type=raw,value=${{ inputs.tag-prefix }}${{ inputs.version }},enable=${{ inputs.version != '' }},priority=1000
           type=semver,pattern=${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v${{ inputs.version }},enable=${{ inputs.version != '' }}
           type=raw,value=latest
           ${{ inputs.extra-tags }}
