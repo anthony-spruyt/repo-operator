@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "Release Please"
+
+on:
+  push:
+    branches:
+      - "main"
+  workflow_dispatch: {}
+
+permissions:
+  contents: "write"
+  packages: "write"
+  id-token: "write"
+  attestations: "write"
+
+jobs:
+  release:
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@main"
+    with:
+      language: "${xfg:language}"
+    secrets:
+      RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
+      RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
