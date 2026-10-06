@@ -9,3 +9,8 @@ prOptions:
     baseUrl: https://openrouter.ai/api/v1
     model: openai/gpt-4o-mini
     apiKeyEnv: OPENROUTER_API_KEY
+    prompt: >-
+      These commits sync shared tooling config, never product code, and
+      release-please reads their type in the target repos. Use only the types
+      chore, ci, build, docs or style. Never use feat, fix, perf or refactor,
+      and never mark a breaking change.
