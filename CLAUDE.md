@@ -108,4 +108,6 @@ The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
 The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.
 
+`lint-canary.yaml` runs on PRs that touch a lint pin or lint template: it renders the planned files with `xfg sync --dry-run --render-dir`, overlays them on each affected repo's `main` and runs `./lint.sh --ci` there. It is not a required check. See `docs/ci.md`.
+
 Additional workflows distributed to target repos include Trivy vulnerability scanning.

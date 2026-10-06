@@ -1,0 +1,166 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Lint Canary
+
+on:
+  pull_request:
+    branches:
+      - main
+    paths:
+      - .github/workflows/lint-canary.yaml
+      - src/groups.yaml
+      - src/repos.yaml
+      - src/templates/.golangci.yml
+      - src/templates/.lint-config.sh.tmpl
+      - src/templates/.mega-linter-base.yml
+      - src/templates/.mega-linter.yml
+      - src/templates/lint.sh
+      - src/templates/ruff-base.toml
+      - src/templates/trivy-mega-linter.yaml
+
+permissions:
+  contents: read
+
+concurrency:
+  group: lint-canary-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  LINT_FILES: >-
+    [".golangci.yml", ".lint-config.sh", ".mega-linter-base.yml", ".mega-linter.yml",
+    ".pylintrc", "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
+
+jobs:
+  render:
+    name: Render
+    runs-on: ubuntu-latest
+    outputs:
+      repos: ${{ steps.affected.outputs.repos }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # Workaround until anthony-spruyt/xfg#1090 is released: build xfg from that PR, then pin the release and drop these steps
+      - name: Checkout xfg
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: anthony-spruyt/xfg
+          ref: 7ab47d91b31eca8049c2fad4ebfbfdb407eed66d
+          path: .xfg-src
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
+        with:
+          node-version: "24"
+
+      - name: Build xfg
+        id: xfg-build
+        working-directory: .xfg-src/packages/xfg
+        run: |
+          npm ci --ignore-scripts
+          npm run build
+          echo "package=$RUNNER_TEMP/$(npm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)" >> "$GITHUB_OUTPUT"
+
+      - name: Render planned files
+        uses: anthony-spruyt/xfg@7ab47d91b31eca8049c2fad4ebfbfdb407eed66d # anthony-spruyt/xfg#1090
+        with:
+          config: ./src
+          dry-run: true
+          render-dir: ${{ runner.temp }}/render
+          xfg-package: ${{ steps.xfg-build.outputs.package }}
+          github-client-id: ${{ vars.APP_CLIENT_ID }}
+          github-app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
+
+      - name: Find repos whose lint files change
+        id: affected
+        env:
+          RENDER: ${{ runner.temp }}/render
+        run: |
+          repos=$(jq -c --argjson lint "$LINT_FILES" '
+            [.repos | to_entries[]
+              | select(.value.files + .value.deleted | any(. as $f | $lint | index($f)))
+              | {full: .key, name: (.key | split("/")[1])}]
+          ' "$RENDER/render.json")
+          echo "repos=$repos" >> "$GITHUB_OUTPUT"
+          {
+            echo "### Repos whose lint files change"
+            jq -r 'if length == 0 then "None: nothing to lint." else .[] | "- \(.full)" end' <<< "$repos"
+          } >> "$GITHUB_STEP_SUMMARY"
+          # Artifacts drop file modes, so ship the render as a tarball
+          tar -C "$RENDER" -czf "$RUNNER_TEMP/render.tgz" .
+
+      - name: Upload render
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7
+        with:
+          name: render
+          path: ${{ runner.temp }}/render.tgz
+          retention-days: 1
+
+  lint:
+    name: Lint ${{ matrix.repo.name }}
+    needs: render
+    if: needs.render.outputs.repos != '[]'
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    strategy:
+      fail-fast: false
+      matrix:
+        repo: ${{ fromJSON(needs.render.outputs.repos) }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Generate app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ vars.APP_CLIENT_ID }}
+          private-key: ${{ secrets.APP_PRIVATE_KEY }}
+          owner: ${{ github.repository_owner }}
+          repositories: ${{ matrix.repo.name }}
+          permission-contents: read
+
+      - name: Checkout ${{ matrix.repo.full }}
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          repository: ${{ matrix.repo.full }}
+          token: ${{ steps.app-token.outputs.token }}
+          path: target
+          persist-credentials: false
+
+      - name: Download render
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8
+        with:
+          name: render
+          path: ${{ runner.temp }}
+
+      - name: Overlay planned files
+        env:
+          REPO: ${{ matrix.repo.full }}
+        run: |
+          mkdir "$RUNNER_TEMP/render"
+          tar -C "$RUNNER_TEMP/render" -xzf "$RUNNER_TEMP/render.tgz"
+          if [ -d "$RUNNER_TEMP/render/$REPO" ]; then
+            cp -a "$RUNNER_TEMP/render/$REPO/." target/
+          fi
+          jq -r --arg repo "$REPO" '.repos[$repo].deleted[]' "$RUNNER_TEMP/render/render.json" |
+            while IFS= read -r file; do
+              rm -f -- "target/$file"
+            done
+          git -C target status --short
+
+      - name: Run MegaLinter
+        working-directory: target
+        env:
+          VALIDATE_ALL_CODEBASE: true
+        run: ./lint.sh --ci

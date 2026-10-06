@@ -94,9 +94,18 @@ No conditional sets a pin for a `megalinter-flavor` repo with both `go` and `pyt
 
 ### Reverting a bad bump
 
-A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
+A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it; the [lint canary](#lint-canary) is the check before merge. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
-### Lint config
+### Lint canary
+
+`.github/workflows/lint-canary.yaml` catches a bad bump before it merges. It runs on PRs here that touch a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`):
+
+1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`.lint-config.sh`, `lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
+2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase.
+
+A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. The canary is not a required check: read its result before merging. A failure can also come from a repo whose `main` is already red; compare with that repo's last CI run.
+
+The canary renders against each repo's current `main`, so it also lints changes merged here but not yet synced.
 
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
