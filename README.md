@@ -130,7 +130,7 @@ Every credential that can act on the managed repos. Keep this current when addin
 | --------------------------- | -------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------- |
 | `GHCR_READ_TOKEN`           | Classic PAT, `read:packages` only                              | Synced to `github-trivy` | Read every package; the list API rejects app tokens              |
 | `GH_TOKEN` (local)          | Fine-grained PAT                                               | `~/.secrets/.env.common` | `gh` and local dry-runs; no secrets or packages access           |
-| `CONTAINER_RETENTION_TOKEN` | PAT                                                            | container-images only    | Deletes old versions of packages in `release-please-config.json` |
+| `CONTAINER_RETENTION_TOKEN` | PAT (retiring)                                                 | container-images only    | Unused once container-images#2131 merges; then delete it         |
 | xfg test creds              | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                 | Integration tests against test orgs                              |
 
 The local PAT stays on purpose: `gh` needs a user identity.

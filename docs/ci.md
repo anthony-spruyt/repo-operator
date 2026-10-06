@@ -74,7 +74,11 @@ Untagged versions are kept: setting `keep-n-tagged` turns off the action's defau
 
 Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
 
-The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
+The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
+
+A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
+
+A repo with several images passes them all in `packages`. container-images reads its list from `release-please-config.json` in a job before the call.
 
 Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
 
