@@ -148,6 +148,15 @@
       labels: ["renovate/helm", "dep/patch"]
     },
 
+    // ============ Image repos released by commit type ============
+    {
+      description: "Dependency bumps in image repos release a patch: release-please hides chore commits there",
+      matchRepositories: ["anthony-spruyt/mcp-header-proxy"],
+      matchManagers: ["dockerfile", "gomod"],
+      semanticCommitType: "fix",
+      semanticCommitScope: "deps"
+    },
+
     // ============ Managers ============
     {
       matchManagers: ["github-actions"],
