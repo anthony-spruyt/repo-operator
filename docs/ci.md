@@ -140,7 +140,6 @@ Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/l
 
 1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs).
 2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`.
-3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
 Each language conditional excludes the others with `noneOf`, so a repo never gets two pins. A `megalinter-flavor` repo with two language groups gets none and fails the plan with `Unknown xfg template variable: megalinterImage`.
 
