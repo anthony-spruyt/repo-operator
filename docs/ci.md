@@ -39,7 +39,7 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. Needs `contents: read`.
-- `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. With `push: true`, also `publish-release`. PR callers need `contents: read`.
+- `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. Needs `pull-requests: write` plus the publishing permissions.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
 
@@ -60,7 +60,9 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 2. The image is built from that tag, tested, pushed and attested.
 3. `publish-release` adds the image details and undrafts the release.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` with the version. It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
+The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. release-please tags the release PR's merge commit, which is the commit its run starts from.
+
+If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator).
 

@@ -114,7 +114,7 @@ jobs:
 
       - name: Trivy scan
         if: steps.check-image.outputs.exists == 'true'
-        uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
+        uses: $/.github/actions/trivy-scan
         with:
           scan-type: image
           scanners: misconfig,secret,vuln

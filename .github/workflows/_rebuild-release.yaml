@@ -76,6 +76,9 @@ jobs:
   resolve:
     name: Resolve
     runs-on: ubuntu-latest
+    # Draft releases are invisible to a read-only token.
+    permissions:
+      contents: write
     outputs:
       tag: ${{ steps.tag.outputs.tag }}
     steps:
@@ -129,7 +132,12 @@ jobs:
             exit 1
           fi
 
-          # Drafts are invisible to a read-only token, so this job needs contents: write.
+          # The image job builds the checked-out ref, so the run itself must start from the tag.
+          if [ "$GITHUB_REF" != "refs/tags/${TAG}" ]; then
+            echo "::error::Run this workflow from the tag, not ${GITHUB_REF}: gh workflow run rebuild-release.yaml --ref ${TAG} -f version=${VERSION}"
+            exit 1
+          fi
+
           if ! DRAFT=$(gh release view "$TAG" --json isDraft --jq .isDraft); then
             echo "::error::No release found for ${TAG}."
             exit 1

@@ -99,6 +99,9 @@ jobs:
   release-please:
     name: Release please
     runs-on: ubuntu-latest
+    # release-please acts with the app token; GITHUB_TOKEN needs nothing.
+    permissions:
+      contents: read
     outputs:
       release-created: ${{ steps.release.outputs.release_created }}
       version: ${{ steps.release.outputs.version }}

@@ -31,7 +31,10 @@ on:
         type: string
         default: ""
       push:
-        description: Push the image and publish the release. Off for pull request checks
+        description: >-
+          Push the image and publish the release-please draft for tag-name. The
+          caller must run at the tagged commit, and must grant contents, packages,
+          id-token and attestations write. Off for pull request checks
         required: false
         type: boolean
         default: false
@@ -41,7 +44,7 @@ on:
         type: string
         default: ""
       tag-name:
-        description: Git tag of the release-please draft to build from and publish
+        description: Git tag of the release-please draft to publish. Must point at the commit being built
         required: false
         type: string
         default: ""
@@ -76,9 +79,7 @@ on:
     outputs:
       digest:
         description: Image digest (empty unless push is true)
-        value: ${{ jobs.build.outputs.digest }}
-
-# No permissions block: jobs inherit the caller's, so pull request callers can grant contents: read only.
+        value: ${{ jobs.publish.outputs.digest }}
 
 concurrency:
   group: build-${{ inputs.image || github.event.repository.name }}-${{ inputs.version || github.ref }}
@@ -91,7 +92,6 @@ jobs:
     uses: $/.github/workflows/_go-test.yaml
     with:
       workdir: ${{ inputs.workdir }}
-      ref: ${{ inputs.tag-name }}
 
   test-python:
     name: Test
@@ -99,25 +99,24 @@ jobs:
     uses: $/.github/workflows/_python-uv-test.yaml
     with:
       workdir: ${{ inputs.workdir }}
-      ref: ${{ inputs.tag-name }}
       extras: ${{ inputs.python-extras }}
       test-paths: ${{ inputs.python-test-paths }}
       extra-commands: ${{ inputs.python-extra-commands }}
 
   build:
-    name: ${{ inputs.push && 'Build and publish' || 'Build' }}
+    name: Build
     needs:
       - test-go
       - test-python
     # At most one test job runs; a skipped need makes the implicit success() false.
     if: >-
-      !cancelled()
+      !cancelled() && !inputs.push
       && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
-    outputs:
-      digest: ${{ steps.build.outputs.digest }}
+    permissions:
+      contents: read
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -127,32 +126,84 @@ jobs:
       - name: Validate inputs
         env:
           LANGUAGE: ${{ inputs.language }}
-          PUSH: ${{ inputs.push }}
-          TAG_NAME: ${{ inputs.tag-name }}
         run: |
           case "$LANGUAGE" in
             go | python | none) ;;
             *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
           esac
-          if [ "$PUSH" = "true" ] && [ -z "$TAG_NAME" ]; then
-            echo "::error::tag-name is required when push is true"
-            exit 1
-          fi
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          ref: ${{ inputs.tag-name }}
           persist-credentials: false
 
       - name: Build image
+        uses: $/.github/actions/build-image
+        with:
+          image: ${{ inputs.image || github.event.repository.name }}
+          context: ${{ inputs.context }}
+          dockerfile: ${{ inputs.dockerfile }}
+          version: ${{ inputs.version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
+          dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+
+  publish:
+    name: Build and publish
+    needs:
+      - test-go
+      - test-python
+    if: >-
+      !cancelled() && inputs.push
+      && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
+      && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # No permissions block on purpose: requesting write here fails read-only PR callers at startup, even though the job is skipped.
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify the tag is the commit being built
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          LANGUAGE: ${{ inputs.language }}
+          TAG_NAME: ${{ inputs.tag-name }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$LANGUAGE" in
+            go | python | none) ;;
+            *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
+          esac
+          if [ -z "$TAG_NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error::tag-name and version are required when push is true"
+            exit 1
+          fi
+          TAG_SHA=$(gh api "repos/${GH_REPO}/commits/refs/tags/${TAG_NAME}" --jq .sha)
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run checked out ${HEAD_SHA}. Run Rebuild Release from the tag."
+            exit 1
+          fi
+
+      - name: Build and push image
         id: build
         uses: $/.github/actions/build-image
         with:
           image: ${{ inputs.image || github.event.repository.name }}
           context: ${{ inputs.context }}
           dockerfile: ${{ inputs.dockerfile }}
-          push: ${{ inputs.push }}
+          push: "true"
           version: ${{ inputs.version }}
           tag-prefix: ${{ inputs.tag-prefix }}
           go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
@@ -161,7 +212,6 @@ jobs:
 
       # Must stay last: on failure the release stays a draft, so a published release always has an image.
       - name: Publish release
-        if: inputs.push
         uses: $/.github/actions/publish-release
         with:
           tag: ${{ inputs.tag-name }}

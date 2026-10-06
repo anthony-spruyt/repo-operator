@@ -24,7 +24,7 @@ jobs:
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
 
       - name: Trivy scan
-        uses: anthony-spruyt/repo-operator/.github/actions/trivy-scan@main
+        uses: $/.github/actions/trivy-scan
         with:
           scan-type: fs
           severity: CRITICAL,HIGH
