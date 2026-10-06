@@ -73,7 +73,6 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - Trivy scanners are set by `scan.scanners` in `trivy-mega-linter.yaml`; `.mega-linter-base.yml` only strips MegaLinter's default `--scanners vuln,misconfig` so the config file wins. Vulnerabilities are scanned by the daily Trivy workflow instead.
 - `prOptions.ai.prompt` in `base.yaml` keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
 - The `request owner review` rule in `.mergify.yml` skips bots by exact login. An `author~=\[bot\]$` regex would also skip `skynet-rw[bot]` agent PRs, the ones it exists for.
-- A per-repo string `content` override replaces the whole text file. litellm-middleware's `.github/CODEOWNERS` override repeats `templates/.github/CODEOWNERS`, so change both together.
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
 ### Adding a New Repository

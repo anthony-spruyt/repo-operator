@@ -226,7 +226,11 @@ groups:
   protected-main-branch:
     files:
       .github/CODEOWNERS:
-        content: "@templates/.github/CODEOWNERS"
+        mergeStrategy: append # keep the base an inline list: an @templates string base is replaced, not appended to
+        content:
+          - "# Protect CI/CD configuration from unauthorized changes"
+          - ".github/workflows/ @anthony-spruyt"
+          - ".github/actions/   @anthony-spruyt"
     settings:
       rulesets:
         pr-rules:
