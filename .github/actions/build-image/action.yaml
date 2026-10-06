@@ -177,6 +177,7 @@ runs:
       id: meta
       uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
       with:
+        context: git
         images: ${{ steps.refs.outputs.images }}
         # The highest-priority tag becomes the version label; semver rules default to 900
         tags: |
