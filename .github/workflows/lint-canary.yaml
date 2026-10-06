@@ -15,6 +15,7 @@ on:
       - src/templates/.mega-linter-base.yml
       - src/templates/.mega-linter.yml
       - src/templates/lint.sh
+      - src/templates/lint.sh.tmpl
       - src/templates/ruff-base.toml
       - src/templates/trivy-mega-linter.yaml
 
