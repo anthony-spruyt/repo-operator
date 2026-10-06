@@ -1,0 +1,50 @@
+---
+# Run as the last step of the publishing job: a release left in draft means the image never shipped.
+name: Publish Release
+description: >-
+  Append the container image reference, digest and run link to a
+  release-please draft release, then publish it.
+inputs:
+  tag:
+    description: Git tag of the draft release (e.g. v1.2.3 or my-image/v1.2.3)
+    required: true
+  image-ref:
+    description: Image reference to show in the notes (e.g. ghcr.io/owner/image:1.2.3)
+    required: true
+  digest:
+    description: Image digest
+    required: true
+  github-token:
+    description: Token with contents write on this repo
+    required: false
+    default: ${{ github.token }}
+runs:
+  using: composite
+  steps:
+    - name: Publish release with image details
+      shell: bash
+      env:
+        GH_TOKEN: ${{ inputs.github-token }}
+        GH_REPO: ${{ github.repository }}
+        TAG: ${{ inputs.tag }}
+        IMAGE_REF: ${{ inputs.image-ref }}
+        DIGEST: ${{ inputs.digest }}
+        RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        RUN_ID: ${{ github.run_id }}
+      run: |
+        if [ -z "$DIGEST" ]; then
+          echo "::error::No image digest; refusing to publish ${TAG}"
+          exit 1
+        fi
+        BODY=$(gh release view "$TAG" --json body --jq .body)
+        NOTES=$(mktemp)
+        {
+          printf '%s\n\n' "$BODY"
+          printf '## Container Image\n\n'
+          # shellcheck disable=SC2016
+          printf '```\n%s\n```\n\n' "$IMAGE_REF"
+          # shellcheck disable=SC2016
+          printf '**Digest:** `%s`\n\n' "$DIGEST"
+          printf '**Run:** [#%s](%s)\n' "$RUN_ID" "$RUN_URL"
+        } > "$NOTES"
+        gh release edit "$TAG" --notes-file "$NOTES" --draft=false

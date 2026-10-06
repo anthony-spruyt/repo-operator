@@ -1,0 +1,96 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Python Tests
+
+on:
+  workflow_call:
+    inputs:
+      workdir:
+        description: Project root (the directory holding pyproject.toml and uv.lock)
+        required: false
+        type: string
+        default: "."
+      python-version:
+        description: Python version for uv. Empty uses .python-version or requires-python
+        required: false
+        type: string
+        default: ""
+      groups:
+        description: Space-separated PEP 735 dependency groups to install besides uv's default "dev" (uv --group)
+        required: false
+        type: string
+        default: ""
+      extras:
+        description: Space-separated optional-dependency extras to install (uv --extra)
+        required: false
+        type: string
+        default: ""
+      test-paths:
+        description: One pytest target per line, each run as its own pytest call. Empty runs pytest once with its own config
+        required: false
+        type: string
+        default: ""
+      extra-commands:
+        description: Shell commands run after pytest, one per line (e.g. "uv run --frozen mypy .")
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+jobs:
+  test:
+    name: Python Test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: ${{ inputs.workdir }}
+    env:
+      PYTHONDONTWRITEBYTECODE: "1"
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup uv
+        uses: astral-sh/setup-uv@c18668ad3cf93ea998bef934396af7bb5c839dc7 # v10.2.0
+        with:
+          python-version: ${{ inputs.python-version }}
+          cache-dependency-glob: ${{ inputs.workdir }}/uv.lock
+
+      - name: Run tests
+        env:
+          DEP_GROUPS: ${{ inputs.groups }}
+          EXTRAS: ${{ inputs.extras }}
+          TEST_PATHS: ${{ inputs.test-paths }}
+        run: |
+          args=(--frozen --no-build)
+          for group in $DEP_GROUPS; do
+            args+=(--group "$group")
+          done
+          for extra in $EXTRAS; do
+            args+=(--extra "$extra")
+          done
+          if [ -z "$TEST_PATHS" ]; then
+            uv run "${args[@]}" pytest
+            exit 0
+          fi
+          while IFS= read -r path; do
+            [ -z "$path" ] && continue
+            echo "::group::pytest $path"
+            uv run "${args[@]}" pytest "$path"
+            echo "::endgroup::"
+          done <<< "$TEST_PATHS"
+
+      - name: Extra commands
+        if: inputs.extra-commands != ''
+        env:
+          EXTRA_COMMANDS: ${{ inputs.extra-commands }}
+        run: bash -euo pipefail -c "$EXTRA_COMMANDS"

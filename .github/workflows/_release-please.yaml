@@ -1,0 +1,170 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Release Please
+
+on:
+  workflow_call:
+    inputs:
+      config-file:
+        description: release-please config with a single root (".") package and draft enabled
+        required: false
+        type: string
+        default: release-please-config.json
+      manifest-file:
+        description: release-please manifest
+        required: false
+        type: string
+        default: .release-please-manifest.json
+      language:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: none
+      workdir:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: "."
+      image:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      context:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      tag-prefix:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      dockerhub-namespace:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      dockerhub-username:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-version:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-groups:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-extras:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-test-paths:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-extra-commands:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+    secrets:
+      RELEASE_PLEASE_APP_CLIENT_ID:
+        required: true
+      RELEASE_PLEASE_APP_PRIVATE_KEY:
+        required: true
+      DOCKERHUB_TOKEN:
+        required: false
+    outputs:
+      release-created:
+        description: "'true' when this run created a release"
+        value: ${{ jobs.release-please.outputs.release-created }}
+      version:
+        description: Released version, without a leading v
+        value: ${{ jobs.release-please.outputs.version }}
+      tag-name:
+        description: Git tag of the release
+        value: ${{ jobs.release-please.outputs.tag-name }}
+      digest:
+        description: Image digest, when an image was published
+        value: ${{ jobs.build.outputs.digest }}
+
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  release-please:
+    name: Release please
+    runs-on: ubuntu-latest
+    # release-please acts with the app token; GITHUB_TOKEN needs nothing.
+    permissions:
+      contents: read
+    outputs:
+      release-created: ${{ steps.release.outputs.release_created }}
+      version: ${{ steps.release.outputs.version }}
+      tag-name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      # GITHUB_TOKEN pull requests do not trigger the status checks that pr-rules requires.
+      - name: Mint app token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+
+      - name: Run release-please
+        id: release
+        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
+        with:
+          token: ${{ steps.app-token.outputs.token }}
+          config-file: ${{ inputs.config-file }}
+          manifest-file: ${{ inputs.manifest-file }}
+
+  build:
+    name: Image
+    needs: release-please
+    if: needs.release-please.outputs.release-created == 'true'
+    uses: $/.github/workflows/_build-image.yaml
+    with:
+      language: ${{ inputs.language }}
+      workdir: ${{ inputs.workdir }}
+      image: ${{ inputs.image }}
+      context: ${{ inputs.context }}
+      dockerfile: ${{ inputs.dockerfile }}
+      push: true
+      version: ${{ needs.release-please.outputs.version }}
+      tag-name: ${{ needs.release-please.outputs.tag-name }}
+      tag-prefix: ${{ inputs.tag-prefix }}
+      dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+      dockerhub-username: ${{ inputs.dockerhub-username }}
+      test-command: ${{ inputs.test-command }}
+      python-version: ${{ inputs.python-version }}
+      python-groups: ${{ inputs.python-groups }}
+      python-extras: ${{ inputs.python-extras }}
+      python-test-paths: ${{ inputs.python-test-paths }}
+      python-extra-commands: ${{ inputs.python-extra-commands }}
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

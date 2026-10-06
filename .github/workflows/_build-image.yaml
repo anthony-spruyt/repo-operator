@@ -1,0 +1,244 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Build Image
+
+on:
+  workflow_call:
+    inputs:
+      language:
+        description: Test suite to run before the build (go, python or none)
+        required: false
+        type: string
+        default: none
+      workdir:
+        description: Project root for tests (go.mod or pyproject.toml lives here)
+        required: false
+        type: string
+        default: "."
+      image:
+        description: Image name, also the GHCR package name. Defaults to the repository name
+        required: false
+        type: string
+        default: ""
+      context:
+        description: Docker build context
+        required: false
+        type: string
+        default: "."
+      dockerfile:
+        description: Dockerfile path. Defaults to <context>/Dockerfile
+        required: false
+        type: string
+        default: ""
+      push:
+        description: >-
+          Push the image and publish the release-please draft for tag-name. The
+          caller must run at the tagged commit, and must grant contents, packages,
+          id-token and attestations write. Off for pull request checks
+        required: false
+        type: boolean
+        default: false
+      version:
+        description: Version to publish, without a leading v. Required when push is true
+        required: false
+        type: string
+        default: ""
+      tag-name:
+        description: Git tag of the release-please draft to publish. Must point at the commit being built
+        required: false
+        type: string
+        default: ""
+      tag-prefix:
+        description: Prefix for the docker version tags only ('' or 'v')
+        required: false
+        type: string
+        default: ""
+      dockerhub-namespace:
+        description: Also push to docker.io/<namespace>/<image> (needs the DOCKERHUB_TOKEN secret)
+        required: false
+        type: string
+        default: ""
+      dockerhub-username:
+        description: Docker Hub login. Defaults to dockerhub-namespace
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Shell command run against the built image ($IMAGE_REF) before push; also runs on PR builds
+        required: false
+        type: string
+        default: ""
+      python-version:
+        description: Passed to _python-uv-test.yaml as python-version
+        required: false
+        type: string
+        default: ""
+      python-groups:
+        description: Passed to _python-uv-test.yaml as groups
+        required: false
+        type: string
+        default: ""
+      python-extras:
+        description: Passed to _python-uv-test.yaml as extras
+        required: false
+        type: string
+        default: ""
+      python-test-paths:
+        description: Passed to _python-uv-test.yaml as test-paths
+        required: false
+        type: string
+        default: ""
+      python-extra-commands:
+        description: Passed to _python-uv-test.yaml as extra-commands
+        required: false
+        type: string
+        default: ""
+    secrets:
+      DOCKERHUB_TOKEN:
+        required: false
+    outputs:
+      digest:
+        description: Image digest (empty unless push is true)
+        value: ${{ jobs.publish.outputs.digest }}
+
+concurrency:
+  group: build-${{ inputs.image || github.event.repository.name }}-${{ inputs.version || github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  test-go:
+    name: Test
+    if: inputs.language == 'go'
+    uses: $/.github/workflows/_go-test.yaml
+    with:
+      workdir: ${{ inputs.workdir }}
+
+  test-python:
+    name: Test
+    if: inputs.language == 'python'
+    uses: $/.github/workflows/_python-uv-test.yaml
+    with:
+      workdir: ${{ inputs.workdir }}
+      python-version: ${{ inputs.python-version }}
+      groups: ${{ inputs.python-groups }}
+      extras: ${{ inputs.python-extras }}
+      test-paths: ${{ inputs.python-test-paths }}
+      extra-commands: ${{ inputs.python-extra-commands }}
+
+  build:
+    name: Build
+    needs:
+      - test-go
+      - test-python
+    # At most one test job runs; a skipped need makes the implicit success() false.
+    if: >-
+      !cancelled() && !inputs.push
+      && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
+      && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Validate inputs
+        env:
+          LANGUAGE: ${{ inputs.language }}
+        run: |
+          case "$LANGUAGE" in
+            go | python | none) ;;
+            *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
+          esac
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Build image
+        uses: $/.github/actions/build-image
+        with:
+          image: ${{ inputs.image || github.event.repository.name }}
+          context: ${{ inputs.context }}
+          dockerfile: ${{ inputs.dockerfile }}
+          version: ${{ inputs.version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
+          dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+          test-command: ${{ inputs.test-command }}
+
+  publish:
+    name: Build and publish
+    needs:
+      - test-go
+      - test-python
+    if: >-
+      !cancelled() && inputs.push
+      && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
+      && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    # No permissions block on purpose: requesting write here fails read-only PR callers at startup, even though the job is skipped.
+    outputs:
+      digest: ${{ steps.build.outputs.digest }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Verify the tag is the commit being built
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          LANGUAGE: ${{ inputs.language }}
+          TAG_NAME: ${{ inputs.tag-name }}
+          VERSION: ${{ inputs.version }}
+        run: |
+          case "$LANGUAGE" in
+            go | python | none) ;;
+            *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
+          esac
+          if [ -z "$TAG_NAME" ] || [ -z "$VERSION" ]; then
+            echo "::error::tag-name and version are required when push is true"
+            exit 1
+          fi
+          TAG_SHA=$(gh api "repos/${GH_REPO}/commits/refs/tags/${TAG_NAME}" --jq .sha)
+          HEAD_SHA=$(git rev-parse HEAD)
+          if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
+            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run checked out ${HEAD_SHA}. Run Rebuild Release from the tag."
+            exit 1
+          fi
+
+      - name: Build and push image
+        id: build
+        uses: $/.github/actions/build-image
+        with:
+          image: ${{ inputs.image || github.event.repository.name }}
+          context: ${{ inputs.context }}
+          dockerfile: ${{ inputs.dockerfile }}
+          push: "true"
+          version: ${{ inputs.version }}
+          tag-prefix: ${{ inputs.tag-prefix }}
+          go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
+          dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+          dockerhub-username: ${{ inputs.dockerhub-username }}
+          dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          test-command: ${{ inputs.test-command }}
+
+      # Must stay last: on failure the release stays a draft, so a published release always has an image.
+      - name: Publish release
+        uses: $/.github/actions/publish-release
+        with:
+          tag: ${{ inputs.tag-name }}
+          image-ref: ${{ steps.build.outputs.image-ref }}
+          digest: ${{ steps.build.outputs.digest }}
