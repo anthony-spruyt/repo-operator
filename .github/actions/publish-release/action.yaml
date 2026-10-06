@@ -36,6 +36,10 @@ runs:
           echo "::error::No image digest; refusing to publish ${TAG}"
           exit 1
         fi
+        if [ "$(gh release view "$TAG" --json isDraft --jq .isDraft)" != "true" ]; then
+          echo "::notice::Release ${TAG} is already published; leaving it unchanged"
+          exit 0
+        fi
         BODY=$(gh release view "$TAG" --json body --jq .body)
         NOTES=$(mktemp)
         {

@@ -12,7 +12,7 @@ A reusable workflow resolves `uses: ./...` against the caller's checkout, not ag
 
 Builds an image with buildx. With `push: "true"` it also pushes to GHCR, and to Docker Hub when `dockerhub-namespace` is set. The push includes an SBOM, `provenance: mode=max` and an `actions/attest-build-provenance` attestation.
 
-Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first. Pushing needs `packages`, `id-token` and `attestations: write`.
+Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first: labels such as `org.opencontainers.image.revision` come from the checked-out commit (`docker/metadata-action` `context: git`). Check out a branch, tag or pull request ref, not a bare SHA, which metadata-action v6.2.0 can't resolve ([docker/metadata-action#720](https://github.com/docker/metadata-action/issues/720)). Pushing needs `packages`, `id-token` and `attestations: write`.
 
 - `image` (default: repository name): image and GHCR package name
 - `context` (default `.`): build context
@@ -33,14 +33,14 @@ The action outputs `digest` and `image-ref` (`ghcr.io/<owner>/<image>:<prefix><v
 
 ### `publish-release`
 
-Appends the image reference, digest and run link to a release-please draft release, then publishes it. Run it as the last step of the job that pushed the image. If any earlier step fails, the release stays a draft, so a published release always has an image behind it. The action refuses to publish with an empty digest.
+Appends the image reference, digest and run link to a release-please draft release, then publishes it. Run it as the last step of the job that pushed the image. If any earlier step fails, the release stays a draft, so a published release always has an image behind it. The action refuses to publish with an empty digest, and leaves an already published release unchanged.
 
 Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.token`, which needs `contents: write`).
 
 ## Reusable workflows
 
-- `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`), at `ref` (default: the run's commit). Needs `contents: read`.
-- `_python-uv-test.yaml`: `uv run --frozen pytest` at `ref` (default: the run's commit), once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
+- `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
+- `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
@@ -111,9 +111,13 @@ Roll it out in this order:
 2. The image is built from that tag, tested, pushed and attested.
 3. `publish-release` adds the image details and undrafts the release.
 
-The image job and its tests check out `refs/tags/<tag-name>`, not the commit the run started from. A push to `main` while a Release Please run is pending makes GitHub cancel that run. If it was the release PR's merge, the next run's release-please creates the release instead, and its image job still builds the tagged commit. The `tag-rules` ruleset stops tags from moving.
+The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. The provenance attestation always names the run's commit (`github.sha`), and no input overrides it, so building any other commit would sign the wrong source. release-please tags the release PR's merge commit, which is the commit its run starts from.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` (`gh workflow run rebuild-release.yaml -f version=X.Y.Z`). It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
+A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft and the run fails with the rebuild command.
+
+If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
+
+`publish-release` leaves a release that is already published unchanged, so a rebuild that overlaps the release run's image job doesn't append a second image section.
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
