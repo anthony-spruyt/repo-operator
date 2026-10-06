@@ -133,6 +133,14 @@ repos:
       - mergify
       - renovate
       - sonar
+    files:
+      .github/CODEOWNERS:
+        content: |
+          # Protect CI/CD configuration from unauthorized changes
+          .github/workflows/ @anthony-spruyt
+          .github/actions/   @anthony-spruyt
+          /scripts/release_gate.py                @anthony-spruyt
+          /tests/unit/scripts/test_release_gate.py @anthony-spruyt
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
