@@ -337,7 +337,7 @@ repos:
       .lint-config.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-sungather
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-sungather:2.0.3@sha256:1ff8b26ae1889e155ba27f2474169989256008ab8610a73669e11f9431b65163"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-sungather:3.0.0@sha256:f8cfc49407ddea8dbdac09a65464a052779adad50bfae0bc2202e936d2271d96"
       .mcp.json:
         content:
           mcpServers:
