@@ -1,0 +1,22 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "Container Retention"
+
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: "List what would be deleted without deleting it"
+        type: "boolean"
+        default: true
+
+permissions: {}
+
+jobs:
+  cleanup:
+    permissions:
+      packages: "write"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main"
+    with:
+      # Other triggers get no inputs, and null == false in expressions, so they dry-run
+      dry-run: "${{ github.event_name != 'workflow_dispatch' || inputs.dry-run }}"
