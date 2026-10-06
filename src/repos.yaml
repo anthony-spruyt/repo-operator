@@ -138,6 +138,10 @@ repos:
       - renovate
       - sonar
     files:
+      .github/CODEOWNERS:
+        content:
+          - "/scripts/release_gate.py                @anthony-spruyt"
+          - "/tests/unit/scripts/test_release_gate.py @anthony-spruyt"
       .github/workflows/ci.yaml:
         content:
           jobs:
