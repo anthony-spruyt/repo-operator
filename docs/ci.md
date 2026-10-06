@@ -67,7 +67,7 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
-- `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
+- `packages` (default: repository name, lowercased): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
 - `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
@@ -126,7 +126,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 | `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list             |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                         |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
-| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
+| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`                                                                                              |
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
@@ -134,7 +134,7 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare `${...}` as a variable. The pin comes from the first match below:
 
-1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs, SunGather).
+1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs).
 2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`.
 3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
@@ -198,6 +198,15 @@ files:
 ```
 
 The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that all three called workflows accept; put any other input (such as `push`, `tag-name` or `config-file`) in that file's own overlay, or GitHub rejects the callers that don't declare it.
+
+`container-retention.yaml` cleans the lowercased repository name. A repo whose package has another name sets it with the `retentionPackages` var (comma-separated):
+
+```yaml
+files:
+  .github/workflows/container-retention.yaml:
+    vars:
+      retentionPackages: "my-image"
+```
 
 ## Caller example (Go)
 

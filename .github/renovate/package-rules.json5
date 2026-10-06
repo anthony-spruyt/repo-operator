@@ -71,12 +71,6 @@
       sourceDirectory: "megalinter-spruyt-labs"
     },
     {
-      description: "Release notes for own images: megalinter-sungather",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-sungather"],
-      sourceDirectory: "megalinter-sungather"
-    },
-    {
       description: "Release notes for own images: megalinter-typescript",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-typescript"],

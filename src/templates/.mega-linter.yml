@@ -12,7 +12,7 @@ CONFIG_PROPERTIES_TO_APPEND:
 # Add project-specific linters below:
 # ENABLE_LINTERS:
 #   - TYPESCRIPT_ES
-#   - PYTHON_PYLINT
+#   - PYTHON_RUFF
 # Exclude more directories without dropping the base ones:
 # ADDITIONAL_EXCLUDED_DIRECTORIES:
 #   - generated

@@ -18,5 +18,6 @@ jobs:
       packages: "write"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main"
     with:
+      packages: "${xfg:retentionPackages}"
       # Other triggers get no inputs, and null == false in expressions, so they dry-run
       dry-run: "${{ github.event_name != 'workflow_dispatch' || inputs.dry-run }}"
