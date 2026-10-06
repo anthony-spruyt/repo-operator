@@ -77,7 +77,7 @@ GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 ## Shared CI
 
-Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`) and composite actions (`build-image`, `publish-release`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
+Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`, `_container-retention`) and composite actions (`build-image`, `publish-release`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
 
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
