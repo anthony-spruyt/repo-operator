@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       packages:
-        description: Comma-separated GHCR package names (default the repository name). No wildcards
+        description: Comma-separated GHCR package names (default the repository name, lowercased). No wildcards
         required: false
         type: string
         default: ""
@@ -62,6 +62,7 @@ jobs:
           fi
           if [ -z "$PACKAGES" ]; then
             PACKAGES="${GITHUB_REPOSITORY#*/}"
+            PACKAGES="${PACKAGES,,}"
           fi
           case "$PACKAGES" in
             *[*?]*)
