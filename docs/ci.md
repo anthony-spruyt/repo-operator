@@ -75,7 +75,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 
 | Group               | Extends                                | Syncs                                                                                                                          |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `megalinter-flavor` | `megalinter`                           | `.lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list     |
+| `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list             |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
 | `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
@@ -84,9 +84,9 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 ### Lint image pin
 
-Every `megalinter` repo gets a managed `.lint-config.sh`, rendered from `src/templates/.lint-config.sh.tmpl`, and `lint.sh` sources it. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The pin comes from the first match below:
+Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare `${...}` as a variable. The pin comes from the first match below:
 
-1. A per-repo `.lint-config.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
+1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
 2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `go` gives `megalinter-go`, `python` gives `megalinter-python`.
 3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
@@ -94,7 +94,7 @@ No conditional sets a pin for a `megalinter-flavor` repo with both `go` and `pyt
 
 ### Reverting a bad bump
 
-A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
+A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `lint.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
 ### Lint config
 

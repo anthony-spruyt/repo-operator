@@ -8,7 +8,7 @@ repos:
       - megalinter
       - renovate
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-chromance
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-chromance:1.1.1@sha256:1e8cfe826b494afabd2a3bc56f6d7512651138a6b4116fe605dc5b6ba97efc43"
@@ -222,7 +222,7 @@ repos:
       - renovate
       - sonar
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v3.0.0@sha256:c6b6fd9592be86227e7fb16a3d0d37acba2f7ed208c42e1c214b16657514c67f"
@@ -350,7 +350,7 @@ repos:
       - renovate
       - sonar
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-sungather
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-sungather:2.0.3@sha256:1ff8b26ae1889e155ba27f2474169989256008ab8610a73669e11f9431b65163"
@@ -430,7 +430,7 @@ repos:
       - renovate
       - sonar
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-xfg
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-xfg:v2.0.4@sha256:048c59dadfa90a1c2cfd631867958e4a07a0b07b67ad0a84555d292cd70dc4c5"
