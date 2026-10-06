@@ -72,6 +72,7 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - MegaLinter excludes live in `.mega-linter-base.yml` as `ADDITIONAL_EXCLUDED_DIRECTORIES`, which adds to MegaLinter's defaults (`.git`, `node_modules`, ...). Repos add more via the same key, listed in `CONFIG_PROPERTIES_TO_APPEND`. Setting `EXCLUDED_DIRECTORIES` in a repo replaces MegaLinter's defaults, not the base list.
 - Trivy scanners are set by `scan.scanners` in `trivy-mega-linter.yaml`; `.mega-linter-base.yml` only strips MegaLinter's default `--scanners vuln,misconfig` so the config file wins. Vulnerabilities are scanned by the daily Trivy workflow instead.
 - `prOptions.ai.prompt` in `base.yaml` keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
+- The `request owner review` rule in `.mergify.yml` skips bots by exact login. An `author~=\[bot\]$` regex would also skip `skynet-rw[bot]` agent PRs, the ones it exists for.
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
 ### Adding a New Repository

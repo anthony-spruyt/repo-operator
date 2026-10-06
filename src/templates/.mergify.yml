@@ -44,6 +44,7 @@ pull_request_rules:
           - agent/needs-review
   - name: request owner review
     conditions:
+      - base = main
       - -closed
       - -draft
       - -author = renovate[bot]
