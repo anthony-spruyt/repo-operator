@@ -68,7 +68,7 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
 - `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
-- `older-than` (default `4 weeks`): must not be empty
+- `older-than` (default `4 weeks`): must be a positive interval, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
 
@@ -76,11 +76,11 @@ Runs for the same repo queue rather than overlap, because the action is not safe
 
 The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
 
+Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
+
 ```yaml
 name: Container Retention
 on:
-  schedule:
-    - cron: "0 5 * * 0"
   workflow_dispatch:
     inputs:
       dry-run:
@@ -96,6 +96,14 @@ jobs:
     with:
       dry-run: ${{ inputs.dry-run || false }}
 ```
+
+Roll it out in this order:
+
+1. Give the calling repo the **Admin** role on each package.
+2. Dispatch with `dry-run` on, and check the logged deletions.
+3. Dispatch once with `dry-run` off.
+4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
+5. Only then add a `schedule` trigger, for example `cron: "0 5 * * 0"`. A scheduled run has no inputs, so `dry-run` falls back to `false` and the run deletes.
 
 ### Release flow
 
