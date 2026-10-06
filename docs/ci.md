@@ -76,7 +76,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 | Group               | Extends                                | Syncs                                                                                                                          |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
 | `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list             |
-| `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
+| `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                         |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
 | `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
 
@@ -86,11 +86,13 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare `${...}` as a variable. The pin comes from the first match below:
 
-1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
-2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `go` gives `megalinter-go`, `python` gives `megalinter-python`.
+1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs, SunGather).
+2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`.
 3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
-No conditional sets a pin for a `megalinter-flavor` repo with both `go` and `python`, or with neither, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Both languages need the compound `megalinter-go-python` flavor: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
+Each language conditional excludes the others with `noneOf`, so a repo never gets two pins. A `megalinter-flavor` repo with two language groups gets none and fails the plan with `Unknown xfg template variable: megalinterImage`.
+
+Two languages need a compound flavor such as `megalinter-go-python`: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
 
 ### Reverting a bad bump
 
