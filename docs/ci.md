@@ -68,7 +68,7 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
 - `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
-- `older-than` (default `4 weeks`): must be a positive interval, such as `4 weeks` or `30 days`
+- `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
 
