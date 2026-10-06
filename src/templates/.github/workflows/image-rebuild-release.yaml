@@ -1,0 +1,24 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "Rebuild Release"
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version to rebuild, without a leading v (e.g., 1.0.0)"
+        required: true
+        type: "string"
+
+permissions:
+  contents: "write"
+  packages: "write"
+  id-token: "write"
+  attestations: "write"
+
+jobs:
+  rebuild:
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_rebuild-release.yaml@main"
+    with:
+      version: "${{ inputs.version }}"
+      language: "${xfg:language}"

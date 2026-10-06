@@ -1,0 +1,35 @@
+# This file is automatically updated - do not modify directly
+# Extend it from pyproject.toml: [tool.ruff] extend = "ruff-base.toml"
+
+line-length = 120
+
+[lint]
+select = [
+    "A",
+    "ASYNC",
+    "B",
+    "BLE",
+    "C4",
+    "E",
+    "F",
+    "FURB",
+    "I",
+    "LOG",
+    "N",
+    "PERF",
+    "PIE",
+    "PLE",
+    "PLW",
+    "PT",
+    "RET",
+    "RUF",
+    "SIM",
+    "UP",
+    "W",
+]
+
+[format]
+quote-style = "double"
+indent-style = "space"
+line-ending = "lf"
+docstring-code-format = true

@@ -81,6 +81,58 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
         content: "@templates/.github/workflows/ci.yaml"
+  image:
+    extends:
+      - github-ci
+      - release-please
+    files:
+      .github/workflows/ci.yaml:
+        createOnly: false
+        override: true
+        template: true
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/image-ci.yaml"
+      .github/workflows/release-please.yaml:
+        template: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/image-release-please.yaml"
+      .github/workflows/rebuild-release.yaml:
+        template: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/image-rebuild-release.yaml"
+  go-image:
+    extends:
+      - image
+      - go
+      - megalinter-flavor
+    files:
+      .github/workflows/ci.yaml:
+        vars:
+          language: go
+      .github/workflows/release-please.yaml:
+        vars:
+          language: go
+      .github/workflows/rebuild-release.yaml:
+        vars:
+          language: go
+  python-image:
+    extends:
+      - image
+      - python
+      - megalinter-flavor
+    files:
+      .pylintrc: false
+      .github/workflows/ci.yaml:
+        vars:
+          language: python
+      .github/workflows/release-please.yaml:
+        vars:
+          language: python
+      .github/workflows/rebuild-release.yaml:
+        vars:
+          language: python
   github-trivy:
     extends: github
     files:
@@ -163,9 +215,9 @@ groups:
         content: "@templates/.secretlintignore"
       .shellcheckrc:
         createOnly: true
-      lint-config.sh:
-        createOnly: true
-        content: "@templates/lint-config.sh"
+      .lint-config.sh:
+        template: true
+        content: "@templates/.lint-config.sh.tmpl"
       lint.sh:
         content: "@templates/lint.sh"
       trivy-mega-linter.yaml:
@@ -174,6 +226,8 @@ groups:
           - This file is automatically updated - do not modify directly
           - https://trivy.dev/latest/docs/references/configuration/config-file/
         content: "@templates/trivy-mega-linter.yaml"
+  megalinter-flavor:
+    extends: megalinter
   mergify:
     extends:
       - github-ci
@@ -386,6 +440,58 @@ conditionalGroups:
                   - id: remove-crlf
                   - id: remove-tabs
                     args: [--whitespaces-count, "2"]
+  - when:
+      allOf: [megalinter]
+      noneOf: [megalinter-flavor]
+    files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-container-images
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
+  - when:
+      allOf: [megalinter-flavor, go]
+      noneOf: [python]
+    files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:1.0.0@sha256:e4031431ee715a9f621fcb7cfbae056b60c5616e1ecb4d296142a713a537e6ff"
+  - when:
+      allOf: [megalinter-flavor, python]
+      noneOf: [go]
+    files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.0.0@sha256:1bc5bf1a854a1addd7142a096b1a1c85c6521fe9367ef92d424a26b3d7aa93f8"
+  - when:
+      allOf: [megalinter-flavor, go]
+    files:
+      .golangci.yml:
+        template: true
+        schemaUrl: https://golangci-lint.run/jsonschema/golangci.jsonschema.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.golangci.yml"
+      .mega-linter-base.yml:
+        content:
+          ENABLE_LINTERS:
+            $arrayMerge: append
+            $values:
+              - "GO_GOLANGCI_LINT"
+  - when:
+      allOf: [megalinter-flavor, python]
+    files:
+      ruff-base.toml:
+        content: "@templates/ruff-base.toml"
+      .mega-linter-base.yml:
+        content:
+          ENABLE_LINTERS:
+            $arrayMerge: append
+            $values:
+              - "PYTHON_RUFF"
+              - "PYTHON_RUFF_FORMAT"
+          PYTHON_RUFF_CONFIG_FILE: "pyproject.toml"
+          PYTHON_RUFF_FORMAT_CONFIG_FILE: "pyproject.toml"
   - when:
       allOf: [claude, terraform]
     files:
