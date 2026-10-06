@@ -1,0 +1,37 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "CI"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+  push:
+    branches:
+      - "main"
+
+permissions:
+  contents: "read"
+
+jobs:
+  lint:
+    permissions:
+      actions: "write"
+      contents: "read"
+      security-events: "write"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"
+
+  image:
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main"
+    with:
+      language: "${xfg:language}"
+
+  summary:
+    needs:
+      - "lint"
+      - "image"
+    if: "always()"
+    permissions:
+      actions: "read"
+      contents: "read"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"

@@ -8,6 +8,10 @@ repos:
       - megalinter
       - renovate
     files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-chromance
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-chromance:1.1.0@sha256:12c6f486763ec18e8dda4cc059378efed159911db4a16240879bb8d35f626ce6"
       .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
         content:
@@ -110,7 +114,7 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -128,11 +132,30 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - python
+      - python-image
       - release-please
       - mergify
       - renovate
       - sonar
+    files:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with: &litellm-middleware-with
+                python-test-paths: |
+                  tests/unit
+                  tests/integration
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            release:
+              with: *litellm-middleware-with
+      .github/workflows/rebuild-release.yaml:
+        content:
+          jobs:
+            rebuild:
+              with: *litellm-middleware-with
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
@@ -146,7 +169,7 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -183,6 +206,10 @@ repos:
       - renovate
       - sonar
     files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v2.0.4@sha256:e9267e114872589798c8c98137ce5971ef7b5a93afa5bb615a10df0d9c638c86"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -307,6 +334,10 @@ repos:
       - renovate
       - sonar
     files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-sungather
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-sungather:2.0.2@sha256:19482a7fd72bb5eb7c62e03f1605f5c75d0bc5ba395c0b3ebf9f91be753c99a8"
       .mcp.json:
         content:
           mcpServers:
@@ -324,7 +355,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -332,6 +363,38 @@ repos:
     files:
       # Fork of linkphoenix/traefik-api-key-auth - must keep the upstream ISC license
       LICENSE: false
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with: &traefik-api-key-auth-with
+                test-command: "./scripts/test-image.sh"
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            release:
+              with: *traefik-api-key-auth-with
+      .github/workflows/rebuild-release.yaml:
+        content:
+          jobs:
+            rebuild:
+              with: *traefik-api-key-auth-with
+      .golangci.yml:
+        content:
+          linters:
+            enable:
+              $arrayMerge: append
+              $values:
+                - depguard
+            settings:
+              depguard:
+                rules:
+                  yaegi:
+                    deny:
+                      - pkg: "unsafe"
+                        desc: "Traefik's Yaegi interpreter does not allow unsafe"
+                      - pkg: "syscall"
+                        desc: "Traefik's Yaegi interpreter does not allow syscall"
     settings:
       repo:
         description: "Traefik middleware plugin for API key authentication."
@@ -351,6 +414,10 @@ repos:
       - renovate
       - sonar
     files:
+      .lint-config.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-xfg
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-xfg:v2.0.4@sha256:048c59dadfa90a1c2cfd631867958e4a07a0b07b67ad0a84555d292cd70dc4c5"
       .devcontainer/devcontainer.json:
         content:
           features:
