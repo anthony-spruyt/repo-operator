@@ -12,7 +12,7 @@ A reusable workflow resolves `uses: ./...` against the caller's checkout, not ag
 
 Builds an image with buildx. With `push: "true"` it also pushes to GHCR, and to Docker Hub when `dockerhub-namespace` is set. The push includes an SBOM, `provenance: mode=max` and an `actions/attest-build-provenance` attestation.
 
-Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. Check out the repo first. Pushing needs `packages`, `id-token` and `attestations: write`.
+Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first. Pushing needs `packages`, `id-token` and `attestations: write`.
 
 - `image` (default: repository name): image and GHCR package name
 - `context` (default `.`): build context
