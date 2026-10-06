@@ -136,6 +136,18 @@ repos:
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
+      rulesets:
+        pr-rules:
+          rules:
+            $arrayMerge: merge
+            $values:
+              - type: required_status_checks
+                parameters:
+                  requiredStatusChecks:
+                    $arrayMerge: append
+                    $values:
+                      # spruyt-labs deploys the LiteLLM pin from main, so a bump must wait for the middleware release
+                      - context: "LiteLLM bump release gate"
 
   - git: https://github.com/anthony-spruyt/mcp-header-proxy.git
     groups:
