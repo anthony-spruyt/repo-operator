@@ -32,6 +32,7 @@
         ".gitignore",
         ".gitleaks.toml",
         ".jsonlintrc",
+        ".lint-config.sh",
         ".lycheeignore",
         ".markdownlint.json",
         ".markdownlintignore",
@@ -50,7 +51,6 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "LICENSE",
-        "lint-config.sh",
         "lint.sh",
         "trivy-mega-linter.yaml"
       ]

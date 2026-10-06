@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091 # ${xfg:lintConfig} path resolved at runtime
+# shellcheck disable=SC1091 # .lint-config.sh path resolved at runtime
 set -euo pipefail
 
 # This file is automatically updated - do not modify directly
@@ -14,12 +14,10 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "$${BASH_SOURCE[0]}")" && pwd)"
 
-# Source config file (required)
-# shellcheck source=${xfg:lintConfig}
-source "$REPO_ROOT/${xfg:lintConfig}"
+# shellcheck source=.lint-config.sh
+source "$REPO_ROOT/.lint-config.sh"
 
 if [[ "$${1:-}" == "--ci" ]]; then
-  # CI mode
   # Skip bot-authored commits if configured (check commit author, not workflow actor)
   if [[ "$SKIP_BOT_COMMITS" == "true" ]]; then
     commit_author="$(git log -1 --format='%an' HEAD 2>/dev/null || true)"
