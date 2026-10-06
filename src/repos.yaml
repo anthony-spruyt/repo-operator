@@ -138,7 +138,7 @@ repos:
         content:
           jobs:
             image:
-              with:
+              with: &litellm-middleware-with
                 python-test-paths: |
                   tests/unit
                   tests/integration
@@ -146,18 +146,12 @@ repos:
         content:
           jobs:
             release:
-              with:
-                python-test-paths: |
-                  tests/unit
-                  tests/integration
+              with: *litellm-middleware-with
       .github/workflows/rebuild-release.yaml:
         content:
           jobs:
             rebuild:
-              with:
-                python-test-paths: |
-                  tests/unit
-                  tests/integration
+              with: *litellm-middleware-with
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
@@ -361,20 +355,18 @@ repos:
         content:
           jobs:
             image:
-              with:
+              with: &traefik-api-key-auth-with
                 test-command: "./scripts/test-image.sh"
       .github/workflows/release-please.yaml:
         content:
           jobs:
             release:
-              with:
-                test-command: "./scripts/test-image.sh"
+              with: *traefik-api-key-auth-with
       .github/workflows/rebuild-release.yaml:
         content:
           jobs:
             rebuild:
-              with:
-                test-command: "./scripts/test-image.sh"
+              with: *traefik-api-key-auth-with
       .golangci.yml:
         content:
           linters:

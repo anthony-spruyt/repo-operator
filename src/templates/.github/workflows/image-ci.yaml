@@ -20,7 +20,6 @@ jobs:
       contents: "read"
       security-events: "write"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"
-    secrets: "inherit"
 
   image:
     uses: "anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main"
