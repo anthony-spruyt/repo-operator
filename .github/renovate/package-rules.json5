@@ -195,7 +195,7 @@
 
     // ============ Image repos released by commit type ============
     {
-      description: "Dependency bumps in image repos release a patch: release-please hides chore commits there",
+      description: "Dependency bumps in image repos release a patch: release-please hides chore commits there. The dev container never reaches the image, so it stays chore",
       matchRepositories: [
         "anthony-spruyt/kata-tap-qdisc-fix",
         "anthony-spruyt/litellm-middleware",
@@ -204,6 +204,7 @@
         "anthony-spruyt/traefik-api-key-auth"
       ],
       matchManagers: ["dockerfile", "gomod"],
+      matchFileNames: ["!.devcontainer/**"],
       semanticCommitType: "fix",
       semanticCommitScope: "deps"
     },
