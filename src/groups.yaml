@@ -215,11 +215,9 @@ groups:
         content: "@templates/.secretlintignore"
       .shellcheckrc:
         createOnly: true
-      .lint-config.sh:
-        template: true
-        content: "@templates/.lint-config.sh.tmpl"
       lint.sh:
-        content: "@templates/lint.sh"
+        template: true
+        content: "@templates/lint.sh.tmpl"
       trivy-mega-linter.yaml:
         schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
         header:
@@ -444,7 +442,7 @@ conditionalGroups:
       allOf: [megalinter]
       noneOf: [megalinter-flavor]
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-container-images
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
@@ -452,7 +450,7 @@ conditionalGroups:
       allOf: [megalinter-flavor, go]
       noneOf: [python]
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.0.0@sha256:266bda79d4b1c145beed5dcbf1c8a8607f454d743cbbcf33c6e7d89cf90c2f98"
@@ -460,7 +458,7 @@ conditionalGroups:
       allOf: [megalinter-flavor, python]
       noneOf: [go]
     files:
-      .lint-config.sh:
+      lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.0.0@sha256:1bc5bf1a854a1addd7142a096b1a1c85c6521fe9367ef92d424a26b3d7aa93f8"

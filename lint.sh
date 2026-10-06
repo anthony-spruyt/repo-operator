@@ -1,5 +1,4 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091 # .lint-config.sh path resolved at runtime
 set -euo pipefail
 
 # This file is automatically updated - do not modify directly
@@ -12,21 +11,14 @@ set -euo pipefail
 # Local mode honors APPLY_FIXES (default: all); set APPLY_FIXES=none to lint
 # without modifying any files.
 
+# Pinned in repo-operator (src/groups.yaml, or src/repos.yaml for a per-repo flavor), where Renovate bumps it
+MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
+# "all" skips MegaLinter's flavor check, which rejects custom images
+MEGALINTER_FLAVOR="all"
+
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# shellcheck source=.lint-config.sh
-source "$REPO_ROOT/.lint-config.sh"
-
 if [[ "${1:-}" == "--ci" ]]; then
-  # Skip bot-authored commits if configured (check commit author, not workflow actor)
-  if [[ "$SKIP_BOT_COMMITS" == "true" ]]; then
-    commit_author="$(git log -1 --format='%an' HEAD 2>/dev/null || true)"
-    if [[ "$commit_author" == "renovate[bot]" || "$commit_author" == "dependabot[bot]" ]]; then
-      echo "::notice::Skipping lint for bot commit (author: $commit_author)"
-      exit 0
-    fi
-  fi
-
   docker_args=(
     -e MEGALINTER_FLAVOR="$MEGALINTER_FLAVOR"
     -e SARIF_REPORTER=true
@@ -51,7 +43,6 @@ if [[ "${1:-}" == "--ci" ]]; then
 
   docker run "${docker_args[@]}" "$MEGALINTER_IMAGE"
 else
-  # Local mode - with fixes and user permissions.
   # .output may be root-owned from an earlier rootful-podman run, so fall
   # back to sudo if a plain rm is rejected.
   rm -rf "$REPO_ROOT/.output" 2>/dev/null || sudo -n rm -rf "$REPO_ROOT/.output"
