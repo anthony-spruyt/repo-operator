@@ -58,6 +58,26 @@ on:
         required: false
         type: string
         default: ""
+      dockerhub-username:
+        description: Docker Hub login. Defaults to dockerhub-namespace
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Shell command run against the built image ($IMAGE_REF) before push; also runs on PR builds
+        required: false
+        type: string
+        default: ""
+      python-version:
+        description: Passed to _python-uv-test.yaml as python-version
+        required: false
+        type: string
+        default: ""
+      python-groups:
+        description: Passed to _python-uv-test.yaml as groups
+        required: false
+        type: string
+        default: ""
       python-extras:
         description: Passed to _python-uv-test.yaml as extras
         required: false
@@ -99,6 +119,8 @@ jobs:
     uses: $/.github/workflows/_python-uv-test.yaml
     with:
       workdir: ${{ inputs.workdir }}
+      python-version: ${{ inputs.python-version }}
+      groups: ${{ inputs.python-groups }}
       extras: ${{ inputs.python-extras }}
       test-paths: ${{ inputs.python-test-paths }}
       extra-commands: ${{ inputs.python-extra-commands }}
@@ -147,6 +169,7 @@ jobs:
           tag-prefix: ${{ inputs.tag-prefix }}
           go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
           dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+          test-command: ${{ inputs.test-command }}
 
   publish:
     name: Build and publish
@@ -208,7 +231,9 @@ jobs:
           tag-prefix: ${{ inputs.tag-prefix }}
           go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
           dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+          dockerhub-username: ${{ inputs.dockerhub-username }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
+          test-command: ${{ inputs.test-command }}
 
       # Must stay last: on failure the release stays a draft, so a published release always has an image.
       - name: Publish release

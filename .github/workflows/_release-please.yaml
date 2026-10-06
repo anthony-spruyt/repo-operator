@@ -50,6 +50,26 @@ on:
         required: false
         type: string
         default: ""
+      dockerhub-username:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      test-command:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-version:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
+      python-groups:
+        description: Passed to _build-image.yaml
+        required: false
+        type: string
+        default: ""
       python-extras:
         description: Passed to _build-image.yaml
         required: false
@@ -139,6 +159,10 @@ jobs:
       tag-name: ${{ needs.release-please.outputs.tag-name }}
       tag-prefix: ${{ inputs.tag-prefix }}
       dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
+      dockerhub-username: ${{ inputs.dockerhub-username }}
+      test-command: ${{ inputs.test-command }}
+      python-version: ${{ inputs.python-version }}
+      python-groups: ${{ inputs.python-groups }}
       python-extras: ${{ inputs.python-extras }}
       python-test-paths: ${{ inputs.python-test-paths }}
       python-extra-commands: ${{ inputs.python-extra-commands }}

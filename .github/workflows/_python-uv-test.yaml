@@ -15,8 +15,13 @@ on:
         required: false
         type: string
         default: ""
+      groups:
+        description: Space-separated PEP 735 dependency groups to install besides uv's default "dev" (uv --group)
+        required: false
+        type: string
+        default: ""
       extras:
-        description: Space-separated optional-dependency groups to install (e.g. "dev")
+        description: Space-separated optional-dependency extras to install (uv --extra)
         required: false
         type: string
         default: ""
@@ -62,10 +67,14 @@ jobs:
 
       - name: Run tests
         env:
+          GROUPS: ${{ inputs.groups }}
           EXTRAS: ${{ inputs.extras }}
           TEST_PATHS: ${{ inputs.test-paths }}
         run: |
           args=(--frozen --no-build)
+          for group in $GROUPS; do
+            args+=(--group "$group")
+          done
           for extra in $EXTRAS; do
             args+=(--extra "$extra")
           done
