@@ -80,5 +80,4 @@ jobs:
           keep-n-tagged: ${{ inputs.keep-n-tagged }}
           exclude-tags: latest
           delete-ghost-images: true
-          delete-partial-images: true
           dry-run: ${{ inputs.dry-run }}

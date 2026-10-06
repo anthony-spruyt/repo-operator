@@ -63,7 +63,7 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 `_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It deletes:
 
 - tagged versions beyond the newest `keep-n-tagged` that are older than `older-than`. Old release tags go too, so consumers that pin a release must keep up. `latest` is never deleted.
-- ghost and partial multi-arch images, whose platform images are wholly or partly missing.
+- ghost multi-arch images, whose platform images are all missing.
 
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
