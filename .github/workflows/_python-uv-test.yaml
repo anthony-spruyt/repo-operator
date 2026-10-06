@@ -67,12 +67,12 @@ jobs:
 
       - name: Run tests
         env:
-          GROUPS: ${{ inputs.groups }}
+          DEP_GROUPS: ${{ inputs.groups }}
           EXTRAS: ${{ inputs.extras }}
           TEST_PATHS: ${{ inputs.test-paths }}
         run: |
           args=(--frozen --no-build)
-          for group in $GROUPS; do
+          for group in $DEP_GROUPS; do
             args+=(--group "$group")
           done
           for extra in $EXTRAS; do
