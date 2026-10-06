@@ -229,10 +229,11 @@ groups:
   megalinter-flavor:
     extends: megalinter
     files:
-      lint-config.sh:
+      lint-config.sh: false
+      .lint-config.sh:
         createOnly: false
         template: true
-        content: "@templates/lint-config-flavor.sh"
+        content: "@templates/lint-config-flavor.sh.tmpl"
   mergify:
     extends:
       - github-ci
@@ -445,7 +446,7 @@ conditionalGroups:
       allOf: [megalinter-flavor, go]
       noneOf: [python]
     files:
-      lint-config.sh:
+      .lint-config.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:1.0.0@sha256:e4031431ee715a9f621fcb7cfbae056b60c5616e1ecb4d296142a713a537e6ff"
@@ -453,7 +454,7 @@ conditionalGroups:
       allOf: [megalinter-flavor, python]
       noneOf: [go]
     files:
-      lint-config.sh:
+      .lint-config.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.0.0@sha256:1bc5bf1a854a1addd7142a096b1a1c85c6521fe9367ef92d424a26b3d7aa93f8"

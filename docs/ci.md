@@ -4,7 +4,7 @@ Reusable workflows and composite actions that other repos call from this repo. P
 
 Reusable workflows suit single-package repos that follow the standard layout: the project at the repo root and a `Dockerfile` there too. For Go, `go.mod` sits at the root and binaries live under `cmd/`. Monorepos can call the composite actions from their own jobs instead.
 
-A reusable workflow resolves `uses: ./...` against the caller's checkout, not against this repo. That is why these workflows refer to each other, and to the actions, by full path (`anthony-spruyt/repo-operator/...@main`). To test a branch of this repo, point the caller and those internal references at the branch.
+A reusable workflow resolves `uses: ./...` against the caller's checkout, not against this repo. That is why these workflows refer to each other, and to the actions, with `$/` (for example `uses: $/.github/actions/build-image`), which resolves to this repo at the same ref as the calling workflow. To test a branch of this repo, point the caller at the branch; the internal references follow it.
 
 ## Composite actions
 
@@ -75,7 +75,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 
 | Group               | Extends                                | Syncs                                                                                                                          |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `megalinter-flavor` | `megalinter`                           | `lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); base linter list |
+| `megalinter-flavor` | `megalinter`                           | `.lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list     |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
 | `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
@@ -84,11 +84,15 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 ### Lint image per language
 
-`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own.
+`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `.lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. `lint.sh` sources `.lint-config.sh` when it exists and `lint-config.sh` otherwise. Joining the group deletes a repo's old `lint-config.sh` through xfg's orphan cleanup.
 
-A repo with both `go` and `python` needs the compound `megalinter-go-python` flavor. No conditional sets its pin yet, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Once the flavor is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
+No conditional sets a pin for a repo with both `go` and `python`, or with neither, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Both languages need the compound `megalinter-go-python` flavor: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
 
 Repos without `megalinter-flavor` keep a `createOnly` `lint-config.sh` and pin their own image (repo-operator, spruyt-labs, and the repos on per-repo flavors).
+
+### Reverting a bad bump
+
+A flavor or pin bump here reaches every `megalinter-flavor` repo on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
 ### Lint config
 
@@ -108,7 +112,7 @@ The base is not named `ruff.toml` or `.ruff.toml`: ruff prefers those over `pypr
 
 ### Per-repo values
 
-Each workflow passes `language` from the group with xfg `vars`. Other `with:` inputs are added per repo as a content overlay in `repos.yaml`, one per workflow file:
+Each workflow passes `language` from the group with xfg `vars`. Other `with:` inputs are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the three files can't drift apart:
 
 ```yaml
 files:
@@ -116,11 +120,21 @@ files:
     content:
       jobs:
         image:
-          with:
+          with: &my-repo-with
             test-command: "./scripts/test-image.sh"
+  .github/workflows/release-please.yaml:
+    content:
+      jobs:
+        release:
+          with: *my-repo-with
+  .github/workflows/rebuild-release.yaml:
+    content:
+      jobs:
+        rebuild:
+          with: *my-repo-with
 ```
 
-The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`.
+The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`.
 
 ## Caller example (Go)
 
@@ -142,7 +156,6 @@ jobs:
       contents: read
       security-events: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
-    secrets: inherit
   image:
     uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main
     with:
