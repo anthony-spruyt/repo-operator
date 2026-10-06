@@ -78,7 +78,7 @@ The calling job needs `packages: write`, and each package must give the calling 
 
 A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
 
-A repo with several images passes them all in `packages`. container-images reads its list from `release-please-config.json` in a job before the call.
+A repo with several images passes them all in `packages`. container-images#2131 moves container-images onto this workflow, with a job before the call that reads the list from `release-please-config.json`.
 
 Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
 
