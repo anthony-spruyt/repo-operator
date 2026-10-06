@@ -29,6 +29,7 @@ groups:
         content: "@templates/.claude/settings.json"
       .claude/statusline.sh:
         content: "@templates/.claude/statusline.sh"
+  cpp: {}
   eslint:
     files:
       eslint.config.js:
@@ -102,6 +103,10 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
         content: "@templates/.github/workflows/image-rebuild-release.yaml"
+      .github/workflows/container-retention.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/image-container-retention.yaml"
   go-image:
     extends:
       - image
@@ -421,6 +426,7 @@ groups:
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
+  typescript: {}
 
 conditionalGroups:
   - when:
@@ -447,8 +453,24 @@ conditionalGroups:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-container-images
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
   - when:
+      allOf: [megalinter-flavor]
+      noneOf: [cpp, go, python, typescript]
+    files:
+      lint.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-base
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-base:1.0.0@sha256:9a6caa418d76d01d31a60b757100d05c09d1534ec5cb86101d47e6b6df90a113"
+  - when:
+      allOf: [megalinter-flavor, cpp]
+      noneOf: [go, python, typescript]
+    files:
+      lint.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-cpp
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-cpp:1.0.0@sha256:82cdff8b2a9f4e832991cd705ead0bd86978c010f7b4e8064559bb0cc465f159"
+  - when:
       allOf: [megalinter-flavor, go]
-      noneOf: [python]
+      noneOf: [cpp, python, typescript]
     files:
       lint.sh:
         vars:
@@ -456,12 +478,20 @@ conditionalGroups:
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.0.0@sha256:266bda79d4b1c145beed5dcbf1c8a8607f454d743cbbcf33c6e7d89cf90c2f98"
   - when:
       allOf: [megalinter-flavor, python]
-      noneOf: [go]
+      noneOf: [cpp, go, typescript]
     files:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
           megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.0.0@sha256:1bc5bf1a854a1addd7142a096b1a1c85c6521fe9367ef92d424a26b3d7aa93f8"
+  - when:
+      allOf: [megalinter-flavor, typescript]
+      noneOf: [cpp, go, python]
+    files:
+      lint.sh:
+        vars:
+          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-typescript
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-typescript:1.0.0@sha256:eff9e99ce247e889db56729df5695df7625c70d34b695dd91fcbf36e0197337b"
   - when:
       allOf: [megalinter-flavor, go]
     files:

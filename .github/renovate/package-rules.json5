@@ -35,16 +35,22 @@
     // ============ Own MegaLinter flavor images ============
     // Changelogs live per image directory in container-images, not at its root.
     {
-      description: "Release notes for own images: megalinter-chromance",
+      description: "Release notes for own images: megalinter-base",
       matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-chromance"],
-      sourceDirectory: "megalinter-chromance"
+      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-base"],
+      sourceDirectory: "megalinter-base"
     },
     {
       description: "Release notes for own images: megalinter-container-images",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-container-images"],
       sourceDirectory: "megalinter-container-images"
+    },
+    {
+      description: "Release notes for own images: megalinter-cpp",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-cpp"],
+      sourceDirectory: "megalinter-cpp"
     },
     {
       description: "Release notes for own images: megalinter-go",
@@ -71,10 +77,10 @@
       sourceDirectory: "megalinter-sungather"
     },
     {
-      description: "Release notes for own images: megalinter-xfg",
+      description: "Release notes for own images: megalinter-typescript",
       matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-xfg"],
-      sourceDirectory: "megalinter-xfg"
+      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-typescript"],
+      sourceDirectory: "megalinter-typescript"
     },
 
     // ============ Claude CLI ============
