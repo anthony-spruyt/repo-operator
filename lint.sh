@@ -27,7 +27,6 @@ if [[ "${1:-}" == "--ci" ]]; then
     fi
   fi
 
-  # Build docker run arguments
   docker_args=(
     -e MEGALINTER_FLAVOR="$MEGALINTER_FLAVOR"
     -e SARIF_REPORTER=true
@@ -45,7 +44,6 @@ if [[ "${1:-}" == "--ci" ]]; then
     --rm
   )
 
-  # Mount GITHUB_STEP_SUMMARY if available (for job summaries)
   if [[ -n "${GITHUB_STEP_SUMMARY:-}" && -f "${GITHUB_STEP_SUMMARY}" ]]; then
     docker_args+=(-e GITHUB_STEP_SUMMARY="${GITHUB_STEP_SUMMARY}")
     docker_args+=(-v "${GITHUB_STEP_SUMMARY}:${GITHUB_STEP_SUMMARY}:rw")
