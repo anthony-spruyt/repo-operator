@@ -13,11 +13,12 @@ permissions:
   pull-requests: "write"
 jobs:
   request-review:
-    # GitHub rejects review requests to the PR author; Renovate PRs stay out of the review queue
+    # GitHub rejects review requests to the PR author; Renovate and release PRs merge without review
     if: >-
       !github.event.pull_request.draft
       && github.event.pull_request.user.login != 'anthony-spruyt'
       && github.event.pull_request.user.login != 'renovate[bot]'
+      && github.event.pull_request.user.login != 'repo-operator-release-bot[bot]'
     runs-on: "ubuntu-latest"
     timeout-minutes: 5
     steps:
