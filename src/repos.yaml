@@ -11,7 +11,7 @@ repos:
       .lint-config.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-chromance
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-chromance:1.1.0@sha256:12c6f486763ec18e8dda4cc059378efed159911db4a16240879bb8d35f626ce6"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-chromance:1.1.1@sha256:1e8cfe826b494afabd2a3bc56f6d7512651138a6b4116fe605dc5b6ba97efc43"
       .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
         content:
