@@ -1,0 +1,68 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Container Retention
+
+on:
+  workflow_call:
+    inputs:
+      packages:
+        description: Comma-separated GHCR package names (default the repository name). No wildcards
+        required: false
+        type: string
+        default: ""
+      older-than:
+        description: Only consider versions older than this (e.g. 4 weeks, 30 days)
+        required: false
+        type: string
+        default: 4 weeks
+      keep-n-tagged:
+        description: Newest tagged versions to keep regardless of age
+        required: false
+        type: number
+        default: 5
+      dry-run:
+        description: List what would be deleted without deleting it
+        required: false
+        type: boolean
+        default: false
+
+permissions: {}
+
+jobs:
+  cleanup:
+    name: GHCR Cleanup
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: Resolve packages
+        id: packages
+        env:
+          PACKAGES: ${{ inputs.packages }}
+        run: |
+          if [ -z "$PACKAGES" ]; then
+            PACKAGES="${GITHUB_REPOSITORY#*/}"
+          fi
+          case "$PACKAGES" in
+            *[*?]*)
+              echo "::error::Wildcards need a PAT; list each package by name."
+              exit 1
+              ;;
+          esac
+          echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
+
+      - name: Clean up package versions
+        uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
+        with:
+          token: ${{ github.token }}
+          package: ${{ steps.packages.outputs.list }}
+          older-than: ${{ inputs.older-than }}
+          keep-n-tagged: ${{ inputs.keep-n-tagged }}
+          delete-ghost-images: true
+          delete-partial-images: true
+          dry-run: ${{ inputs.dry-run }}

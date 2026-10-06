@@ -44,6 +44,7 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
+- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
@@ -56,6 +57,38 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
+
+### Container retention
+
+`_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It keeps the newest `keep-n-tagged` tagged versions and deletes versions older than `older-than`, along with multi-arch images whose platform images are partly or wholly missing.
+
+- `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
+- `older-than` (default `4 weeks`)
+- `keep-n-tagged` (default `5`)
+- `dry-run` (default `false`): log what would be deleted, delete nothing
+
+The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
+
+```yaml
+name: Container Retention
+on:
+  schedule:
+    - cron: "0 5 * * 0"
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: List what would be deleted without deleting it
+        type: boolean
+        default: true
+permissions: {}
+jobs:
+  cleanup:
+    permissions:
+      packages: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main
+    with:
+      dry-run: ${{ inputs.dry-run || false }}
+```
 
 ### Release flow
 
