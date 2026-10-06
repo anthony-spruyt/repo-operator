@@ -40,7 +40,7 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. Needs `contents: read`.
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
-- `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. Needs `pull-requests: write` plus the publishing permissions.
+- `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
@@ -64,7 +64,7 @@ The image job checks out the commit the run started from, never a caller-supplie
 
 If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
 
-`_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator).
+`_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
 ## Caller example (Go)
 
@@ -78,11 +78,13 @@ on:
   push:
     branches: [main]
 permissions:
-  actions: write
   contents: read
-  security-events: write
 jobs:
   lint:
+    permissions:
+      actions: write
+      contents: read
+      security-events: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
     secrets: inherit
   image:
@@ -92,6 +94,9 @@ jobs:
   summary:
     needs: [lint, image]
     if: always()
+    permissions:
+      actions: read
+      contents: read
     uses: anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main
 ```
 
@@ -105,7 +110,6 @@ on:
   workflow_dispatch:
 permissions:
   contents: write
-  pull-requests: write
   packages: write
   id-token: write
   attestations: write

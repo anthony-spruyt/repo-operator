@@ -15,11 +15,6 @@ on:
         required: false
         type: string
         default: .release-please-manifest.json
-      build-image:
-        description: Build, push and publish an image when a release is created
-        required: false
-        type: boolean
-        default: true
       language:
         description: Passed to _build-image.yaml
         required: false
@@ -131,7 +126,7 @@ jobs:
   build:
     name: Image
     needs: release-please
-    if: inputs.build-image && needs.release-please.outputs.release-created == 'true'
+    if: needs.release-please.outputs.release-created == 'true'
     uses: $/.github/workflows/_build-image.yaml
     with:
       language: ${{ inputs.language }}

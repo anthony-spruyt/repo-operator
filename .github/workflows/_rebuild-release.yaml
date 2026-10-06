@@ -108,7 +108,7 @@ jobs:
             . as $c | .packages["."] as $p
             | if $p == null then error("no root (\".\") package") else . end
             | def opt($k; $d): if $p | has($k) then $p[$k] elif $c | has($k) then $c[$k] else $d end;
-            ($p.component // $p["package-name"] // "") as $component
+            ($p.component // $p["package-name"] // $c.component // $c["package-name"] // "") as $component
             | opt("include-component-in-tag"; true) as $withComponent
             | opt("include-v-in-tag"; true) as $withV
             | ($p["tag-separator"] // $c["tag-separator"] // "-") as $sep
