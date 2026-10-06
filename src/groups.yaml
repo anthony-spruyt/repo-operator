@@ -106,6 +106,9 @@ groups:
       .github/workflows/container-retention.yaml:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
+        template: true
+        vars:
+          retentionPackages: ""
         content: "@templates/.github/workflows/image-container-retention.yaml"
   go-image:
     extends:
@@ -128,7 +131,6 @@ groups:
       - python
       - megalinter-flavor
     files:
-      .pylintrc: false
       .github/workflows/ci.yaml:
         vars:
           language: python
@@ -203,7 +205,7 @@ groups:
           - "Add project-specific linters below:"
           - "ENABLE_LINTERS:"
           - "  - TYPESCRIPT_ES"
-          - "  - PYTHON_PYLINT"
+          - "  - PYTHON_RUFF"
           - "Exclude more directories without dropping the base ones:"
           - "ADDITIONAL_EXCLUDED_DIRECTORIES:"
           - "  - generated"
@@ -326,10 +328,7 @@ groups:
                   requiredReviewThreadResolution: true
                   requireLastPushApproval: false
           target: branch
-  python:
-    files:
-      .pylintrc:
-        createOnly: true
+  python: {}
   release-please:
     settings:
       secrets:

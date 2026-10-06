@@ -36,13 +36,12 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-flavor
       - mergify
       - protected-main-branch
       - python
       - renovate
       - sonar
-    files:
-      .pylintrc: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
@@ -51,6 +50,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-flavor
       - protected-main-branch
       - docker
       - dockerhub
@@ -227,7 +227,6 @@ repos:
       - megalinter
       - docker
       - go
-      - python
       - release-please
       - terraform
       - biome
@@ -357,17 +356,33 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - python
+      - python-image
       - release-please
       - mergify
       - renovate
       - sonar
     files:
-      .pylintrc: false
-      lint.sh:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with: &sungather-with
+                # GHCR names must be lowercase and the repo name is not
+                image: "sungather"
+                test-command: 'docker run --rm --network none "$IMAGE_REF" /opt/virtualenv/bin/sungather -h'
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            release:
+              with: *sungather-with
+      .github/workflows/rebuild-release.yaml:
+        content:
+          jobs:
+            rebuild:
+              with: *sungather-with
+      .github/workflows/container-retention.yaml:
         vars:
-          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-sungather
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-sungather:2.0.3@sha256:1ff8b26ae1889e155ba27f2474169989256008ab8610a73669e11f9431b65163"
+          retentionPackages: "sungather"
       .mcp.json:
         content:
           mcpServers:
