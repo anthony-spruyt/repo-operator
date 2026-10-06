@@ -123,6 +123,7 @@ groups:
       - python
       - megalinter-flavor
     files:
+      .pylintrc: false
       .github/workflows/ci.yaml:
         vars:
           language: python

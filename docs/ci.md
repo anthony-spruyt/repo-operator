@@ -78,7 +78,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 | `megalinter-flavor` | `megalinter`                           | `lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); base linter list |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
-| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`                                                                                              |
+| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
