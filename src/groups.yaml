@@ -444,14 +444,6 @@ conditionalGroups:
                   - id: remove-tabs
                     args: [--whitespaces-count, "2"]
   - when:
-      allOf: [megalinter]
-      noneOf: [megalinter-flavor]
-    files:
-      lint.sh:
-        vars:
-          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-container-images
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
-  - when:
       allOf: [megalinter-flavor]
       noneOf: [cpp, go, python, typescript]
     files:

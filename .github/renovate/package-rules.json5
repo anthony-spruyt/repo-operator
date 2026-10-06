@@ -41,12 +41,6 @@
       sourceDirectory: "megalinter-base"
     },
     {
-      description: "Release notes for own images: megalinter-container-images",
-      matchDatasources: ["docker"],
-      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-container-images"],
-      sourceDirectory: "megalinter-container-images"
-    },
-    {
       description: "Release notes for own images: megalinter-cpp",
       matchDatasources: ["docker"],
       matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-cpp"],
