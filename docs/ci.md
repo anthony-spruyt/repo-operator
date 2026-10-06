@@ -69,6 +69,59 @@ If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
+## Managed image repos
+
+Single-package image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
+
+| Group               | Extends                                | Syncs                                                                                                                          |
+| ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
+| `megalinter-flavor` | `megalinter`                           | `lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); base linter list |
+| `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
+| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
+| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`                                                                                              |
+
+Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
+
+### Lint image per language
+
+`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own.
+
+A repo with both `go` and `python` needs the compound `megalinter-go-python` flavor. No conditional sets its pin yet, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Once the flavor is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
+
+Repos without `megalinter-flavor` keep a `createOnly` `lint-config.sh` and pin their own image (repo-operator, spruyt-labs, and the repos on per-repo flavors).
+
+### Lint config
+
+- **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
+- **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
+
+```toml
+[tool.ruff]
+extend = "ruff-base.toml"
+target-version = "py313"
+
+[tool.ruff.lint.isort]
+known-first-party = ["my_package"]
+```
+
+The base is not named `ruff.toml` or `.ruff.toml`: ruff prefers those over `pyproject.toml` in the same directory, and `.ruff.toml` is also MegaLinter's default config name, so either would bypass `pyproject.toml`.
+
+### Per-repo values
+
+Each workflow passes `language` from the group with xfg `vars`. Other `with:` inputs are added per repo as a content overlay in `repos.yaml`, one per workflow file:
+
+```yaml
+files:
+  .github/workflows/ci.yaml:
+    content:
+      jobs:
+        image:
+          with:
+            test-command: "./scripts/test-image.sh"
+```
+
+The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`.
+
 ## Caller example (Go)
 
 `.github/workflows/ci.yaml`:

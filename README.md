@@ -79,6 +79,8 @@ GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`) and composite actions (`build-image`, `publish-release`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
 
+Image repos join `go-image` or `python-image`. Those groups sync the CI and release callers, the MegaLinter flavor pin (`lint-config.sh`) and the lint config (`.golangci.yml`, `ruff-base.toml`) as managed files, so the pin is bumped once here instead of in every repo. See [Managed image repos](docs/ci.md#managed-image-repos).
+
 ## Renovate Configuration
 
 Modular Renovate config in `.github/renovate/` is **not** synced via xfg — target repos reference it directly:

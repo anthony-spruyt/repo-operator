@@ -110,7 +110,7 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -128,11 +128,36 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - python
+      - python-image
       - release-please
       - mergify
       - renovate
       - sonar
+    files:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with:
+                python-test-paths: |
+                  tests/unit
+                  tests/integration
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            release:
+              with:
+                python-test-paths: |
+                  tests/unit
+                  tests/integration
+      .github/workflows/rebuild-release.yaml:
+        content:
+          jobs:
+            rebuild:
+              with:
+                python-test-paths: |
+                  tests/unit
+                  tests/integration
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
@@ -146,7 +171,7 @@ repos:
       - megalinter
       - protected-main-branch
       - docker
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -324,7 +349,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - go
+      - go-image
       - release-please
       - mergify
       - renovate
@@ -332,6 +357,40 @@ repos:
     files:
       # Fork of linkphoenix/traefik-api-key-auth - must keep the upstream ISC license
       LICENSE: false
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with:
+                test-command: "./scripts/test-image.sh"
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            release:
+              with:
+                test-command: "./scripts/test-image.sh"
+      .github/workflows/rebuild-release.yaml:
+        content:
+          jobs:
+            rebuild:
+              with:
+                test-command: "./scripts/test-image.sh"
+      .golangci.yml:
+        content:
+          linters:
+            enable:
+              $arrayMerge: append
+              $values:
+                - depguard
+            settings:
+              depguard:
+                rules:
+                  yaegi:
+                    deny:
+                      - pkg: "unsafe"
+                        desc: "Traefik's Yaegi interpreter does not allow unsafe"
+                      - pkg: "syscall"
+                        desc: "Traefik's Yaegi interpreter does not allow syscall"
     settings:
       repo:
         description: "Traefik middleware plugin for API key authentication."
