@@ -44,6 +44,7 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
+- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
@@ -56,6 +57,53 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
+
+### Container retention
+
+`_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It deletes:
+
+- tagged versions beyond the newest `keep-n-tagged` that are older than `older-than`. Old release tags go too, so consumers that pin a release must keep up. `latest` is never deleted.
+- ghost multi-arch images, whose platform images are all missing.
+
+Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
+
+- `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
+- `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
+- `keep-n-tagged` (default `5`): must be at least `1`
+- `dry-run` (default `false`): log what would be deleted, delete nothing
+
+Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+
+The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
+
+Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
+
+```yaml
+name: Container Retention
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: List what would be deleted without deleting it
+        type: boolean
+        default: true
+permissions: {}
+jobs:
+  cleanup:
+    permissions:
+      packages: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main
+    with:
+      dry-run: ${{ inputs.dry-run || false }}
+```
+
+Roll it out in this order:
+
+1. Give the calling repo the **Admin** role on each package.
+2. Dispatch with `dry-run` on, and check the logged deletions.
+3. Dispatch once with `dry-run` off.
+4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
+5. Only then add a `schedule` trigger, for example `cron: "0 5 * * 0"`. A scheduled run has no inputs, so `dry-run` falls back to `false` and the run deletes.
 
 ### Release flow
 
@@ -75,7 +123,7 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 
 | Group               | Extends                                | Syncs                                                                                                                          |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `megalinter-flavor` | `megalinter`                           | `.lint-config.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list     |
+| `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list             |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`                                                     |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
 | `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`; drops the `python` group's `.pylintrc` (ruff replaces pylint)                               |
@@ -84,9 +132,9 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 ### Lint image pin
 
-Every `megalinter` repo gets a managed `.lint-config.sh`, rendered from `src/templates/.lint-config.sh.tmpl`, and `lint.sh` sources it. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The pin comes from the first match below:
+Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare `${...}` as a variable. The pin comes from the first match below:
 
-1. A per-repo `.lint-config.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
+1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
 2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `go` gives `megalinter-go`, `python` gives `megalinter-python`.
 3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
@@ -94,18 +142,20 @@ No conditional sets a pin for a `megalinter-flavor` repo with both `go` and `pyt
 
 ### Reverting a bad bump
 
-A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it; the [lint canary](#lint-canary) is the check before merge. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
+A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it; the [lint canary](#lint-canary) is the check before merge. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `lint.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
 ### Lint canary
 
 `.github/workflows/lint-canary.yaml` catches a bad bump before it merges. It runs on PRs here that touch a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`):
 
-1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`.lint-config.sh`, `lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
+1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
 2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase.
 
 A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. The canary is not a required check: read its result before merging. A failure can also come from a repo whose `main` is already red; compare with that repo's last CI run.
 
 The canary renders against each repo's current `main`, so it also lints changes merged here but not yet synced.
+
+### Lint config
 
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
