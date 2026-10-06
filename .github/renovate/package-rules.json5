@@ -196,8 +196,22 @@
     // ============ Image repos released by commit type ============
     {
       description: "Dependency bumps in image repos release a patch: release-please hides chore commits there",
-      matchRepositories: ["anthony-spruyt/mcp-header-proxy"],
+      matchRepositories: [
+        "anthony-spruyt/kata-tap-qdisc-fix",
+        "anthony-spruyt/litellm-middleware",
+        "anthony-spruyt/mcp-header-proxy",
+        "anthony-spruyt/SunGather",
+        "anthony-spruyt/traefik-api-key-auth"
+      ],
       matchManagers: ["dockerfile", "gomod"],
+      semanticCommitType: "fix",
+      semanticCommitScope: "deps"
+    },
+    {
+      description: "Runtime Python dependency bumps in image repos release a patch; dev groups never reach the image, so they stay chore",
+      matchRepositories: ["anthony-spruyt/litellm-middleware", "anthony-spruyt/SunGather"],
+      matchManagers: ["pep621"],
+      matchDepTypes: ["project.dependencies", "project.optional-dependencies"],
       semanticCommitType: "fix",
       semanticCommitScope: "deps"
     },
