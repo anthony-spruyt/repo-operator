@@ -6,12 +6,10 @@ repos:
       - claude
       - mcp
       - megalinter
+      - megalinter-flavor
+      - cpp
       - renovate
     files:
-      lint.sh:
-        vars:
-          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-chromance
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-chromance:1.1.1@sha256:1e8cfe826b494afabd2a3bc56f6d7512651138a6b4116fe605dc5b6ba97efc43"
       .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
         content:
@@ -100,6 +98,7 @@ repos:
     groups:
       - claude
       - mcp
+      - megalinter-flavor
       - mergify
       - renovate
     files:
@@ -214,6 +213,7 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-flavor
       - mergify
       - renovate
       - sonar
@@ -436,18 +436,15 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
+      - megalinter-flavor
       - protected-main-branch
-      - python
+      - typescript
       - eslint
       - mergify
       - release-please
       - renovate
       - sonar
     files:
-      lint.sh:
-        vars:
-          # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-xfg
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-xfg:v2.0.4@sha256:048c59dadfa90a1c2cfd631867958e4a07a0b07b67ad0a84555d292cd70dc4c5"
       .devcontainer/devcontainer.json:
         content:
           features:
@@ -484,6 +481,10 @@ repos:
         "run-integration":
           color: "#0E8A16"
           description: "Trigger integration tests on this PR"
+        # docs/requirements.txt gets pip PRs with this label though xfg is not in the python group
+        "renovate/python":
+          color: "#ededed"
+          description: ""
       rulesets:
         tag-rules:
           bypassActors:
