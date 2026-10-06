@@ -219,7 +219,10 @@ groups:
         createOnly: true
         content: "@templates/lint-config.sh"
       lint.sh:
-        content: "@templates/lint.sh"
+        template: true
+        vars:
+          lintConfig: lint-config.sh
+        content: "@templates/lint.sh.tmpl"
       trivy-mega-linter.yaml:
         schemaUrl: https://raw.githubusercontent.com/aquasecurity/trivy/main/schema/trivy-config.json
         header:
@@ -230,6 +233,9 @@ groups:
     extends: megalinter
     files:
       lint-config.sh: false
+      lint.sh:
+        vars:
+          lintConfig: .lint-config.sh
       .lint-config.sh:
         createOnly: false
         template: true

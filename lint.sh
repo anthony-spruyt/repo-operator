@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# shellcheck disable=SC1091 # lint config path resolved at runtime
+# shellcheck disable=SC1091 # lint-config.sh path resolved at runtime
 set -euo pipefail
 
 # This file is automatically updated - do not modify directly
@@ -14,11 +14,9 @@ set -euo pipefail
 
 REPO_ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
-# Repos synced with a managed pin get the hidden .lint-config.sh; the rest keep lint-config.sh
-LINT_CONFIG="$REPO_ROOT/.lint-config.sh"
-[[ -f "$LINT_CONFIG" ]] || LINT_CONFIG="$REPO_ROOT/lint-config.sh"
+# Source config file (required)
 # shellcheck source=lint-config.sh
-source "$LINT_CONFIG"
+source "$REPO_ROOT/lint-config.sh"
 
 if [[ "${1:-}" == "--ci" ]]; then
   # CI mode

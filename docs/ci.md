@@ -84,7 +84,7 @@ Repos still own `release-please-config.json`, `.release-please-manifest.json` an
 
 ### Lint image per language
 
-`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `.lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. `lint.sh` sources `.lint-config.sh` when it exists and `lint-config.sh` otherwise. Joining the group deletes a repo's old `lint-config.sh` through xfg's orphan cleanup.
+`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `.lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. `lint.sh` is a template whose `lintConfig` var names the file it sources: `lint-config.sh` from `megalinter`, `.lint-config.sh` from `megalinter-flavor`. Joining the group deletes a repo's old `lint-config.sh` through xfg's orphan cleanup.
 
 No conditional sets a pin for a repo with both `go` and `python`, or with neither, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Both languages need the compound `megalinter-go-python` flavor: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
 
