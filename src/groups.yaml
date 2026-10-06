@@ -455,7 +455,7 @@ conditionalGroups:
       .lint-config.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.0.0@sha256:266bda79d4b1c145beed5dcbf1c8a8607f454d743cbbcf33c6e7d89cf90c2f98"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.0.0@sha256:1bc5bf1a854a1addd7142a096b1a1c85c6521fe9367ef92d424a26b3d7aa93f8"
   - when:
       allOf: [megalinter-flavor, python]
       noneOf: [go]
