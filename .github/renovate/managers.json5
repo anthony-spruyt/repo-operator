@@ -10,6 +10,7 @@
     "helm-values",
     "kubernetes",
     "npm",
+    "pep621",
     "pip_requirements",
     "pre-commit",
     "terraform"

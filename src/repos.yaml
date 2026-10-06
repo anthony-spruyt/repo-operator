@@ -41,6 +41,8 @@ repos:
       - python
       - renovate
       - sonar
+    files:
+      .pylintrc: false
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
@@ -350,6 +352,7 @@ repos:
       - renovate
       - sonar
     files:
+      .pylintrc: false
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-sungather

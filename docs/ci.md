@@ -44,6 +44,7 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
+- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
@@ -56,6 +57,53 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
+
+### Container retention
+
+`_container-retention.yaml` runs [ghcr-cleanup-action](https://github.com/dataaxiom/ghcr-cleanup-action) with the caller's `GITHUB_TOKEN`, so no account-wide token is needed. It deletes:
+
+- tagged versions beyond the newest `keep-n-tagged` that are older than `older-than`. Old release tags go too, so consumers that pin a release must keep up. `latest` is never deleted.
+- ghost multi-arch images, whose platform images are all missing.
+
+Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
+
+- `packages` (default: repository name): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
+- `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
+- `keep-n-tagged` (default `5`): must be at least `1`
+- `dry-run` (default `false`): log what would be deleted, delete nothing
+
+Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+
+The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it.
+
+Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
+
+```yaml
+name: Container Retention
+on:
+  workflow_dispatch:
+    inputs:
+      dry-run:
+        description: List what would be deleted without deleting it
+        type: boolean
+        default: true
+permissions: {}
+jobs:
+  cleanup:
+    permissions:
+      packages: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main
+    with:
+      dry-run: ${{ inputs.dry-run || false }}
+```
+
+Roll it out in this order:
+
+1. Give the calling repo the **Admin** role on each package.
+2. Dispatch with `dry-run` on, and check the logged deletions.
+3. Dispatch once with `dry-run` off.
+4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
+5. Only then add a `schedule` trigger, for example `cron: "0 5 * * 0"`. A scheduled run has no inputs, so `dry-run` falls back to `false` and the run deletes.
 
 ### Release flow
 
