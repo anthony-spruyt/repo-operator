@@ -82,6 +82,17 @@ repos:
               - actorId: 3215096 # container-images-garbo: deletes old release git tags (deletion rule)
                 actorType: Integration
                 bypassMode: always
+        pr-rules:
+          rules:
+            $arrayMerge: merge
+            $values:
+              - type: required_status_checks
+                parameters:
+                  requiredStatusChecks:
+                    $arrayMerge: append
+                    $values:
+                      # A flavor losing a linter must ship as a major release, not a patch
+                      - context: "Guard Linter Removals"
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
