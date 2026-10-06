@@ -39,8 +39,8 @@ Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.to
 
 ## Reusable workflows
 
-- `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
-- `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
+- `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`), at `ref` (default: the run's commit). Needs `contents: read`.
+- `_python-uv-test.yaml`: `uv run --frozen pytest` at `ref` (default: the run's commit), once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
@@ -111,9 +111,9 @@ Roll it out in this order:
 2. The image is built from that tag, tested, pushed and attested.
 3. `publish-release` adds the image details and undrafts the release.
 
-The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. release-please tags the release PR's merge commit, which is the commit its run starts from.
+The image job and its tests check out `refs/tags/<tag-name>`, not the commit the run started from. A push to `main` while a Release Please run is pending makes GitHub cancel that run. If it was the release PR's merge, the next run's release-please creates the release instead, and its image job still builds the tagged commit. The `tag-rules` ruleset stops tags from moving.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
+If step 2 fails, fix the cause and run `rebuild-release.yaml` (`gh workflow run rebuild-release.yaml -f version=X.Y.Z`). It refuses to run when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards).
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
