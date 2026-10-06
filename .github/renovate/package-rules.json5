@@ -220,7 +220,7 @@
       addLabels: ["renovate/npm"]
     },
     {
-      matchManagers: ["pip_requirements"],
+      matchManagers: ["pep621", "pip_requirements"],
       addLabels: ["renovate/python"]
     },
     {
