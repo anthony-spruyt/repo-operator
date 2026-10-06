@@ -12,3 +12,5 @@ paths:
     ignore:
       - "shellcheck reported issue in this script: SC2153:.+"
       - "shellcheck reported issue in this script: SC2034:.+"
+      - 'reusable workflow call "\$/.+" at "uses" is not following the format'
+      - 'specifying action "\$/.+" in invalid format because ref is missing'

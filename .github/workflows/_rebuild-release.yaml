@@ -154,7 +154,7 @@ jobs:
   build:
     name: Image
     needs: resolve
-    uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main
+    uses: $/.github/workflows/_build-image.yaml
     with:
       language: ${{ inputs.language }}
       workdir: ${{ inputs.workdir }}
