@@ -82,17 +82,19 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
-### Lint image per language
+### Lint image pin
 
-`megalinter-flavor` picks the image from the repo's language groups through conditional groups: `go` gives `megalinter-go`, `python` gives `megalinter-python`. Renovate bumps the pin in `src/groups.yaml` here; the synced `.lint-config.sh` carries no Renovate annotation, so downstream repos get no pin PRs of their own. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. `lint.sh` is a template whose `lintConfig` var names the file it sources: `lint-config.sh` from `megalinter`, `.lint-config.sh` from `megalinter-flavor`. Joining the group deletes a repo's old `lint-config.sh` through xfg's orphan cleanup.
+Every `megalinter` repo gets a managed `.lint-config.sh`, rendered from `src/templates/.lint-config.sh.tmpl`, and `lint.sh` sources it. The file is hidden so that `./l<Tab>` completes straight to `./lint.sh`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The pin comes from the first match below:
 
-No conditional sets a pin for a repo with both `go` and `python`, or with neither, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Both languages need the compound `megalinter-go-python` flavor: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
+1. A per-repo `.lint-config.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (Chromance, spruyt-labs, SunGather, xfg).
+2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `go` gives `megalinter-go`, `python` gives `megalinter-python`.
+3. Other `megalinter` repos: the conditional group for `megalinter` without `megalinter-flavor`, which pins `megalinter-container-images`.
 
-Repos without `megalinter-flavor` keep a `createOnly` `lint-config.sh` and pin their own image (repo-operator, spruyt-labs, and the repos on per-repo flavors).
+No conditional sets a pin for a `megalinter-flavor` repo with both `go` and `python`, or with neither, so such a repo fails the plan with `Unknown xfg template variable: megalinterImage`. Both languages need the compound `megalinter-go-python` flavor: once it is built, add an `allOf: [megalinter-flavor, go, python]` conditional with its pin.
 
 ### Reverting a bad bump
 
-A flavor or pin bump here reaches every `megalinter-flavor` repo on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
+A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `.lint-config.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
 ### Lint config
 
