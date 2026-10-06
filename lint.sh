@@ -12,7 +12,7 @@ set -euo pipefail
 # without modifying any files.
 
 # Pinned in repo-operator (src/groups.yaml, or src/repos.yaml for a per-repo flavor), where Renovate bumps it
-MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-container-images:v11.0.3@sha256:ae40d08f9bd0345b3f852518f7c29960cd68252234959765bbe4a2ddfc643c40"
+MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-base:1.0.0@sha256:9a6caa418d76d01d31a60b757100d05c09d1534ec5cb86101d47e6b6df90a113"
 # "all" skips MegaLinter's flavor check, which rejects custom images
 MEGALINTER_FLAVOR="all"
 
