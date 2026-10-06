@@ -11,10 +11,8 @@ on:
       - src/groups.yaml
       - src/repos.yaml
       - src/templates/.golangci.yml
-      - src/templates/.lint-config.sh.tmpl
       - src/templates/.mega-linter-base.yml
       - src/templates/.mega-linter.yml
-      - src/templates/lint.sh
       - src/templates/lint.sh.tmpl
       - src/templates/ruff-base.toml
       - src/templates/trivy-mega-linter.yaml
@@ -28,8 +26,8 @@ concurrency:
 
 env:
   LINT_FILES: >-
-    [".golangci.yml", ".lint-config.sh", ".mega-linter-base.yml", ".mega-linter.yml",
-    ".pylintrc", "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
+    [".golangci.yml", ".mega-linter-base.yml", ".mega-linter.yml", ".pylintrc",
+    "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
 
 jobs:
   render:
@@ -48,35 +46,12 @@ jobs:
         with:
           persist-credentials: false
 
-      # Workaround until anthony-spruyt/xfg#1090 is released: build xfg from that PR, then pin the release and drop these steps
-      - name: Checkout xfg
-        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
-        with:
-          repository: anthony-spruyt/xfg
-          ref: 2c1f9b72e6b469b7afe5aa61be15735321a13bfa
-          path: .xfg-src
-          persist-credentials: false
-
-      - name: Setup Node.js
-        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7
-        with:
-          node-version: "24"
-
-      - name: Build xfg
-        id: xfg-build
-        working-directory: .xfg-src/packages/xfg
-        run: |
-          npm ci --ignore-scripts
-          npm run build
-          echo "package=$RUNNER_TEMP/$(npm pack --pack-destination "$RUNNER_TEMP" | tail -n 1)" >> "$GITHUB_OUTPUT"
-
       - name: Render planned files
-        uses: anthony-spruyt/xfg@2c1f9b72e6b469b7afe5aa61be15735321a13bfa # anthony-spruyt/xfg#1090
+        uses: anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd # v7.5.0
         with:
           config: ./src
           dry-run: true
           render-dir: ${{ runner.temp }}/render
-          xfg-package: ${{ steps.xfg-build.outputs.package }}
           github-client-id: ${{ vars.APP_CLIENT_ID }}
           github-app-private-key: ${{ secrets.APP_PRIVATE_KEY }}
 
@@ -152,7 +127,7 @@ jobs:
           mkdir "$RUNNER_TEMP/render"
           tar -C "$RUNNER_TEMP/render" -xzf "$RUNNER_TEMP/render.tgz"
           if [ -d "$RUNNER_TEMP/render/$REPO" ]; then
-            cp -a "$RUNNER_TEMP/render/$REPO/." target/
+            cp -r "$RUNNER_TEMP/render/$REPO/." target/
           fi
           jq -r --arg repo "$REPO" '.repos[$repo].deleted[]' "$RUNNER_TEMP/render/render.json" |
             while IFS= read -r file; do
