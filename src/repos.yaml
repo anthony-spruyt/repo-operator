@@ -467,6 +467,10 @@ repos:
         "run-integration":
           color: "#0E8A16"
           description: "Trigger integration tests on this PR"
+        # docs/requirements.txt gets pip PRs with this label though xfg is not in the python group
+        "renovate/python":
+          color: "#ededed"
+          description: ""
       rulesets:
         tag-rules:
           bypassActors:
