@@ -53,6 +53,10 @@ groups:
           - "SC2153: Uppercase env vars from GitHub Actions workflow env blocks"
           - "SC2034: Variables used in heredocs appear unused"
         content: "@templates/.github/actionlint.yaml"
+      .github/workflows/request-owner-review.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/request-owner-review.yaml for template comments
+        content: "@templates/.github/workflows/request-owner-review.yaml"
       .pre-commit-config.yaml:
         content:
           repos:

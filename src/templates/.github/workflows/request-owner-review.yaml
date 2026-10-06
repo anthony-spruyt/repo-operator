@@ -1,0 +1,42 @@
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+# See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/request-owner-review.yaml for template comments
+
+name: "Request Owner Review"
+on:
+  # pull_request_target gives fork PRs a write token - never check out PR code here
+  pull_request_target:
+    types:
+      - "opened"
+      - "reopened"
+      - "ready_for_review"
+permissions:
+  pull-requests: "write"
+jobs:
+  request-review:
+    # GitHub rejects review requests to the PR author; Renovate PRs stay out of the review queue
+    if: >-
+      !github.event.pull_request.draft
+      && github.event.pull_request.user.login != 'anthony-spruyt'
+      && github.event.pull_request.user.login != 'renovate[bot]'
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    steps:
+      - name: "Request review"
+        env:
+          GH_TOKEN: "${{ github.token }}"
+          OWNER: "anthony-spruyt"
+          PR: "${{ github.event.pull_request.number }}"
+          REPO: "${{ github.repository }}"
+        run: |
+          pulls="repos/$REPO/pulls/$PR"
+          # Captured first so an API error fails the step instead of reading as "not found"
+          requested=$(gh api "$pulls/requested_reviewers" --jq '.users[].login')
+          reviewed=$(gh api --paginate "$pulls/reviews" --jq '.[].user.login')
+          if grep -qx "$OWNER" <<<"$requested"; then
+            echo "$OWNER is already a requested reviewer"
+          elif grep -qx "$OWNER" <<<"$reviewed"; then
+            echo "$OWNER has already reviewed"
+          else
+            gh api --method POST "$pulls/requested_reviewers" -f "reviewers[]=$OWNER" --silent
+            echo "Requested review from $OWNER"
+          fi
