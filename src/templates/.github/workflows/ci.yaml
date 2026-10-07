@@ -12,12 +12,7 @@ on:
       - "main"
   # workflow_dispatch:  # Uncomment to enable manual runs
 
-permissions:
-  actions: "read"
-  contents: "write"
-  pull-requests: "write"
-  security-events: "write"
-  statuses: "write"
+permissions: {}
 
 jobs:
   lint:
@@ -30,6 +25,8 @@ jobs:
   # Add your repository-specific jobs here:
   # build:
   #   runs-on: ubuntu-latest
+  #   permissions:
+  #     contents: read
   #   steps:
   #     - uses: actions/checkout@v4
   #     - run: npm ci && npm run build
@@ -39,4 +36,7 @@ jobs:
     needs:
       - "lint"
     if: "always()"
+    permissions:
+      actions: "read"
+      contents: "read"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@5cbe1a184d32fd631420e30e20b46a85b5aa244f" # main
