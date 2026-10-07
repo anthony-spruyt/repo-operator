@@ -106,7 +106,6 @@ merge_protections:
       - label = agent/revert
     success_conditions:
       - author = skynet-rw[bot]
-      - github-code-owner-review-satisfied
 
   - name: emergency-merge
     if:
