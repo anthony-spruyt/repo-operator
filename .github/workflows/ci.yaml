@@ -23,6 +23,29 @@ jobs:
       security-events: "write"
     uses: "./.github/workflows/_lint.yaml"
 
+  guard-test:
+    name: "Guard Tests"
+    runs-on: "ubuntu-latest"
+    if: "github.event_name != 'workflow_dispatch'"
+    permissions:
+      contents: "read"
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: audit
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Install bats"
+        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
+
+      - name: "Run bats tests"
+        run: "bats .github/scripts/"
+
   # PR code is untrusted, so it plans with the read-only Plan App. GitHub hides merge settings
   # and ruleset bypass_actors from read-only tokens, so this plan is a partial preview.
   xfg-preview:
@@ -40,15 +63,26 @@ jobs:
       group: "xfg-preview-${{ github.ref }}"
       cancel-in-progress: true
     steps:
+      # Same egress as XFG Plan, so a green preview proves Plan's allowlist on PRs
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
 
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
           persist-credentials: false
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Preview notice"
         run: |
@@ -99,15 +133,26 @@ jobs:
     outputs:
       run_sync: "${{ steps.changes.outputs.run_sync }}"
     steps:
+      # Unreviewed src/ (agent reverts) reaches this job with the write key, so egress is blocked
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
 
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
           fetch-depth: 0
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Check for src/ changes since last deploy"
         id: "changes"
@@ -183,12 +228,23 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            openrouter.ai:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
 
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
           fetch-depth: 2
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Apply Sync"
         uses: "anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd" # v7.5.0
@@ -228,6 +284,7 @@ jobs:
   summary:
     needs:
       - "lint"
+      - "guard-test"
       - "xfg-preview"
       - "xfg-plan"
       - "xfg-apply"
