@@ -35,6 +35,9 @@ else empty end),
   | select(($p | length) >= 3 and $p[-1] == "env" and $p[-3] == "secrets")
   | getpath($p) | select(IN($secret_env[]) | not)
   | bad("secret source env not allowed: \(tojson)")),
+(.. | objects | select(has("files")) | .files | objects | keys[]
+  | select(test("(\\A|[/\\\\])\\.git([/\\\\]|\\z)"; "i"))
+  | bad("file path has a .git segment: \(tojson)")),
 (.. | objects | select(has("apiKeyEnv")) | .apiKeyEnv | select(. != $ai_key_env)
   | bad("prOptions.ai.apiKeyEnv not allowed: \(tojson)")),
 (.. | objects | select(has("ai")) | .ai | objects | select(has("baseUrl")) | .baseUrl

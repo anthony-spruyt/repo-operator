@@ -232,3 +232,34 @@ setup() {
   run "$SCRIPT" "$CFG"
   [ "$status" -eq 0 ]
 }
+
+@test "rejects a file path with a .git segment" {
+  for path in .git .git/config .git/hooks/pre-commit foo/.git/config ./.git/config .GIT/config foo/.Git; do
+    printf 'files:\n  "%s":\n    content: x\n' "$path" >"$CFG/files.yaml"
+    run "$SCRIPT" "$CFG"
+    [ "$status" -eq 1 ]
+    [[ "$output" == *".git segment"* ]]
+  done
+}
+
+@test "rejects a .git file path in a group, conditional group or repo" {
+  printf 'groups:\n  g:\n    files:\n      .git/config:\n        content: x\n' >"$CFG/groups.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".git segment"* ]]
+  printf 'conditionalGroups:\n  - when: {allOf: [g]}\n    files:\n      .git/config:\n        content: x\n' >"$CFG/groups.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".git segment"* ]]
+  rm "$CFG/groups.yaml"
+  printf '    files:\n      .git/hooks/post-checkout:\n        content: x\n' >>"$CFG/repos.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *".git segment"* ]]
+}
+
+@test "allows .github, .gitignore and .gitattributes file paths" {
+  printf 'files:\n  .github/workflows/ci.yaml:\n    content: x\n  .gitignore:\n    content: x\n  sub/.gitattributes:\n    content: x\n  foo.git/a:\n    content: x\n' >"$CFG/files.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
