@@ -12,7 +12,7 @@ repos:
       - protected-main-branch
       - cpp
       - python
-      - renovate
+      - renovate-fork
     files:
       .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
@@ -29,7 +29,7 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.chromance"
-      .github/renovate.json5:
+      renovate.json:
         content:
           forkProcessing: "enabled"
 
@@ -370,7 +370,7 @@ repos:
       - python-image
       - release-please
       - mergify
-      - renovate
+      - renovate-fork
       - sonar
     files:
       .github/workflows/ci.yaml:
@@ -402,6 +402,9 @@ repos:
               command: "cclsp"
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/SunGather/.claude/cclsp.json"
+      renovate.json:
+        content:
+          forkProcessing: "enabled"
 
   - git: https://github.com/anthony-spruyt/traefik-api-key-auth.git
     groups:

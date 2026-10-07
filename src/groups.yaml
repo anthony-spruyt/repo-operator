@@ -384,6 +384,13 @@ groups:
         "renovate/taskfile":
           color: "#ededed"
           description: ""
+  # Renovate reads forkProcessing only from a root renovate.json, which also shadows .github/renovate.json5
+  renovate-fork:
+    extends: renovate
+    files:
+      .github/renovate.json5: false
+      renovate.json:
+        content: "@templates/.github/renovate.json5"
   sonar:
     files:
       .sonarcloud.properties:
