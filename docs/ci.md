@@ -68,6 +68,8 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
+- `_trivy-fs.yaml`: Trivy scan of the checkout. Needs `contents: read` and `security-events: write`.
+- `_trivy-img.yaml`: Trivy scan of `ghcr.io/<owner>/<image>:latest` for each name in the required `images` input, a JSON array (`'[]'` scans none). GHCR's package list API rejects `GITHUB_TOKEN` and app tokens, so the caller lists its images. Needs `contents: read`, `packages: read` and `security-events: write`.
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 

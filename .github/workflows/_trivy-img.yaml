@@ -4,10 +4,13 @@ name: Trivy Container Image Scan
 
 on:
   workflow_call:
-    secrets:
-      # Optional so callers synced before the secret existed still parse; the step fails loudly instead.
-      GHCR_READ_TOKEN:
-        required: false
+    inputs:
+      images:
+        description: >-
+          JSON array of GHCR image names under the repo owner, for example '["my-image"]'.
+          '[]' scans no images.
+        required: true
+        type: string
 
 permissions:
   contents: read
@@ -21,6 +24,7 @@ jobs:
   discover-images:
     name: Discover Images
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       images: ${{ steps.discover.outputs.images }}
     steps:
@@ -29,27 +33,22 @@ jobs:
         with:
           egress-policy: audit
 
-      # The list endpoint rejects GITHUB_TOKEN and app tokens (HTTP 400), so this
-      # needs a classic PAT with only read:packages. See repo-operator#390 step 5.
-      - name: List this repo's images from GHCR
+      # GHCR's package list API rejects GITHUB_TOKEN and app tokens, so callers declare their images
+      - name: Resolve images
         id: discover
         env:
-          GH_TOKEN: ${{ secrets.GHCR_READ_TOKEN }}
+          IMAGES_INPUT: ${{ inputs.images }}
         run: |
-          if [ -z "$GH_TOKEN" ]; then
-            echo "::error::GHCR_READ_TOKEN is not set. repo-operator syncs it to github-trivy repos."
+          # \A and \z, not ^ and $: jq's $ also matches before a trailing newline
+          if ! IMAGES=$(jq -sce '
+              if length == 1 and (.[0] | type == "array" and all(.[]; type == "string" and test("\\A[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*\\z")))
+              then .[0] | unique else error("not one array of lowercase GHCR image names") end
+            ' <<< "$IMAGES_INPUT"); then
+            echo "::error::The images input must be a JSON array of lowercase GHCR image names, or '[]'"
             exit 1
           fi
-
-          REPO="${GITHUB_REPOSITORY#*/}"
-          IMAGES=$(gh api --paginate \
-            "users/${GITHUB_REPOSITORY_OWNER}/packages?package_type=container&per_page=100" \
-            --jq ".[] | select(.repository.name == \"$REPO\") | .name" | jq -Rsc 'split("\n") | map(select(. != "")) | sort')
-
-          COUNT=$(echo "$IMAGES" | jq 'length')
-          echo "Found $COUNT images linked to $REPO"
-          echo "$IMAGES" | jq .
-
+          echo "Scanning $(jq 'length' <<< "$IMAGES") images"
+          jq . <<< "$IMAGES"
           echo "images=$IMAGES" >> "$GITHUB_OUTPUT"
 
   scan-images:
