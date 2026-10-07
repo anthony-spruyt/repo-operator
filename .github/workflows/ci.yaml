@@ -294,4 +294,4 @@ jobs:
     permissions:
       actions: "read"
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"
+    uses: "./.github/workflows/_summary.yaml"

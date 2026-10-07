@@ -112,12 +112,15 @@
       enabled: false
     },
 
-    // ============ Disable self-referencing workflow updates ============
+    // ============ repo-operator shared CI pins ============
     {
-      description: "Disable updates for self-hosted reusable workflows (intentionally track @main)",
+      // Every merge moves main: without updateNotScheduled, open PRs re-push (and lose approvals) on each merge.
+      description: "repo-operator workflows and actions: callers pin a main commit with a '# main' comment; bump them monthly in one PR",
       matchPackageNames: ["anthony-spruyt/repo-operator"],
       matchManagers: ["github-actions"],
-      enabled: false
+      groupName: "repo-operator shared CI",
+      schedule: ["before 9am on the first day of the month"],
+      updateNotScheduled: false
     },
 
     // ============ Docker/OCI ============

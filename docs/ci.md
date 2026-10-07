@@ -1,6 +1,11 @@
 # Shared CI
 
-Reusable workflows and composite actions that other repos call from this repo. Pin them to `@main` for now; a floating `v1` tag is planned (#494).
+Reusable workflows and composite actions that other repos call from this repo. Callers pin a commit on `main` by its full SHA, with a `# main` comment: `uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@<sha> # main`. Renovate reads the comment, looks up the branch's current commit through its `github-digest` datasource, and bumps every pin in a repo in one monthly
+`repo-operator shared CI` PR. Every merge here moves `main`, so that PR comes every month whether or not a shared workflow changed. A pin with no comment is never bumped, and an unpinned `@main` gets a pin PR.
+
+The synced callers (`src/templates/.github/workflows/`) carry the comment here, so Renovate bumps them in this repo and the next sync carries the new SHA out. xfg drops YAML comments when it writes a file, so the synced copies hold a bare SHA that Renovate skips: downstream repos get no pin PRs for managed files. Callers a repo owns (a hand-edited `ci.yaml`, or an unmanaged workflow) keep the
+comment, and Renovate bumps them in that repo. A `createOnly` `ci.yaml` that xfg seeds also arrives without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out), or the owning repo's for its own
+callers.
 
 Reusable workflows suit single-package repos that follow the standard layout: the project at the repo root and a `Dockerfile` there too. For Go, `go.mod` sits at the root and binaries live under `cmd/`. Monorepos can call the composite actions from their own jobs instead.
 
@@ -97,7 +102,7 @@ jobs:
   cleanup:
     permissions:
       packages: write
-    uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@<sha> # main
     with:
       dry-run: ${{ inputs.dry-run || false }}
 ```
@@ -264,9 +269,9 @@ jobs:
       actions: read
       contents: read
       security-events: write
-    uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@<sha> # main
   image:
-    uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@<sha> # main
     with:
       language: go
   summary:
@@ -275,7 +280,7 @@ jobs:
     permissions:
       actions: read
       contents: read
-    uses: anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@<sha> # main
 ```
 
 `.github/workflows/release-please.yaml`:
@@ -293,7 +298,7 @@ permissions:
   attestations: write
 jobs:
   release:
-    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha> # main
     with:
       language: go
     secrets:
@@ -319,7 +324,7 @@ permissions:
   attestations: write
 jobs:
   rebuild:
-    uses: anthony-spruyt/repo-operator/.github/workflows/_rebuild-release.yaml@main
+    uses: anthony-spruyt/repo-operator/.github/workflows/_rebuild-release.yaml@<sha> # main
     with:
       version: ${{ inputs.version }}
       language: go
@@ -344,7 +349,7 @@ jobs:
 Call the actions from a job that already checked out the right ref:
 
 ```yaml
-- uses: anthony-spruyt/repo-operator/.github/actions/build-image@main
+- uses: anthony-spruyt/repo-operator/.github/actions/build-image@<sha> # main
   id: build
   with:
     image: my-service
@@ -352,7 +357,7 @@ Call the actions from a job that already checked out the right ref:
     go-mod: services/my-service/go.mod
     push: "true"
     version: ${{ needs.release.outputs.my-service-version }}
-- uses: anthony-spruyt/repo-operator/.github/actions/publish-release@main
+- uses: anthony-spruyt/repo-operator/.github/actions/publish-release@<sha> # main
   with:
     tag: ${{ needs.release.outputs.my-service-tag }}
     image-ref: ${{ steps.build.outputs.image-ref }}

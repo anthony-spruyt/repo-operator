@@ -16,7 +16,7 @@ jobs:
   cleanup:
     permissions:
       packages: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@main"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@5cbe1a184d32fd631420e30e20b46a85b5aa244f" # main
     with:
       packages: "${xfg:retentionPackages}"
       # Other triggers get no inputs, and null == false in expressions, so they dry-run
