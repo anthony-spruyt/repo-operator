@@ -1,0 +1,1592 @@
+{
+  "total": 5,
+  "p": 1,
+  "ps": 500,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 5
+  },
+  "effortTotal": 87,
+  "debtTotal": 87,
+  "issues": [
+    {
+      "key": "issue-1",
+      "rule": "python:S7632",
+      "severity": "MAJOR",
+      "component": "anthony-spruyt_claude-plugins:hookify-plus/core/masking.py",
+      "project": "anthony-spruyt_claude-plugins",
+      "line": 39,
+      "hash": "7ed1194436ef88c20046c77c49623149",
+      "textRange": {
+        "startLine": 39,
+        "endLine": 39,
+        "startOffset": 83,
+        "endOffset": 151
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Fix the syntax of this issue suppression comment.",
+      "effort": "1min",
+      "debt": "1min",
+      "tags": [],
+      "creationDate": "2026-10-07T09:47:43+0000",
+      "updateDate": "2026-10-07T09:48:02+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "133",
+      "cleanCodeAttribute": "CONVENTIONAL",
+      "cleanCodeAttributeCategory": "CONSISTENT",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "MEDIUM"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "claude-plugins",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "efc0df06-935b-460f-a940-9ebafe0b669a",
+      "lastChangeSource": "ANALYSIS"
+    },
+    {
+      "key": "issue-2",
+      "rule": "python:S3776",
+      "severity": "CRITICAL",
+      "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+      "project": "anthony-spruyt_claude-plugins",
+      "line": 782,
+      "hash": "5ac20169b7feb2aecd49e9f5ff165422",
+      "textRange": {
+        "startLine": 782,
+        "endLine": 782,
+        "startOffset": 4,
+        "endOffset": 12
+      },
+      "flows": [
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 785,
+                "endLine": 785,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 787,
+                "endLine": 787,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 788,
+                "endLine": 788,
+                "startOffset": 25,
+                "endOffset": 27
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 790,
+                "endLine": 790,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 790,
+                "endLine": 790,
+                "startOffset": 25,
+                "endOffset": 28
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 790,
+                "endLine": 790,
+                "startOffset": 42,
+                "endOffset": 44
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 792,
+                "endLine": 792,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 793,
+                "endLine": 793,
+                "startOffset": 61,
+                "endOffset": 63
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 794,
+                "endLine": 794,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 794,
+                "endLine": 794,
+                "startOffset": 42,
+                "endOffset": 45
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 796,
+                "endLine": 796,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 797,
+                "endLine": 797,
+                "startOffset": 8,
+                "endOffset": 13
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 797,
+                "endLine": 797,
+                "startOffset": 29,
+                "endOffset": 32
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 800,
+                "endLine": 800,
+                "startOffset": 4,
+                "endOffset": 7
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 803,
+                "endLine": 803,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 805,
+                "endLine": 805,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 805,
+                "endLine": 805,
+                "startOffset": 43,
+                "endOffset": 46
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 807,
+                "endLine": 807,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 807,
+                "endLine": 807,
+                "startOffset": 46,
+                "endOffset": 49
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 809,
+                "endLine": 809,
+                "startOffset": 4,
+                "endOffset": 6
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 809,
+                "endLine": 809,
+                "startOffset": 23,
+                "endOffset": 26
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 809,
+                "endLine": 809,
+                "startOffset": 45,
+                "endOffset": 47
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 809,
+                "endLine": 809,
+                "startOffset": 74,
+                "endOffset": 77
+              },
+              "msg": "+1"
+            }
+          ]
+        }
+      ],
+      "status": "OPEN",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.",
+      "effort": "19min",
+      "debt": "19min",
+      "tags": [
+        "brain-overload"
+      ],
+      "creationDate": "2026-10-07T09:47:43+0000",
+      "updateDate": "2026-10-07T09:48:02+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "133",
+      "cleanCodeAttribute": "FOCUSED",
+      "cleanCodeAttributeCategory": "ADAPTABLE",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "claude-plugins",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "efc0df06-935b-460f-a940-9ebafe0b669a",
+      "lastChangeSource": "ANALYSIS"
+    },
+    {
+      "key": "issue-3",
+      "rule": "python:S3776",
+      "severity": "CRITICAL",
+      "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+      "project": "anthony-spruyt_claude-plugins",
+      "line": 881,
+      "hash": "d84e101a22df98416cac74b2f95e25cc",
+      "textRange": {
+        "startLine": 881,
+        "endLine": 881,
+        "startOffset": 8,
+        "endOffset": 12
+      },
+      "flows": [
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 885,
+                "endLine": 885,
+                "startOffset": 8,
+                "endOffset": 13
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 887,
+                "endLine": 887,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 893,
+                "endLine": 893,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 893,
+                "endLine": 893,
+                "startOffset": 25,
+                "endOffset": 28
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 895,
+                "endLine": 895,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 897,
+                "endLine": 897,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 899,
+                "endLine": 899,
+                "startOffset": 16,
+                "endOffset": 18
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 903,
+                "endLine": 903,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 903,
+                "endLine": 903,
+                "startOffset": 26,
+                "endOffset": 28
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 904,
+                "endLine": 904,
+                "startOffset": 28,
+                "endOffset": 30
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 906,
+                "endLine": 906,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 909,
+                "endLine": 909,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 911,
+                "endLine": 911,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 913,
+                "endLine": 913,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 915,
+                "endLine": 915,
+                "startOffset": 16,
+                "endOffset": 18
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 917,
+                "endLine": 917,
+                "startOffset": 16,
+                "endOffset": 18
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 920,
+                "endLine": 920,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 927,
+                "endLine": 927,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 927,
+                "endLine": 927,
+                "startOffset": 24,
+                "endOffset": 27
+              },
+              "msg": "+1"
+            }
+          ]
+        }
+      ],
+      "status": "OPEN",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 29 to the 15 allowed.",
+      "effort": "19min",
+      "debt": "19min",
+      "tags": [
+        "brain-overload"
+      ],
+      "creationDate": "2026-10-07T09:47:43+0000",
+      "updateDate": "2026-10-07T09:48:02+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "133",
+      "cleanCodeAttribute": "FOCUSED",
+      "cleanCodeAttributeCategory": "ADAPTABLE",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "claude-plugins",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "efc0df06-935b-460f-a940-9ebafe0b669a",
+      "lastChangeSource": "ANALYSIS"
+    },
+    {
+      "key": "issue-4",
+      "rule": "python:S3776",
+      "severity": "CRITICAL",
+      "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+      "project": "anthony-spruyt_claude-plugins",
+      "line": 1055,
+      "hash": "9416cc20d078ae5ef73b10886a84abcb",
+      "textRange": {
+        "startLine": 1055,
+        "endLine": 1055,
+        "startOffset": 8,
+        "endOffset": 22
+      },
+      "flows": [
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1059,
+                "endLine": 1059,
+                "startOffset": 8,
+                "endOffset": 13
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1061,
+                "endLine": 1061,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1064,
+                "endLine": 1064,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1064,
+                "endLine": 1064,
+                "startOffset": 24,
+                "endOffset": 27
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1066,
+                "endLine": 1066,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1066,
+                "endLine": 1066,
+                "startOffset": 38,
+                "endOffset": 40
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1066,
+                "endLine": 1066,
+                "startOffset": 60,
+                "endOffset": 63
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1068,
+                "endLine": 1068,
+                "startOffset": 40,
+                "endOffset": 42
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1069,
+                "endLine": 1069,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1071,
+                "endLine": 1071,
+                "startOffset": 29,
+                "endOffset": 31
+              },
+              "msg": "+3 (incl 2 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1072,
+                "endLine": 1072,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1074,
+                "endLine": 1074,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1075,
+                "endLine": 1075,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1075,
+                "endLine": 1075,
+                "startOffset": 29,
+                "endOffset": 31
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1078,
+                "endLine": 1078,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1078,
+                "endLine": 1078,
+                "startOffset": 43,
+                "endOffset": 46
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1080,
+                "endLine": 1080,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1083,
+                "endLine": 1083,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1083,
+                "endLine": 1083,
+                "startOffset": 28,
+                "endOffset": 30
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1083,
+                "endLine": 1083,
+                "startOffset": 61,
+                "endOffset": 64
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1087,
+                "endLine": 1087,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1087,
+                "endLine": 1087,
+                "startOffset": 35,
+                "endOffset": 38
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1091,
+                "endLine": 1091,
+                "startOffset": 54,
+                "endOffset": 56
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1092,
+                "endLine": 1092,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1094,
+                "endLine": 1094,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1097,
+                "endLine": 1097,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        }
+      ],
+      "status": "OPEN",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 36 to the 15 allowed.",
+      "effort": "26min",
+      "debt": "26min",
+      "tags": [
+        "brain-overload"
+      ],
+      "creationDate": "2026-10-07T09:47:43+0000",
+      "updateDate": "2026-10-07T09:48:02+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "133",
+      "cleanCodeAttribute": "FOCUSED",
+      "cleanCodeAttributeCategory": "ADAPTABLE",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "claude-plugins",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "efc0df06-935b-460f-a940-9ebafe0b669a",
+      "lastChangeSource": "ANALYSIS"
+    },
+    {
+      "key": "issue-5",
+      "rule": "python:S3776",
+      "severity": "CRITICAL",
+      "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+      "project": "anthony-spruyt_claude-plugins",
+      "line": 1259,
+      "hash": "2dd26eca2937d7d8165795a289b01e51",
+      "textRange": {
+        "startLine": 1259,
+        "endLine": 1259,
+        "startOffset": 8,
+        "endOffset": 15
+      },
+      "flows": [
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1261,
+                "endLine": 1261,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1263,
+                "endLine": 1263,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1267,
+                "endLine": 1267,
+                "startOffset": 25,
+                "endOffset": 27
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1267,
+                "endLine": 1267,
+                "startOffset": 30,
+                "endOffset": 33
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1268,
+                "endLine": 1268,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1268,
+                "endLine": 1268,
+                "startOffset": 31,
+                "endOffset": 33
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1270,
+                "endLine": 1270,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1272,
+                "endLine": 1272,
+                "startOffset": 8,
+                "endOffset": 13
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1274,
+                "endLine": 1274,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1274,
+                "endLine": 1274,
+                "startOffset": 48,
+                "endOffset": 51
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1277,
+                "endLine": 1277,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1277,
+                "endLine": 1277,
+                "startOffset": 48,
+                "endOffset": 51
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1281,
+                "endLine": 1281,
+                "startOffset": 29,
+                "endOffset": 31
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1281,
+                "endLine": 1281,
+                "startOffset": 34,
+                "endOffset": 37
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1282,
+                "endLine": 1282,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1282,
+                "endLine": 1282,
+                "startOffset": 35,
+                "endOffset": 37
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1284,
+                "endLine": 1284,
+                "startOffset": 12,
+                "endOffset": 14
+              },
+              "msg": "+2 (incl 1 for nesting)"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1286,
+                "endLine": 1286,
+                "startOffset": 12,
+                "endOffset": 16
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1288,
+                "endLine": 1288,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1290,
+                "endLine": 1290,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1292,
+                "endLine": 1292,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1294,
+                "endLine": 1294,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1296,
+                "endLine": 1296,
+                "startOffset": 8,
+                "endOffset": 10
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1298,
+                "endLine": 1298,
+                "startOffset": 8,
+                "endOffset": 12
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1298,
+                "endLine": 1298,
+                "startOffset": 32,
+                "endOffset": 34
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1298,
+                "endLine": 1298,
+                "startOffset": 69,
+                "endOffset": 72
+              },
+              "msg": "+1"
+            }
+          ]
+        },
+        {
+          "locations": [
+            {
+              "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+              "textRange": {
+                "startLine": 1300,
+                "endLine": 1300,
+                "startOffset": 8,
+                "endOffset": 12
+              },
+              "msg": "+1"
+            }
+          ]
+        }
+      ],
+      "status": "OPEN",
+      "message": "Refactor this function to reduce its Cognitive Complexity from 32 to the 15 allowed.",
+      "effort": "22min",
+      "debt": "22min",
+      "tags": [
+        "brain-overload"
+      ],
+      "creationDate": "2026-10-07T09:47:43+0000",
+      "updateDate": "2026-10-07T09:48:02+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "133",
+      "cleanCodeAttribute": "FOCUSED",
+      "cleanCodeAttributeCategory": "ADAPTABLE",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "HIGH"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "claude-plugins",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "efc0df06-935b-460f-a940-9ebafe0b669a",
+      "lastChangeSource": "ANALYSIS"
+    }
+  ],
+  "components": [
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_claude-plugins:hookify-plus/core/masking.py",
+      "uuid": "AaEVw5U8eC3ek_8qVFSe",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "masking.py",
+      "longName": "hookify-plus/core/masking.py",
+      "path": "hookify-plus/core/masking.py",
+      "pullRequest": "133"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_claude-plugins",
+      "uuid": "AaEVwz3w8fZ50z8pRbqH",
+      "enabled": true,
+      "qualifier": "TRK",
+      "name": "claude-plugins",
+      "longName": "claude-plugins",
+      "pullRequest": "133"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
+      "uuid": "AaEVw5U8eC3ek_8qVFSh",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "shell_parse.py",
+      "longName": "hookify-plus/core/shell_parse.py",
+      "path": "hookify-plus/core/shell_parse.py",
+      "pullRequest": "133"
+    }
+  ],
+  "organizations": [
+    {
+      "key": "anthony-spruyt",
+      "name": "Anthony"
+    }
+  ],
+  "facets": []
+}
