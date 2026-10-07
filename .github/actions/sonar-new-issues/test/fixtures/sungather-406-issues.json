@@ -1,0 +1,83 @@
+{
+  "total": 1,
+  "p": 1,
+  "ps": 500,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 1
+  },
+  "effortTotal": 1,
+  "debtTotal": 1,
+  "issues": [
+    {
+      "key": "AaEVyiRjvGRnIyCZ-p68",
+      "rule": "python:S7632",
+      "severity": "MAJOR",
+      "component": "anthony-spruyt_SunGather:src/sungather/sungather.py",
+      "project": "anthony-spruyt_SunGather",
+      "line": 82,
+      "hash": "81e414298fbc126f83a72df5f71392f4",
+      "textRange": {
+        "startLine": 82,
+        "endLine": 82,
+        "startOffset": 35,
+        "endOffset": 91
+      },
+      "flows": [],
+      "status": "OPEN",
+      "message": "Fix the syntax of this issue suppression comment.",
+      "effort": "1min",
+      "debt": "1min",
+      "tags": [],
+      "creationDate": "2026-10-07T09:54:59+0000",
+      "updateDate": "2026-10-07T09:55:13+0000",
+      "type": "CODE_SMELL",
+      "organization": "anthony-spruyt",
+      "pullRequest": "406",
+      "cleanCodeAttribute": "CONVENTIONAL",
+      "cleanCodeAttributeCategory": "CONSISTENT",
+      "impacts": [
+        {
+          "softwareQuality": "MAINTAINABILITY",
+          "severity": "MEDIUM"
+        }
+      ],
+      "issueStatus": "OPEN",
+      "projectName": "SunGather",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "6a210d1a-ea4e-4f43-af52-e4015dd69b2b",
+      "lastChangeSource": "ANALYSIS"
+    }
+  ],
+  "components": [
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_SunGather",
+      "uuid": "AaEVyc-PkQDQ2m7VW5ij",
+      "enabled": true,
+      "qualifier": "TRK",
+      "name": "SunGather",
+      "longName": "SunGather",
+      "pullRequest": "406"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_SunGather:src/sungather/sungather.py",
+      "uuid": "AaEVyhsuvGRnIyCZ-p6r",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "sungather.py",
+      "longName": "src/sungather/sungather.py",
+      "path": "src/sungather/sungather.py",
+      "pullRequest": "406"
+    }
+  ],
+  "organizations": [
+    {
+      "key": "anthony-spruyt",
+      "name": "Anthony"
+    }
+  ],
+  "facets": []
+}

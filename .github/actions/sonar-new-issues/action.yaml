@@ -1,0 +1,37 @@
+---
+name: SonarCloud New Issues
+description: >-
+  Fail when SonarCloud reports an open issue, or a security hotspot to review,
+  on the current pull request. Waits until SonarCloud has analysed the pull
+  request's head commit. Public projects only: it calls the API without a token.
+inputs:
+  project-key:
+    description: SonarCloud project key
+    required: false
+    default: ${{ github.repository_owner }}_${{ github.event.repository.name }}
+  min-severity:
+    description: Lowest impact severity that fails (INFO, LOW, MEDIUM, HIGH or BLOCKER)
+    required: false
+    default: INFO
+  include-hotspots:
+    description: Also fail on security hotspots still to review ("true"/"false")
+    required: false
+    default: "true"
+  timeout-seconds:
+    description: How long to wait for SonarCloud to analyse the head commit
+    required: false
+    default: "900"
+runs:
+  using: composite
+  steps:
+    - name: Check SonarCloud
+      shell: bash
+      env:
+        SONAR_PROJECT_KEY: ${{ inputs.project-key }}
+        MIN_SEVERITY: ${{ inputs.min-severity }}
+        INCLUDE_HOTSPOTS: ${{ inputs.include-hotspots }}
+        TIMEOUT_SECONDS: ${{ inputs.timeout-seconds }}
+        PR_NUMBER: ${{ github.event.pull_request.number }}
+        HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        CHECK_SCRIPT: ${{ github.action_path }}/check.sh
+      run: '"$CHECK_SCRIPT"'

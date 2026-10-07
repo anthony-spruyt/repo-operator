@@ -1,0 +1,82 @@
+{
+  "total": 4,
+  "p": 1,
+  "ps": 1,
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 1,
+    "total": 4
+  },
+  "effortTotal": 240,
+  "debtTotal": 240,
+  "issues": [
+    {
+      "key": "AaAuie_gvKLTf8kM4ZKF",
+      "rule": "docker:S8544",
+      "severity": "MAJOR",
+      "component": "anthony-spruyt_container-images:llm-guard-cuda/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "line": 19,
+      "hash": "2f13bb42c2f9039269474f700592aa84",
+      "textRange": {
+        "startLine": 19,
+        "endLine": 19,
+        "startOffset": 4,
+        "endOffset": 75
+      },
+      "flows": [],
+      "resolution": "WONTFIX",
+      "status": "RESOLVED",
+      "message": "Using dependencies without locking resolved versions is security-sensitive.",
+      "effort": "1h",
+      "debt": "1h",
+      "assignee": "anthony-spruyt-iQHIC@github",
+      "tags": [],
+      "creationDate": "2026-08-23T12:12:39+0000",
+      "updateDate": "2026-08-23T12:12:47+0000",
+      "type": "VULNERABILITY",
+      "organization": "anthony-spruyt",
+      "cleanCodeAttribute": "COMPLETE",
+      "cleanCodeAttributeCategory": "INTENTIONAL",
+      "impacts": [
+        {
+          "softwareQuality": "SECURITY",
+          "severity": "MEDIUM"
+        }
+      ],
+      "issueStatus": "ACCEPTED",
+      "projectName": "container-images",
+      "internalTags": [],
+      "lastChangeAnalysisUuid": "485cb8bf-b9de-46f3-a1e3-f59714ab17d2",
+      "lastChangeSource": "ANALYSIS"
+    }
+  ],
+  "components": [
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images",
+      "uuid": "AZ6C36WNEeFJ4QtcoIlR",
+      "enabled": true,
+      "qualifier": "TRK",
+      "name": "container-images",
+      "longName": "container-images"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:llm-guard-cuda/Dockerfile",
+      "uuid": "AaAuieXHvKLTf8kM4ZKB",
+      "enabled": true,
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "llm-guard-cuda/Dockerfile",
+      "path": "llm-guard-cuda/Dockerfile"
+    }
+  ],
+  "organizations": [
+    {
+      "key": "anthony-spruyt",
+      "name": "Anthony"
+    }
+  ],
+  "facets": []
+}
