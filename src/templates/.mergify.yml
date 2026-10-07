@@ -54,6 +54,15 @@ pull_request_rules:
       request_reviews:
         users:
           - anthony-spruyt
+  # Repos without pr-rules don't dismiss on push, and the triage approval waives the owner
+  - name: dismiss stale Renovate approvals
+    conditions:
+      - base = main
+      - author = renovate[bot]
+    actions:
+      dismiss_reviews:
+        approved: true
+        changes_requested: false
 
 merge_protections:
   # This is the only approval gate for repos without GitHub branch protection.
@@ -70,7 +79,9 @@ merge_protections:
           - approved-reviews-by = anthony-spruyt
           - and:
               - author = renovate[bot]
-              - "#approved-reviews-by >= 1"
+              - approved-reviews-by = skynet-rw[bot]
+              - label = agent/auto-approved
+              - "-commits[*].author~=^(?!renovate\\[bot\\]$).*"
           - and:
               - author = anthony-spruyt
               - "#approved-reviews-by >= 1"
@@ -80,6 +91,21 @@ merge_protections:
       - base = main
       - -author = anthony-spruyt
       - "files~=^(\\.github/|\\.mergify\\.yml$)"
+    success_conditions:
+      - or:
+          - approved-reviews-by = anthony-spruyt
+          - and:
+              - author = renovate[bot]
+              - approved-reviews-by = skynet-rw[bot]
+              - label = agent/auto-approved
+              - "-commits[*].author~=^(?!renovate\\[bot\\]$).*"
+
+  # Renovate and Mergify config decide what Renovate merges alone; any depth covers src/templates/
+  - name: renovate-config-owner-approval
+    if:
+      - base = main
+      - author = renovate[bot]
+      - "files~=^(.*/)?(\\.github/renovate|renovate\\.json5?$|\\.renovaterc|\\.mergify\\.yml$)"
     success_conditions:
       - approved-reviews-by = anthony-spruyt
 

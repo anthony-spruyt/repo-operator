@@ -127,8 +127,10 @@ Every credential that can act on the managed repos. Keep this current when addin
 | `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` where a release moves a tag (xfg `vN`) |
 | `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                                                                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
 | `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                         |
+| `skynet-rw[bot]`                 | 3233443 | Agent platform                                                                                     | Approves triaged Renovate PRs, opens agent PRs   | none                                                        |
 
-`pr-rules` only exists on `protected-main-branch` repos. Mergify merge protections trust PRs authored by `repo-operator-release-bot[bot]` (`release-please`, `megalinter-refresh`); that is an author match, not a ruleset bypass.
+`pr-rules` only exists on `protected-main-branch` repos. Mergify merge protections trust PRs authored by `repo-operator-release-bot[bot]` (`release-please`, `megalinter-refresh`); that is an author match, not a ruleset bypass. They also merge a `renovate[bot]` PR with no owner review when `skynet-rw[bot]` (the n8n Renovate triage) approved it and labelled it `agent/auto-approved`, unless it
+touches Renovate or Mergify config.
 
 ### Tokens
 

@@ -225,9 +225,25 @@ repos:
     files:
       .github/CODEOWNERS:
         content:
-          - ".github/     @anthony-spruyt"
-          - "/src/        @anthony-spruyt"
-          - "/.mergify.yml @anthony-spruyt"
+          - "/src/templates/.github/renovate* @anthony-spruyt"
+          - "/src/templates/.mergify.yml      @anthony-spruyt"
+      .mergify.yml:
+        content:
+          merge_protections:
+            $arrayMerge: append
+            $values:
+              - name: operator-owner-approval
+                if:
+                  - base = main
+                  - "files~=^(src/|\\.github/)"
+                success_conditions:
+                  - or:
+                      - approved-reviews-by = anthony-spruyt
+                      - and:
+                          - author = renovate[bot]
+                          - approved-reviews-by = skynet-rw[bot]
+                          - label = agent/auto-approved
+                          - "-commits[*].author~=^(?!renovate\\[bot\\]$).*"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:

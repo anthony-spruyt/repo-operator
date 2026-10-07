@@ -287,9 +287,10 @@ groups:
       .github/CODEOWNERS:
         mergeStrategy: append # keep the base an inline list: an @templates string base is replaced, not appended to
         content:
-          - "# Protect CI/CD configuration from unauthorized changes"
-          - ".github/workflows/ @anthony-spruyt"
-          - ".github/actions/   @anthony-spruyt"
+          - "# Owner-only paths; Mergify merge protections gate the rest of .github/"
+          - "/.github/CODEOWNERS @anthony-spruyt"
+          - "/.github/renovate*  @anthony-spruyt"
+          - "/.mergify.yml       @anthony-spruyt"
     settings:
       rulesets:
         pr-rules:
@@ -575,6 +576,7 @@ conditionalGroups:
                   requiredStatusChecks:
                     - context: "summary / Check Results"
                     - context: "Mergify Merge Protections"
+                      integrationId: 10562 # mergify: any workflow can post a check of this name
                     - context: "SonarCloud Code Analysis"
                   strictRequiredStatusChecksPolicy: false
   - when:
@@ -592,6 +594,7 @@ conditionalGroups:
                   requiredStatusChecks:
                     - context: "summary / Check Results"
                     - context: "Mergify Merge Protections"
+                      integrationId: 10562 # mergify: any workflow can post a check of this name
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [renovate]
@@ -633,3 +636,22 @@ conditionalGroups:
               - actorId: 10562 # mergify: merges PRs and manages queue branches; exempt per Mergify rulesets docs
                 actorType: Integration
                 bypassMode: exempt
+    files:
+      .mergify.yml:
+        content:
+          merge_protections:
+            $arrayMerge: append
+            $values:
+              # No author exemption: anyone with write can push to the owner's PR, then approve it
+              - name: ci-workflow-owner-approval
+                if:
+                  - base = main
+                  - "files~=^(.*/)?\\.github/(workflows|actions)/"
+                success_conditions:
+                  - or:
+                      - approved-reviews-by = anthony-spruyt
+                      - and:
+                          - author = renovate[bot]
+                          - approved-reviews-by = skynet-rw[bot]
+                          - label = agent/auto-approved
+                          - "-commits[*].author~=^(?!renovate\\[bot\\]$).*"
