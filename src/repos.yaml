@@ -5,9 +5,13 @@ repos:
     groups:
       - claude
       - mcp
+      - github-ci
       - megalinter
       - megalinter-flavor
+      - mergify
+      - protected-main-branch
       - cpp
+      - python
       - renovate
     files:
       .claude/rules/tdd.md: false
