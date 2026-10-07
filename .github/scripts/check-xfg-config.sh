@@ -50,7 +50,7 @@ report() {
 }
 
 if [[ ! -d "$config_dir" ]]; then
-  echo "::error::xfg config directory not found: $config_dir"
+  echo "::error::xfg config directory not found: $config_dir" >&2
   exit 1
 fi
 
@@ -95,6 +95,7 @@ while IFS= read -r -d '' file; do
       violations+=("$file: escape sequences for \$, { or line continuations are not allowed in JSON5")
     fi
     ;;
+  *) ;;
   esac
   if [[ -n "$decoded" ]]; then
     report < <(printf '%s\n' "$decoded" | jq -r --arg f "$file" \
@@ -105,7 +106,7 @@ done < <(find "$config_dir" -type f -print0)
 if [[ "${#violations[@]}" -gt 0 ]]; then
   mapfile -t unique < <(printf '%s\n' "${violations[@]}" | sort -u)
   for v in "${unique[@]}"; do
-    echo "::error::$v"
+    echo "::error::$v" >&2
   done
   echo "xfg config guard: ${#unique[@]} violation(s); refusing to run xfg with an App key" >&2
   exit 1
