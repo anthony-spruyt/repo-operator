@@ -12,12 +12,7 @@ on:
       - "main"
   workflow_dispatch: {}
 
-permissions:
-  actions: "read"
-  contents: "write"
-  pull-requests: "write"
-  security-events: "write"
-  statuses: "write"
+permissions: {}
 
 jobs:
   lint:
@@ -40,6 +35,11 @@ jobs:
       (github.event_name == 'workflow_dispatch' ||
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && needs.lint.result == 'success'))
+    permissions:
+      actions: "read"
+      contents: "write"
+      pull-requests: "write"
+      statuses: "write"
     concurrency:
       group: "xfg-plan-${{ github.ref }}"
       cancel-in-progress: true
@@ -107,6 +107,11 @@ jobs:
       needs.xfg-plan.outputs.run_sync == 'true' &&
       github.event_name != 'pull_request'
     environment: "production"
+    permissions:
+      actions: "read"
+      contents: "write"
+      pull-requests: "write"
+      statuses: "write"
     concurrency:
       group: "xfg-apply"
       cancel-in-progress: false
@@ -162,4 +167,7 @@ jobs:
       - "xfg-plan"
       - "xfg-apply"
     if: "always()"
+    permissions:
+      actions: "read"
+      contents: "read"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"
