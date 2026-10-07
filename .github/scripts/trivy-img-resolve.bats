@@ -7,17 +7,10 @@ setup() {
     "$REPO_ROOT/.github/workflows/_trivy-img.yaml" >"$STEP"
   export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/output"
   : >"$GITHUB_OUTPUT"
-  export GITHUB_REPOSITORY="anthony-spruyt/example"
-  export GITHUB_REPOSITORY_OWNER="anthony-spruyt"
-  STUB="${BATS_TEST_TMPDIR}/bin"
-  mkdir -p "$STUB"
-  printf '#!/usr/bin/env bash\necho "$*" >"%s/gh-args"\nprintf "a\\nb\\n"\n' "$BATS_TEST_TMPDIR" >"$STUB/gh"
-  chmod +x "$STUB/gh"
-  export PATH="$STUB:$PATH"
 }
 
 resolve() {
-  IMAGES_INPUT="$1" GH_TOKEN=token run bash -e "$STEP"
+  IMAGES_INPUT="$1" run bash -e "$STEP"
 }
 
 @test "declared images are scanned, sorted" {
@@ -26,16 +19,9 @@ resolve() {
   grep -qx 'images=\["api","web"\]' "$GITHUB_OUTPUT"
 }
 
-@test "declared images never call the GitHub API" {
-  resolve '["web"]'
-  [ "$status" -eq 0 ]
-  [ ! -e "${BATS_TEST_TMPDIR}/gh-args" ]
-}
-
 @test "fails on an empty input rather than scanning nothing" {
   resolve ''
   [ "$status" -ne 0 ]
-  [ ! -e "${BATS_TEST_TMPDIR}/gh-args" ]
   [ ! -s "$GITHUB_OUTPUT" ]
 }
 
@@ -66,6 +52,25 @@ resolve() {
 @test "rejects a JSON string instead of an array" {
   resolve '"web"'
   [ "$status" -ne 0 ]
+}
+
+@test "rejects null and objects" {
+  for bad in 'null' '{"web": 1}'; do
+    resolve "$bad"
+    [ "$status" -ne 0 ]
+  done
+}
+
+@test "rejects more than one JSON document" {
+  resolve $'["web"]\n["evil"]'
+  [ "$status" -ne 0 ]
+  [ ! -s "$GITHUB_OUTPUT" ]
+}
+
+@test "rejects a name ending in a newline" {
+  resolve '["web\n"]'
+  [ "$status" -ne 0 ]
+  [ ! -s "$GITHUB_OUTPUT" ]
 }
 
 @test "rejects uppercase names, which GHCR does not allow" {

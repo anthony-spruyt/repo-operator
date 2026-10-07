@@ -24,6 +24,7 @@ jobs:
   discover-images:
     name: Discover Images
     runs-on: ubuntu-latest
+    permissions: {}
     outputs:
       images: ${{ steps.discover.outputs.images }}
     steps:
@@ -38,9 +39,10 @@ jobs:
         env:
           IMAGES_INPUT: ${{ inputs.images }}
         run: |
-          if ! IMAGES=$(jq -ce '
-              if type == "array" and all(.[]; type == "string" and test("^[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*$"))
-              then unique else error("not an array of lowercase GHCR image names") end
+          # \A and \z, not ^ and $: jq's $ also matches before a trailing newline
+          if ! IMAGES=$(jq -sce '
+              if length == 1 and (.[0] | type == "array" and all(.[]; type == "string" and test("\\A[a-z0-9]+([._-][a-z0-9]+)*(/[a-z0-9]+([._-][a-z0-9]+)*)*\\z")))
+              then .[0] | unique else error("not one array of lowercase GHCR image names") end
             ' <<< "$IMAGES_INPUT"); then
             echo "::error::The images input must be a JSON array of lowercase GHCR image names, or '[]'"
             exit 1
