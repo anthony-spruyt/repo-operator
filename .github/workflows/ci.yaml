@@ -92,6 +92,47 @@ jobs:
           github-client-id: "${{ vars.PLAN_APP_CLIENT_ID || vars.APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY || secrets.APP_PRIVATE_KEY }}"
 
+      - name: "DIAG Plan App token"
+        if: "github.event_name == 'pull_request'"
+        id: "diag-token"
+        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
+        with:
+          client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
+          private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
+          owner: "anthony-spruyt"
+
+      - name: "DIAG Plan App permissions"
+        if: "github.event_name == 'pull_request'"
+        env:
+          CLIENT_ID: "${{ vars.PLAN_APP_CLIENT_ID }}"
+          APP_KEY: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
+          IAT: "${{ steps.diag-token.outputs.token }}"
+        run: |
+          set -euo pipefail
+          echo "::add-mask::${IAT}"
+          b64() { openssl base64 -A | tr '+/' '-_' | tr -d '='; }
+          now=$(date +%s)
+          header=$(printf '{"alg":"RS256","typ":"JWT"}' | b64)
+          payload=$(printf '{"iat":%d,"exp":%d,"iss":"%s"}' $((now - 60)) $((now + 540)) "$CLIENT_ID" | b64)
+          keyfile=$(mktemp)
+          printf '%s\n' "$APP_KEY" > "$keyfile"
+          sig=$(printf '%s.%s' "$header" "$payload" | openssl dgst -sha256 -sign "$keyfile" | b64)
+          rm -f "$keyfile"
+          jwt="${header}.${payload}.${sig}"
+          echo "::add-mask::${jwt}"
+          api() { curl -fsS -H "Authorization: Bearer $1" -H "Accept: application/vnd.github+json" -H "X-GitHub-Api-Version: 2022-11-28" "https://api.github.com$2"; }
+          echo "== GET /app (app-level permissions)"
+          api "$jwt" /app | jq '{slug, permissions}'
+          echo "== GET /app/installations (granted permissions)"
+          api "$jwt" /app/installations | jq '[.[] | {account: .account.login, repository_selection, permissions}]'
+          for repo in claude-plugins container-images; do
+            echo "== GET /repos/anthony-spruyt/${repo} with installation token (field presence only)"
+            api "$IAT" "/repos/anthony-spruyt/${repo}" | jq '{token_repo_permissions: .permissions, allow_squash_merge: has("allow_squash_merge"), allow_merge_commit: has("allow_merge_commit"), allow_auto_merge: has("allow_auto_merge"), delete_branch_on_merge: has("delete_branch_on_merge"), allow_update_branch: has("allow_update_branch"), squash_merge_commit_title: has("squash_merge_commit_title"), security_and_analysis: has("security_and_analysis")}'
+            for id in $(api "$IAT" "/repos/anthony-spruyt/${repo}/rulesets" | jq -r '.[].id'); do
+              api "$IAT" "/repos/anthony-spruyt/${repo}/rulesets/${id}" | jq -c '{name, bypass_actors_present: has("bypass_actors"), current_user_can_bypass}'
+            done
+          done
+
   xfg-apply:
     name: "XFG Apply"
     runs-on: "ubuntu-latest"
