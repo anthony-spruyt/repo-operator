@@ -63,6 +63,8 @@ repos:
                   - "some.extension"
 ```
 
+With `github-ci` (but not `image`, which keeps `ci.yaml` managed), the first sync seeds `.github/workflows/ci.yaml` without comments. Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` there, so Renovate keeps the pin current (see [docs/ci.md](docs/ci.md)).
+
 ## Local Development
 
 ```bash
