@@ -17,11 +17,12 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 2. Template files in `src/templates/` are synced to target repos
 3. CI runs a **plan/apply** pipeline on push to main:
    - **Lint** — MegaLinter validation
-   - **XFG Plan** — dry-run showing planned changes (runs on PRs too)
+   - **XFG Plan (preview)** — partial dry-run on PRs, using the read-only Plan App
+   - **XFG Plan** — full dry-run on `main`, the plan to read before approving Apply
    - **XFG Apply** — pushes changes to target repos (requires production environment approval)
    - **Summary** — aggregates results for branch protection
 
-XFG Apply authenticates as the `repo-operator` GitHub App, whose key (`APP_PRIVATE_KEY`) is a `production` environment secret. XFG Plan uses a read-only Plan App (`PLAN_APP_*`).
+XFG Apply authenticates as the `repo-operator` GitHub App, whose key (`APP_PRIVATE_KEY`) is a secret in the `production` and `plan-main` environments. XFG Plan on `main` uses it from `plan-main` (branch `main` only, no reviewer), since GitHub hides merge settings and ruleset `bypass_actors` from read-only tokens. PR previews and Lint Canary use a read-only Plan App (`PLAN_APP_*`).
 
 ## Configuration
 
@@ -117,7 +118,7 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 | Actor                            | ID      | Credential                                                                                         | Can do                                           | Bypass                                                      |
 | -------------------------------- | ------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` environment only                                               | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                     | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
 | Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                   | Read-only metadata for `xfg` dry-runs            | none                                                        |
 | `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` where a release moves a tag (xfg `vN`) |
 | `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                                                                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
