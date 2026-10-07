@@ -101,12 +101,14 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 - For repo-specific rules, use `matchRepositories: ["owner/repo"]` in `package-rules.json5`
 - Don't use xfg overrides for Renovate array merging (YAML syntax limitation with `$arrayMerge`)
 - **Per-repo overrides**: instead of xfg array merges, repos use a `createOnly` `.github/renovate-overrides.json5` (seeded empty) and the synced `.github/renovate.json5` appends a `local>anthony-spruyt/<repo>//.github/renovate-overrides.json5` to its `extends`. Edit the override file in the target repo, not here.
+- **xfg-managed files**: `xfg-managed.json5` is generated from `src/`. It stops target repos from bumping files that xfg manages there without `createOnly`. After any `src/` change, run `.github/scripts/gen-xfg-managed-renovate.sh src > .github/renovate/xfg-managed.json5`. Guard Tests fail if it drifts.
+- **Forks** use the `renovate-fork` group plus a `renovate.json: { content: { forkProcessing: "enabled" } }` override. Renovate reads `forkProcessing` only from a root `renovate.json`.
 
 ### CI/CD Pipeline
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`).
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`).
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because agent reverts can merge `src/` with no review. This is the plan to read before approving Apply. Skips when
    `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).

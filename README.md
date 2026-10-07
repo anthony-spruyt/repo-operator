@@ -96,6 +96,17 @@ Modular Renovate config in `.github/renovate/` is **not** synced via xfg — tar
 
 For repo-specific Renovate rules, use `matchRepositories` in `.github/renovate/package-rules.json5`.
 
+Target repos don't bump the files xfg manages for them. `.github/renovate/xfg-managed.json5` disables Renovate on every file that xfg manages in a repo without `createOnly`. Without it, Renovate's bump would be reverted by the next sync. Renovate bumps those pins here in `src/` instead, and they reach the target repos at the next XFG Apply. `createOnly` files stay with their repo. Vulnerability
+alerts override `enabled: false`, so a security fix can still open a PR in a target repo. Land the same fix in `src/` too, or the next sync reverts it. The preset is generated from `src/`, so regenerate it after any change there:
+
+```bash
+.github/scripts/gen-xfg-managed-renovate.sh src > .github/renovate/xfg-managed.json5
+```
+
+Guard Tests fail when the committed preset doesn't match `src/`.
+
+Forks join `renovate-fork` instead of `renovate`, and set `renovate.json: { content: { forkProcessing: "enabled" } }` in `repos.yaml`. Renovate skips forks unless a root `renovate.json` enables `forkProcessing`, and it ignores that setting in `.github/renovate.json5`.
+
 ## SonarQube Cloud Configuration
 
 Rule exclusions and path filters live in SonarQube Cloud project settings, not in the repos. Automatic analysis only honours a fixed set of properties in `.sonarcloud.properties`, and it silently ignores `sonar.issue.ignore.multicriteria`. Custom quality profiles would be the tidier fix, but assigning one requires a paid plan.
