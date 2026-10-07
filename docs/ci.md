@@ -43,10 +43,27 @@ Appends the image reference, digest and run link to a release-please draft relea
 
 Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.token`, which needs `contents: write`).
 
+### `sonar-new-issues`
+
+Fails a pull request when SonarQube Cloud reports any open issue on it, or any security hotspot still to review. The free plan's locked "Sonar way" gate fails only when a rating drops, so new code smells pass it; this check closes that gap. Run it from `pull_request` events only.
+
+It first polls `api/project_pull_requests/list` until SonarQube Cloud has analysed the PR's head commit, then waits until `api/issues/search` returns as many open issues as that analysis counted, and `api/hotspots/search` as many hotspots to review as `api/measures/component` reports, because the search indexes can trail the analysis. All waits share `timeout-seconds`. It fails with a clear
+message if SonarQube Cloud never catches up, if a call keeps failing after retries, or if the project does not exist.
+
+Issues marked Accepted or False positive, and hotspots reviewed as Safe, never fail it. Each finding becomes an error annotation on its file and line, with a link to SonarQube Cloud.
+
+All calls are unauthenticated, so it needs no token and no permissions, and it works on fork PRs. That limits it to public projects. Everything SonarQube Cloud returns is escaped before it reaches a workflow command or the step summary.
+
+- `project-key` (default `<owner>_<repo>`): SonarQube Cloud project key
+- `min-severity` (default `INFO`): lowest impact severity that fails: `INFO`, `LOW`, `MEDIUM`, `HIGH` or `BLOCKER`. An issue with no impact severity always fails
+- `include-hotspots` (default `"true"`): also fail on hotspots to review
+- `timeout-seconds` (default `900`): how long to wait for SonarQube Cloud
+
 ## Reusable workflows
 
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
+- `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
 - `_build-image.yaml`: run the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please for one root (`.`) package. On release, runs `_build-image.yaml` with `push: true` on the new tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Repos without an image should not use it: only the image job undrafts the release.
 - `_rebuild-release.yaml`: rebuild and publish a release whose image job failed. Needs the publishing permissions.
@@ -63,6 +80,14 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
+
+`_lint.yaml` runs three jobs. Callers grant `actions: read`, `contents: read` and `security-events: write`:
+
+- `megalinter`: every linter but lychee, with no token and harden-runner `block`. On public repos it saves the SARIF report as an artifact.
+- `lint`: uploads that SARIF to code scanning. It is the only job with `security-events: write`, and it never checks out the PR's code. Its id stays `lint` because the id is part of the code scanning analysis key, so existing alerts carry over.
+- `lychee`: the link checker alone, with no token (MegaLinter hides `*TOKEN*` variables from linters anyway) and harden-runner `audit`, because links reach arbitrary hosts.
+
+The `megalinter` allowlist comes from egress logged across all repos: GitHub, GHCR (the image pull), Trivy's database mirrors, the Go module proxy (golangci-lint), `registry.coder.com` (Trivy on spruyt-labs' Terraform), and the artifact service. A new linter that downloads at runtime fails there until its host is added.
 
 ### Container retention
 

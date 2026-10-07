@@ -1,0 +1,16 @@
+{
+  "component": {
+    "id": "AaEVyc-PkQDQ2m7VW5ij",
+    "key": "anthony-spruyt_SunGather",
+    "name": "SunGather",
+    "qualifier": "TRK",
+    "measures": [
+      {
+        "metric": "security_hotspots_to_review_status",
+        "value": "0",
+        "bestValue": true
+      }
+    ],
+    "pullRequest": "406"
+  }
+}

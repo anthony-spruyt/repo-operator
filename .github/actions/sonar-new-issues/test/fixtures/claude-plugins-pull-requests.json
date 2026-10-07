@@ -1,0 +1,68 @@
+{
+  "pullRequests": [
+    {
+      "key": "133",
+      "title": "refactor: prepare for ruff PLR rules",
+      "branch": "refactor/ruff-plr",
+      "base": "main",
+      "status": {
+        "qualityGateStatus": "OK",
+        "bugs": 0,
+        "vulnerabilities": 0,
+        "codeSmells": 5
+      },
+      "analysisDate": "2026-10-07T09:48:02+0000",
+      "url": "https://github.com/anthony-spruyt/claude-plugins/pull/133",
+      "target": "main",
+      "commit": {
+        "sha": "72b0b57ba3b4836eff2c75ddd1ce1ccd8c31670f",
+        "author": {
+          "name": "Anonymous User"
+        },
+        "date": "2026-10-07T09:47:43+0000",
+        "message": "refactor: prepare for ruff PLR rules"
+      },
+      "contributors": [
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        }
+      ],
+      "pullRequestUuidV1": "AaEVwz3w8fZ50z8pRbqH",
+      "pullRequestId": "e4ae4312-3e8c-488c-adba-32fa301053b4"
+    },
+    {
+      "key": "121",
+      "title": "chore(devcontainer): install the Python test deps",
+      "branch": "chore/devcontainer-test-deps",
+      "base": "main",
+      "status": {
+        "qualityGateStatus": "OK",
+        "bugs": 0,
+        "vulnerabilities": 0,
+        "codeSmells": 0
+      },
+      "analysisDate": "2026-10-05T09:20:14+0000",
+      "url": "https://github.com/anthony-spruyt/claude-plugins/pull/121",
+      "target": "main",
+      "commit": {
+        "sha": "50fb045a27e60d43a35aa90b93c9fb4f2f3f244a",
+        "author": {
+          "name": "Anonymous User"
+        },
+        "date": "2026-10-05T09:20:03+0000",
+        "message": "chore(devcontainer): install test deps from wheels only"
+      },
+      "contributors": [
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        }
+      ],
+      "pullRequestUuidV1": "AaELWta85ySMhsRB2GiA",
+      "pullRequestId": "7ee3e937-2259-4189-99c8-477dc795aa11"
+    }
+  ]
+}

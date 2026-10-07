@@ -1,0 +1,61 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: SonarCloud New Issues
+
+on:
+  workflow_call:
+    inputs:
+      project-key:
+        description: SonarCloud project key. Defaults to <owner>_<repo>
+        type: string
+        required: false
+        default: ""
+      min-severity:
+        description: Lowest impact severity that fails (INFO, LOW, MEDIUM, HIGH or BLOCKER)
+        type: string
+        required: false
+        default: INFO
+      include-hotspots:
+        description: Also fail on security hotspots still to review
+        type: boolean
+        required: false
+        default: true
+      timeout-seconds:
+        description: How long to wait for SonarCloud to analyse the head commit
+        type: number
+        required: false
+        default: 900
+
+permissions: {}
+
+jobs:
+  check:
+    name: New Issues
+    runs-on: ubuntu-latest
+    # Merge-queue PRs only hold already-checked PRs, and Accepted issues don't carry over to them
+    if: >-
+      github.event_name == 'pull_request' && !(
+        github.event.pull_request.user.login == 'mergify[bot]' &&
+        github.event.pull_request.head.repo.full_name == github.repository &&
+        startsWith(github.event.pull_request.head.ref, 'mergify/merge-queue/'))
+    timeout-minutes: 30
+    permissions: {}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            sonarcloud.io:443
+
+      - name: Check SonarCloud
+        uses: $/.github/actions/sonar-new-issues
+        with:
+          project-key: ${{ inputs.project-key || format('{0}_{1}', github.repository_owner, github.event.repository.name) }}
+          min-severity: ${{ inputs.min-severity }}
+          include-hotspots: ${{ inputs.include-hotspots }}
+          timeout-seconds: ${{ inputs.timeout-seconds }}

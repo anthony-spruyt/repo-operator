@@ -80,7 +80,7 @@ GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 ## Shared CI
 
-Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`, `_container-retention`) and composite actions (`build-image`, `publish-release`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
+Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_build-image`, `_release-please`, `_rebuild-release`, `_container-retention`, `_sonar-new-issues`) and composite actions (`build-image`, `publish-release`, `sonar-new-issues`, `trivy-scan`) that other repos call. See [docs/ci.md](docs/ci.md).
 
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
@@ -124,6 +124,8 @@ Create the SonarQube Cloud project before adding a repo to the `sonar` group, or
 ```bash
 .github/scripts/sync-sonar-settings.sh
 ```
+
+The `SonarCloud` workflow (`.github/workflows/sonar-new-issues.yaml`) fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues).
 
 ## Credentials
 
