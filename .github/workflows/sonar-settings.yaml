@@ -1,0 +1,90 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "SonarQube Cloud Settings"
+
+on:
+  pull_request:
+    branches:
+      - "main"
+    paths:
+      - ".github/scripts/sync-sonar-settings.sh"
+      - ".github/sonar-settings.yaml"
+      - ".github/workflows/sonar-settings.yaml"
+      - "src/repos.yaml"
+  push:
+    branches:
+      - "main"
+    paths:
+      - ".github/scripts/sync-sonar-settings.sh"
+      - ".github/sonar-settings.yaml"
+      - ".github/workflows/sonar-settings.yaml"
+      - "src/repos.yaml"
+  schedule:
+    - cron: "23 4 * * 1"
+  workflow_dispatch: {}
+
+permissions: {}
+
+jobs:
+  plan:
+    name: "Plan"
+    runs-on: "ubuntu-latest"
+    if: "github.ref != 'refs/heads/main'"
+    timeout-minutes: 10
+    permissions:
+      contents: "read"
+    concurrency:
+      group: "sonar-settings-plan-${{ github.ref }}"
+      cancel-in-progress: true
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            sonarcloud.io:443
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Plan settings"
+        run: ".github/scripts/sync-sonar-settings.sh"
+
+  apply:
+    name: "Apply"
+    runs-on: "ubuntu-latest"
+    if: "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
+    timeout-minutes: 10
+    environment: "sonar"
+    permissions:
+      contents: "read"
+    concurrency:
+      group: "sonar-settings-apply"
+      cancel-in-progress: false
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            results-receiver.actions.githubusercontent.com:443
+            sonarcloud.io:443
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Apply settings"
+        env:
+          SONAR_TOKEN: "${{ secrets.SONAR_TOKEN }}"
+        run: ".github/scripts/sync-sonar-settings.sh --apply"

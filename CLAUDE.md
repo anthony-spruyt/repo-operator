@@ -106,7 +106,7 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests for `.github/scripts/check-xfg-config.sh`.
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`).
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because agent reverts can merge `src/` with no review. This is the plan to read before approving Apply. Skips when
    `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
@@ -117,5 +117,7 @@ The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.
 
 `lint-canary.yaml` runs on PRs that touch a lint pin or lint template: it renders the planned files with `xfg sync --dry-run --render-dir`, overlays them on each affected repo's `main` and runs `./lint.sh --ci` there. It is not a required check. See `docs/ci.md`.
+
+`sonar-settings.yaml` owns SonarQube Cloud project settings for the `sonar` group, from `.github/sonar-settings.yaml`. It plans on PRs that touch its paths (public GET, no token) and applies on `main` push, weekly and dispatch with `SONAR_TOKEN` from the `sonar` environment. It is not a required check, because its paths filter would leave it pending on other PRs. See the README.
 
 Additional workflows distributed to target repos include Trivy vulnerability scanning.

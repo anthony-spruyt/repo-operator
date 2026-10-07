@@ -96,19 +96,21 @@ For repo-specific Renovate rules, use `matchRepositories` in `.github/renovate/p
 
 ## SonarQube Cloud Configuration
 
-Rule exclusions live in SonarQube Cloud project settings, **not** in Git. Automatic analysis only honours a fixed set of properties in `.sonarcloud.properties` — `sonar.issue.ignore.multicriteria` is not among them and is silently ignored there.
+Rule exclusions and path filters live in SonarQube Cloud project settings, not in the repos. Automatic analysis only honours a fixed set of properties in `.sonarcloud.properties`, and it silently ignores `sonar.issue.ignore.multicriteria`. Custom quality profiles would be the tidier fix, but assigning one requires a paid plan.
 
-`docker:S8431` ("Use either the version tag or the digest") is excluded on every project, because Renovate pins images with both a tag and a digest by design. Re-apply after recreating a project:
+The `SonarQube Cloud Settings` workflow (`.github/workflows/sonar-settings.yaml`) owns these settings for every repo in the `sonar` group. Change them in `.github/sonar-settings.yaml`, never in the SonarQube Cloud UI, because the next run reverts UI edits.
+
+- `defaults` apply to every project: `*:S8431` ("Use either the version tag or the digest") is ignored, because Renovate pins images with both a tag and a digest by design. `.claude/**` is kept out of analysis and duplication checks.
+- `repos.<name>` sets extra keys for one project. A key listed there replaces that key's default.
+- Keys the file does not list are left as they are in SonarQube Cloud. Removing a key from the file does not revert it; reset it in the SonarQube Cloud UI.
+
+The workflow plans on PRs that touch the config, the script or `src/repos.yaml`. It reads public settings, so no token is needed. It applies on push to `main`, every Monday, and on manual dispatch, with `SONAR_TOKEN` from the `sonar` environment (`main` only). A recreated project is fixed by the next run.
+
+Create the SonarQube Cloud project before adding a repo to the `sonar` group, or the workflow fails on the missing project. To plan locally:
 
 ```bash
-curl -X POST https://sonarcloud.io/api/settings/set \
-  --header "Authorization: Bearer $SONAR_TOKEN" \
-  --data-urlencode "key=sonar.issue.ignore.multicriteria" \
-  --data-urlencode "component=anthony-spruyt_<repo>" \
-  --data-urlencode 'fieldValues={"ruleKey":"*:S8431","resourceKey":"**/*"}'
+.github/scripts/sync-sonar-settings.sh
 ```
-
-Custom quality profiles would be the tidier fix, but assigning one requires a paid plan.
 
 ## Credentials
 
@@ -128,11 +130,12 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### Tokens
 
-| Token              | Type                                                           | Where                    | Can do                                                 |
-| ------------------ | -------------------------------------------------------------- | ------------------------ | ------------------------------------------------------ |
-| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy` | Read every package; the list API rejects app tokens    |
-| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common` | `gh` and local dry-runs; no secrets or packages access |
-| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                 | Integration tests against test orgs                    |
+| Token              | Type                                                           | Where                                           | Can do                                                 |
+| ------------------ | -------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
+| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy`                        | Read every package; the list API rejects app tokens    |
+| `SONAR_TOKEN`      | SonarQube Cloud token                                          | repo-operator `sonar` environment (`main` only) | Set project settings (`sonar-settings.yaml`)           |
+| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common`                        | `gh` and local dry-runs; no secrets or packages access |
+| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                                        | Integration tests against test orgs                    |
 
 The local PAT stays on purpose: `gh` needs a user identity.
 

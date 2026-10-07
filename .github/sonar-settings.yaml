@@ -1,0 +1,17 @@
+# SonarQube Cloud settings for every `sonar` group repo in src/repos.yaml; keys not listed are left alone.
+# A per-repo key replaces that key's default rather than merging with it.
+defaults:
+  # Renovate pins images with both a tag and a digest by design
+  sonar.issue.ignore.multicriteria:
+    - ruleKey: "*:S8431"
+      resourceKey: "**/*"
+  sonar.exclusions:
+    - ".claude/**"
+  sonar.cpd.exclusions:
+    - ".claude/**"
+repos:
+  xfg:
+    sonar.inclusions:
+      - "packages/xfg/src/**"
+    sonar.test.inclusions:
+      - "packages/xfg/test/**"
