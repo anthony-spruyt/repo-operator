@@ -16,7 +16,7 @@ permissions:
 jobs:
   lint:
     permissions:
-      actions: "write"
+      actions: "read"
       contents: "read"
       security-events: "write"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"

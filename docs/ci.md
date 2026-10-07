@@ -12,7 +12,8 @@ A reusable workflow resolves `uses: ./...` against the caller's checkout, not ag
 
 Builds an image with buildx. With `push: "true"` it also pushes to GHCR, and to Docker Hub when `dockerhub-namespace` is set. The push includes an SBOM, `provenance: mode=max` and an `actions/attest-build-provenance` attestation.
 
-Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first: labels such as `org.opencontainers.image.revision` come from the checked-out commit (`docker/metadata-action` `context: git`). Check out a branch, tag or pull request ref, not a bare SHA, which metadata-action v6.2.0 can't resolve ([docker/metadata-action#720](https://github.com/docker/metadata-action/issues/720)). Pushing needs `packages`, `id-token` and `attestations: write`.
+Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first: labels such as `org.opencontainers.image.revision` come from the checked-out commit (`docker/metadata-action` `context: git`). Check out a branch, tag or pull request ref, not a bare SHA, which
+metadata-action v6.2.0 can't resolve ([docker/metadata-action#720](https://github.com/docker/metadata-action/issues/720)). Pushing needs `packages`, `id-token` and `attestations: write`.
 
 - `image` (default: repository name): image and GHCR package name
 - `context` (default `.`): build context
@@ -115,13 +116,39 @@ Roll it out in this order:
 2. The image is built from that tag, tested, pushed and attested.
 3. `publish-release` adds the image details and undrafts the release.
 
-The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. The provenance attestation always names the run's commit (`github.sha`), and no input overrides it, so building any other commit would sign the wrong source. release-please tags the release PR's merge commit, which is the commit its run starts from.
+The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. The provenance attestation always names the run's commit (`github.sha`), and no input overrides it, so building any other commit would sign the wrong source. release-please tags the release PR's merge commit, which is the commit its run starts
+from.
 
 A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft and the run fails with the rebuild command.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
+If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (`gh workflow run rebuild-release.yaml --ref vX.Y.Z -f version=X.Y.Z`). It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild
+if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
 
 `publish-release` leaves a release that is already published unchanged, so a rebuild that overlaps the release run's image job doesn't append a second image section.
+
+### Verifying an image attestation
+
+The attestation is signed by the workflow that ran `build-image`, not by the repo that owns the image. Images built by the shared `_build-image.yaml` (mcp-header-proxy, kata-tap-qdisc-fix, traefik-api-key-auth, litellm-middleware, SunGather) are signed by repo-operator:
+
+```bash
+gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
+  --repo anthony-spruyt/<repo> \
+  --signer-repo anthony-spruyt/repo-operator
+```
+
+`--repo` is the source repo that the attestation names. Without `--signer-repo` the check fails, because by default `gh` expects the signer to be a workflow in the source repo.
+
+llm-guard (container-images) and bull-board (spruyt-labs) are signed by their own repo's `_build-image.yaml`, which calls the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
+
+```bash
+gh attestation verify oci://ghcr.io/anthony-spruyt/llm-guard:<tag> \
+  --repo anthony-spruyt/container-images \
+  --signer-workflow anthony-spruyt/container-images/.github/workflows/_build-image.yaml
+
+gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
+  --repo anthony-spruyt/spruyt-labs \
+  --signer-workflow anthony-spruyt/spruyt-labs/.github/workflows/_build-image.yaml
+```
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
@@ -129,18 +156,19 @@ If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag** (
 
 Single-package image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
 
-| Group               | Extends                                | Syncs                                                                                                                          |
-| ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------ |
-| `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list             |
-| `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                         |
-| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                                  |
-| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`                                                                                              |
+| Group               | Extends                                | Syncs                                                                                                              |
+| ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
+| `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list |
+| `image`             | `github-ci`, `release-please`          | `.github/workflows/ci.yaml`, `release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`             |
+| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`                                                                                      |
+| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`                                                                                  |
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
 ### Lint image pin
 
-Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare `${...}` as a variable. The pin comes from the first match below:
+Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/lint.sh.tmpl` with the pin as `MEGALINTER_IMAGE`. repo-operator owns every pin through the `megalinterImage` var, and Renovate bumps it here. The synced file carries no Renovate annotation, so downstream repos get no pin PRs of their own. The template writes shell expansions as `$${...}`, because xfg reads a bare
+`${...}` as a variable. The pin comes from the first match below:
 
 1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs).
 2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`.
@@ -151,7 +179,8 @@ Two languages need a compound flavor such as `megalinter-go-python`: once it is 
 
 ### Reverting a bad bump
 
-A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it; the [lint canary](#lint-canary) is the check before merge. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `lint.sh` and the other managed files back to the previous values in every affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
+A flavor or pin bump here reaches every repo on that pin on the next sync, and no downstream PR gates it; the [lint canary](#lint-canary) is the check before merge. If it turns a downstream `main` red, revert the bump commit in this repo and approve the XFG Apply that the revert's push to `main` starts. The sync rewrites `lint.sh` and the other managed files back to the previous values in every
+affected repo. Don't fix it in the downstream repo: the next sync overwrites managed files.
 
 ### Lint canary
 
@@ -204,7 +233,8 @@ files:
           with: *my-repo-with
 ```
 
-The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that all three called workflows accept; put any other input (such as `push`, `tag-name` or `config-file`) in that file's own overlay, or GitHub rejects the callers that don't declare it.
+The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that all three called workflows accept; put any other input (such as `push`, `tag-name` or `config-file`) in that file's own overlay, or GitHub rejects the callers
+that don't declare it.
 
 `container-retention.yaml` cleans the lowercased repository name. A repo whose package has another name sets it with the `retentionPackages` var (comma-separated):
 
@@ -231,7 +261,7 @@ permissions:
 jobs:
   lint:
     permissions:
-      actions: write
+      actions: read
       contents: read
       security-events: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main
