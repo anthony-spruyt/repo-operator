@@ -18,7 +18,9 @@
   rebaseWhen: "conflicted",
   vulnerabilityAlerts: {
     enabled: true,
-    addLabels: ["security"]
+    addLabels: ["security"],
+    // Renovate's default is null, which skips the 7-day supply-chain wait for "fix" releases
+    minimumReleaseAge: "3 days"
   },
   osvVulnerabilityAlerts: true,
   hostRules: [

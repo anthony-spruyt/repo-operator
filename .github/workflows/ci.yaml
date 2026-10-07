@@ -36,10 +36,7 @@ jobs:
       github.event_name == 'pull_request' ||
       (github.event_name == 'push' && needs.lint.result == 'success'))
     permissions:
-      actions: "read"
-      contents: "write"
-      pull-requests: "write"
-      statuses: "write"
+      contents: "read"
     concurrency:
       group: "xfg-plan-${{ github.ref }}"
       cancel-in-progress: true
