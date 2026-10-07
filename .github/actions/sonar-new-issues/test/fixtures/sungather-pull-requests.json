@@ -1,0 +1,105 @@
+{
+  "pullRequests": [
+    {
+      "key": "406",
+      "title": "refactor: prepare for ruff PLR rules",
+      "branch": "refactor/ruff-plr",
+      "base": "main",
+      "status": {
+        "qualityGateStatus": "OK",
+        "bugs": 0,
+        "vulnerabilities": 0,
+        "codeSmells": 1
+      },
+      "analysisDate": "2026-10-07T09:55:13+0000",
+      "url": "https://github.com/anthony-spruyt/SunGather/pull/406",
+      "target": "main",
+      "commit": {
+        "sha": "14651171263f1c551699b28fbde3b66204b79c83",
+        "author": {
+          "name": "Anonymous User"
+        },
+        "date": "2026-10-07T09:54:59+0000",
+        "message": "refactor: prepare for ruff PLR rules"
+      },
+      "contributors": [
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        }
+      ],
+      "pullRequestUuidV1": "AaEVyc-PkQDQ2m7VW5ij",
+      "pullRequestId": "55056157-bc24-4d72-a4cf-ede23b3365e6"
+    },
+    {
+      "key": "405",
+      "title": "merge queue: checking #404 on main (6ad6051)",
+      "branch": "mergify/merge-queue/c85929db0e",
+      "base": "main",
+      "status": {
+        "qualityGateStatus": "OK",
+        "bugs": 0,
+        "vulnerabilities": 0,
+        "codeSmells": 0
+      },
+      "analysisDate": "2026-10-07T00:53:20+0000",
+      "url": "https://github.com/anthony-spruyt/SunGather/pull/405",
+      "target": "main",
+      "commit": {
+        "sha": "b2ce8702d3d9f2eb03e16cafbe95039f99d1239e",
+        "author": {
+          "name": "Anonymous User"
+        },
+        "date": "2026-10-07T00:53:08+0000",
+        "message": "Merge of #404"
+      },
+      "contributors": [
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        },
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        }
+      ],
+      "pullRequestUuidV1": "AaET2a_bHnVLgYKjf1aN",
+      "pullRequestId": "594dd820-9dfb-4bcb-9488-de608b5388a9"
+    },
+    {
+      "key": "404",
+      "title": "test: pin full-block padding in the Modbus TCP cipher",
+      "branch": "test/cipher-full-block-padding",
+      "base": "main",
+      "status": {
+        "qualityGateStatus": "OK",
+        "bugs": 0,
+        "vulnerabilities": 0,
+        "codeSmells": 0
+      },
+      "analysisDate": "2026-10-06T23:07:53+0000",
+      "url": "https://github.com/anthony-spruyt/SunGather/pull/404",
+      "target": "main",
+      "commit": {
+        "sha": "b6d9e8b3c06e9d44c70f1391c70c4d0cc9bcb36b",
+        "author": {
+          "name": "Anonymous User"
+        },
+        "date": "2026-10-06T23:07:41+0000",
+        "message": "test: pin full-block padding in the Modbus TCP cipher"
+      },
+      "contributors": [
+        {
+          "name": "Anonymous User",
+          "login": "",
+          "avatar": ""
+        }
+      ],
+      "pullRequestUuidV1": "AaETeSe-SgQy9vNU1olA",
+      "pullRequestId": "d3671bec-3974-4d56-a758-711d90486e89"
+    }
+  ]
+}
