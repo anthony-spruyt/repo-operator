@@ -1,0 +1,242 @@
+{
+  "paging": {
+    "pageIndex": 1,
+    "pageSize": 500,
+    "total": 8
+  },
+  "hotspots": [
+    {
+      "key": "hotspot-1",
+      "component": "anthony-spruyt_container-images:devcontainer-common/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "This image runs with \"root\" or \"containerAdministrator\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-05-18T21:39:30+0000",
+      "updateDate": "2026-06-01T11:09:23+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 122
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-2",
+      "component": "anthony-spruyt_container-images:test-images/branch-with-slashes/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-3",
+      "component": "anthony-spruyt_container-images:test-images/custom-name/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-4",
+      "component": "anthony-spruyt_container-images:test-images/local-no-upstream/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-5",
+      "component": "anthony-spruyt_container-images:test-images/prerelease/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-6",
+      "component": "anthony-spruyt_container-images:test-images/semver-plain/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-7",
+      "component": "anthony-spruyt_container-images:test-images/semver-v-prefix/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    },
+    {
+      "key": "hotspot-8",
+      "component": "anthony-spruyt_container-images:test-images/with-upstream/Dockerfile",
+      "project": "anthony-spruyt_container-images",
+      "securityCategory": "permission",
+      "vulnerabilityProbability": "MEDIUM",
+      "status": "TO_REVIEW",
+      "line": 1,
+      "message": "The \"alpine\" image runs with \"root\" as the default user. Make sure it is safe here.",
+      "creationDate": "2026-04-22T11:26:28+0000",
+      "updateDate": "2026-09-01T11:34:30+0000",
+      "textRange": {
+        "startLine": 1,
+        "endLine": 1,
+        "startOffset": 0,
+        "endOffset": 90
+      },
+      "flows": [],
+      "ruleKey": "docker:S6471"
+    }
+  ],
+  "components": [
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/prerelease/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/prerelease/Dockerfile",
+      "path": "test-images/prerelease/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/branch-with-slashes/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/branch-with-slashes/Dockerfile",
+      "path": "test-images/branch-with-slashes/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images",
+      "qualifier": "TRK",
+      "name": "container-images",
+      "longName": "container-images"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/semver-v-prefix/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/semver-v-prefix/Dockerfile",
+      "path": "test-images/semver-v-prefix/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/semver-plain/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/semver-plain/Dockerfile",
+      "path": "test-images/semver-plain/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/local-no-upstream/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/local-no-upstream/Dockerfile",
+      "path": "test-images/local-no-upstream/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/with-upstream/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/with-upstream/Dockerfile",
+      "path": "test-images/with-upstream/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:test-images/custom-name/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "test-images/custom-name/Dockerfile",
+      "path": "test-images/custom-name/Dockerfile"
+    },
+    {
+      "organization": "anthony-spruyt",
+      "key": "anthony-spruyt_container-images:devcontainer-common/Dockerfile",
+      "qualifier": "FIL",
+      "name": "Dockerfile",
+      "longName": "devcontainer-common/Dockerfile",
+      "path": "devcontainer-common/Dockerfile"
+    }
+  ]
+}
