@@ -305,6 +305,7 @@ calls_to() {
     "TIMEOUT_SECONDS=-1" "TIMEOUT_SECONDS=08" "POLL_INTERVAL_SECONDS=1s" "POLL_INTERVAL_SECONDS=09"; do
     run env "$bad" "$SCRIPT"
     [ "$status" -eq 1 ]
+    [[ "$output" =~ ^::error::(Invalid|min-severity|include-hotspots) ]]
   done
   [ ! -s "$FAKE_CALLS" ]
 }
