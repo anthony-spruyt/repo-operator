@@ -56,7 +56,7 @@ calls_to() {
   run "$SCRIPT"
   [ "$status" -eq 1 ]
   [[ "$output" == *"python:S7632 src/sungather/sungather.py:82 Fix the syntax of this issue suppression comment."* ]]
-  [[ "$output" == *"https://sonarcloud.io/project/issues?id=anthony-spruyt_SunGather&pullRequest=406&open=AaEVyiRjvGRnIyCZ-p68"* ]]
+  [[ "$output" == *"https://sonarcloud.io/project/issues?id=anthony-spruyt_SunGather&pullRequest=406&open=issue-1"* ]]
   [[ "$output" == *"1 new SonarCloud issue"* ]]
 }
 
@@ -216,7 +216,7 @@ calls_to() {
   [ "$status" -eq 1 ]
   [[ "$output" == *"8 security hotspot"* ]]
   [[ "$output" == *"docker:S6471 devcontainer-common/Dockerfile:1 "* ]]
-  [[ "$output" == *"https://sonarcloud.io/project/security_hotspots?id=anthony-spruyt_claude-plugins&pullRequest=121&hotspots=AZ6C4A5RkASlgEhJSHUu"* ]]
+  [[ "$output" == *"https://sonarcloud.io/project/security_hotspots?id=anthony-spruyt_claude-plugins&pullRequest=121&hotspots=hotspot-1"* ]]
 }
 
 @test "waits for the hotspot search to catch up with the analysis" {

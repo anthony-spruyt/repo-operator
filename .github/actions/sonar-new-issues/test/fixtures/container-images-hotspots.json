@@ -6,7 +6,7 @@
   },
   "hotspots": [
     {
-      "key": "AZ6C4A5RkASlgEhJSHUu",
+      "key": "hotspot-1",
       "component": "anthony-spruyt_container-images:devcontainer-common/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -26,7 +26,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4Ay1kASlgEhJSHSc",
+      "key": "hotspot-2",
       "component": "anthony-spruyt_container-images:test-images/branch-with-slashes/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -46,7 +46,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4AzjkASlgEhJSHSm",
+      "key": "hotspot-3",
       "component": "anthony-spruyt_container-images:test-images/custom-name/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -66,7 +66,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4AzSkASlgEhJSHSi",
+      "key": "hotspot-4",
       "component": "anthony-spruyt_container-images:test-images/local-no-upstream/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -86,7 +86,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4AyskASlgEhJSHSa",
+      "key": "hotspot-5",
       "component": "anthony-spruyt_container-images:test-images/prerelease/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -106,7 +106,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4AzJkASlgEhJSHSg",
+      "key": "hotspot-6",
       "component": "anthony-spruyt_container-images:test-images/semver-plain/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -126,7 +126,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4Ay-kASlgEhJSHSe",
+      "key": "hotspot-7",
       "component": "anthony-spruyt_container-images:test-images/semver-v-prefix/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",
@@ -146,7 +146,7 @@
       "ruleKey": "docker:S6471"
     },
     {
-      "key": "AZ6C4AzbkASlgEhJSHSk",
+      "key": "hotspot-8",
       "component": "anthony-spruyt_container-images:test-images/with-upstream/Dockerfile",
       "project": "anthony-spruyt_container-images",
       "securityCategory": "permission",

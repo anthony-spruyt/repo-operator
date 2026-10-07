@@ -11,7 +11,7 @@
   "debtTotal": 240,
   "issues": [
     {
-      "key": "AaAuie_gvKLTf8kM4ZKF",
+      "key": "issue-1",
       "rule": "docker:S8544",
       "severity": "MAJOR",
       "component": "anthony-spruyt_container-images:llm-guard-cuda/Dockerfile",

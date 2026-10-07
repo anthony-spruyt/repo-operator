@@ -11,7 +11,7 @@
   "debtTotal": 1,
   "issues": [
     {
-      "key": "AaEVyiRjvGRnIyCZ-p68",
+      "key": "issue-1",
       "rule": "python:S7632",
       "severity": "MAJOR",
       "component": "anthony-spruyt_SunGather:src/sungather/sungather.py",

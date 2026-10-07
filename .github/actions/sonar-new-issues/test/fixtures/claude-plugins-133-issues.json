@@ -11,7 +11,7 @@
   "debtTotal": 87,
   "issues": [
     {
-      "key": "AaEVw5v3eC3ek_8qVFS6",
+      "key": "issue-1",
       "rule": "python:S7632",
       "severity": "MAJOR",
       "component": "anthony-spruyt_claude-plugins:hookify-plus/core/masking.py",
@@ -50,7 +50,7 @@
       "lastChangeSource": "ANALYSIS"
     },
     {
-      "key": "AaEVw539eC3ek_8qVFS7",
+      "key": "issue-2",
       "rule": "python:S3776",
       "severity": "CRITICAL",
       "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
@@ -414,7 +414,7 @@
       "lastChangeSource": "ANALYSIS"
     },
     {
-      "key": "AaEVw539eC3ek_8qVFS8",
+      "key": "issue-3",
       "rule": "python:S3776",
       "severity": "CRITICAL",
       "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
@@ -722,7 +722,7 @@
       "lastChangeSource": "ANALYSIS"
     },
     {
-      "key": "AaEVw539eC3ek_8qVFS9",
+      "key": "issue-4",
       "rule": "python:S3776",
       "severity": "CRITICAL",
       "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
@@ -1128,7 +1128,7 @@
       "lastChangeSource": "ANALYSIS"
     },
     {
-      "key": "AaEVw539eC3ek_8qVFS-",
+      "key": "issue-5",
       "rule": "python:S3776",
       "severity": "CRITICAL",
       "component": "anthony-spruyt_claude-plugins:hookify-plus/core/shell_parse.py",
