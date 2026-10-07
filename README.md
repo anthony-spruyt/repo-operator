@@ -105,7 +105,7 @@ alerts override `enabled: false`, so a security fix can still open a PR in a tar
 
 Guard Tests fail when the committed preset doesn't match `src/`.
 
-Forks join `renovate-fork` instead of `renovate`, and set `renovate.json: { content: { forkProcessing: "enabled" } }` in `repos.yaml`. Renovate skips forks unless a root `renovate.json` enables `forkProcessing`, and it ignores that setting in `.github/renovate.json5`.
+Forks join `renovate-fork` instead of `renovate`, and set `renovate.json: { content: { forkProcessing: "enabled" } }` in `repos.yaml`. When the Renovate app is installed on all repositories rather than selected ones, it skips forks unless a root `renovate.json` enables `forkProcessing`. It ignores that setting in `.github/renovate.json5`.
 
 ## SonarQube Cloud Configuration
 

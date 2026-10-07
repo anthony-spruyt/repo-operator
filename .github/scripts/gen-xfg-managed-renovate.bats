@@ -196,6 +196,39 @@ anthony-spruyt/b .editorconfig" ]
   [ "$status" -ne 0 ]
 }
 
+@test "rejects a git URL it cannot turn into a repo name" {
+  printf 'files:\n  .editorconfig:\n    content: "root = true"\n' >"$CFG/files.yaml"
+  printf 'repos:\n  - git: git@github.com:anthony-spruyt/a.git\n' >"$CFG/repos.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -ne 0 ]
+}
+
+@test "reads config fragments in subdirectories" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/a.git\n' >"$CFG/repos.yaml"
+  mkdir -p "$CFG/more"
+  printf 'files:\n  .editorconfig:\n    content: "root = true"\n' >"$CFG/more/files.yaml"
+  run disabled_files
+  [ "$status" -eq 0 ]
+  [ "$output" = "anthony-spruyt/a .editorconfig" ]
+}
+
+@test "rejects conditionalGroups split across files, whose order it does not mirror" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/a.git\n' >"$CFG/repos.yaml"
+  printf 'conditionalGroups: []\n' >"$CFG/a.yaml"
+  mkdir -p "$CFG/more"
+  printf 'conditionalGroups: []\n' >"$CFG/more/cg.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -ne 0 ]
+}
+
+@test "prints nothing when a fragment fails to parse" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/a.git\n' >"$CFG/repos.yaml"
+  printf 'files: [unclosed\n' >"$CFG/files.yaml"
+  run --separate-stderr "$SCRIPT" "$CFG"
+  [ "$status" -ne 0 ]
+  [ -z "$output" ]
+}
+
 @test "fails when the config directory is missing" {
   run "$SCRIPT" "$CFG/nope"
   [ "$status" -ne 0 ]
