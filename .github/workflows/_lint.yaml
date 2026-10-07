@@ -120,8 +120,6 @@ jobs:
 
       - name: Run lychee
         env:
-          # Read-only; lychee uses it to avoid GitHub's anonymous rate limit
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           VALIDATE_ALL_CODEBASE: true
           ENABLE_LINTERS: SPELL_LYCHEE
         run: ./lint.sh --ci
