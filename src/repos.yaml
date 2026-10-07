@@ -215,8 +215,15 @@ repos:
       - megalinter
       - megalinter-flavor
       - mergify
+      - protected-main-branch
       - renovate
       - sonar
+    files:
+      .github/CODEOWNERS:
+        content:
+          - ".github/     @anthony-spruyt"
+          - "/src/        @anthony-spruyt"
+          - "/.mergify.yml @anthony-spruyt"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:

@@ -20,7 +20,8 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 
 ### Authentication
 
-- **CI sync**: Uses a GitHub App (`APP_CLIENT_ID` var / `APP_PRIVATE_KEY` secret)
+- **CI sync**: XFG Apply uses the `repo-operator` GitHub App (`APP_CLIENT_ID` / `APP_PRIVATE_KEY`), whose key lives only in the `production` and `plan-main` environments. XFG Plan on `main` uses the same key from `plan-main` (deployment branch `main`, no reviewer), because GitHub hides merge settings and ruleset `bypass_actors` from read-only tokens. PR previews (XFG Plan (preview)) and Lint
+  Canary use a read-only Plan App (`PLAN_APP_CLIENT_ID` / `PLAN_APP_PRIVATE_KEY`) and never see a write key; the preview plan is partial.
 - **Local/manual runs**: Use the fine-grained PAT in `GH_TOKEN` (from `~/.secrets/.env.common`). It is kept on purpose: `gh` needs a user identity for issues and PRs, so it is not being migrated to the app.
 - **Secrets sync** (`xfg secrets sync`): CI only, via the xfg action with GitHub App auth. The PAT has no secrets access.
 
@@ -72,7 +73,11 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - MegaLinter excludes live in `.mega-linter-base.yml` as `ADDITIONAL_EXCLUDED_DIRECTORIES`, which adds to MegaLinter's defaults (`.git`, `node_modules`, ...). Repos add more via the same key, listed in `CONFIG_PROPERTIES_TO_APPEND`. Setting `EXCLUDED_DIRECTORIES` in a repo replaces MegaLinter's defaults, not the base list.
 - Trivy scanners are set by `scan.scanners` in `trivy-mega-linter.yaml`; `.mega-linter-base.yml` only strips MegaLinter's default `--scanners vuln,misconfig` so the config file wins. Vulnerabilities are scanned by the daily Trivy workflow instead.
 - `prOptions.ai.prompt` in `base.yaml` keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
-- `template: true` + `vars` - substitutes `${xfg:name}` (and built-ins like `${xfg:repo.fullName}`) in a file. Unknown variables fail the sync. `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed CI/release callers. Shell templates holding `${xfg:...}` use a `.tmpl` extension so this repo's shellcheck skips them. See `docs/ci.md`.
+- `template: true` + `vars` - substitutes `${xfg:name}` (and built-ins like `${xfg:repo.fullName}`) in a file. Unknown variables fail the sync. `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed
+  CI/release callers. Shell templates holding `${xfg:...}` use a `.tmpl` extension so this repo's shellcheck skips them. See `docs/ci.md`.
+- `.mergify.yml` merge protections need an `anthony-spruyt` approval on every PR except Renovate's, the release bot's and the owner's own (any approval). A change under `.github/` or to `.mergify.yml` always needs the owner, so a bot approval (for example `skynet-rw[bot]`) never merges one. `revert-approved` trusts only `skynet-rw[bot]`, the platform's revert agent. In repo-operator its `src/`
+  changes are gated by the owner reading the Plan before approving XFG Apply, not by Mergify. The `main` XFG Plan runs that unreviewed `src/` with the write key, so it runs behind a harden-runner egress block and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, or `files` path with a
+  `.git` segment. Mergify is an `exempt` `pr-rules` bypass actor, so these protections are the real gate.
 - The `request owner review` rule in `.mergify.yml` skips bots by exact login. An `author~=\[bot\]$` regex would also skip `skynet-rw[bot]` agent PRs, the ones it exists for.
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
@@ -101,10 +106,13 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`)
-2. **xfg-plan** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) (GitHub App auth). Runs on PRs, push, and dispatch. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
-3. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, gated by the `production` environment approval (bypassable via the `skip_approval` dispatch input). Records `LAST_XFG_DEPLOY_SHA` after applying.
-4. **summary** - Aggregates results for branch protection
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests for `.github/scripts/check-xfg-config.sh`.
+2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
+3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because agent reverts can merge `src/` with no review. This is the plan to read before approving Apply. Skips when
+   `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
+4. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, always gated by the `production` environment and its required reviewer; no workflow input skips it. The Apply-side secrets live in that environment (`GHCR_READ_TOKEN` is also a repo secret, because the `github-trivy` sync writes it back for the Trivy scan). Records `LAST_XFG_DEPLOY_SHA` after applying. Egress is blocked to GitHub,
+   npm and OpenRouter (AI commit messages).
+5. **summary** - Aggregates results for branch protection
 
 The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.
 

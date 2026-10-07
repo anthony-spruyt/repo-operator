@@ -10,44 +10,25 @@ on:
   push:
     branches:
       - "main"
-  workflow_dispatch:
-    inputs:
-      skip_approval:
-        description: "Skip approval gate (emergency only)"
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 
-permissions:
-  actions: "write"
-  contents: "write"
-  pull-requests: "write"
-  security-events: "write"
-  statuses: "write"
+permissions: {}
 
 jobs:
   lint:
     if: "github.event_name != 'workflow_dispatch'"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"
-    secrets: "inherit"
+    permissions:
+      actions: "read"
+      contents: "read"
+      security-events: "write"
+    uses: "./.github/workflows/_lint.yaml"
 
-  xfg-plan:
-    name: "XFG Plan"
+  guard-test:
+    name: "Guard Tests"
     runs-on: "ubuntu-latest"
-    needs:
-      - "lint"
-    # Run on push (after lint passes), PRs, or manual dispatch (lint skipped)
-    # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
-    if: >-
-      always() &&
-      github.actor != 'repo-operator[bot]' &&
-      (github.event_name == 'workflow_dispatch' ||
-      github.event_name == 'pull_request' ||
-      (github.event_name == 'push' && needs.lint.result == 'success'))
-    concurrency:
-      group: "xfg-plan-${{ github.ref }}"
-      cancel-in-progress: true
-    outputs:
-      run_sync: "${{ steps.changes.outputs.run_sync }}"
+    if: "github.event_name != 'workflow_dispatch'"
+    permissions:
+      contents: "read"
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -57,7 +38,122 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
+          persist-credentials: false
+
+      - name: "Install bats"
+        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
+
+      - name: "Run bats tests"
+        run: "bats .github/scripts/"
+
+  # PR code is untrusted, so it plans with the read-only Plan App. GitHub hides merge settings
+  # and ruleset bypass_actors from read-only tokens, so this plan is a partial preview.
+  xfg-preview:
+    name: "XFG Plan (preview)"
+    runs-on: "ubuntu-latest"
+    needs:
+      - "lint"
+    if: >-
+      always() &&
+      (github.event_name == 'pull_request' ||
+      (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'))
+    permissions:
+      contents: "read"
+    concurrency:
+      group: "xfg-preview-${{ github.ref }}"
+      cancel-in-progress: true
+    steps:
+      # Same egress as XFG Plan, so a green preview proves Plan's allowlist on PRs
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
+
+      - name: "Preview notice"
+        run: |
+          {
+            echo "> [!WARNING]"
+            echo "> Preview from the read-only Plan App. Merge settings and ruleset \`bypass_actors\` are not visible to it and show as changes."
+            echo "> Review the full plan in the XFG Plan job of the \`main\` run before approving XFG Apply."
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::warning::Partial preview: merge settings and ruleset bypass_actors are not visible to the read-only Plan App"
+
+      - name: "Preview Sync"
+        uses: "anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd" # v7.5.0
+        with:
+          config: "./src"
+          dry-run: true
+          github-client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
+
+      - name: "Preview Secrets Sync"
+        uses: "anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd" # v7.5.0
+        with:
+          command: "secrets-sync"
+          config: "./src"
+          dry-run: true
+          github-client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
+
+  # The plan the owner reads before approving Apply. It needs the write App's key to see every
+  # field; plan-main's deployment branch rule (main only, no reviewer) keeps that key from PR refs.
+  xfg-plan:
+    name: "XFG Plan"
+    runs-on: "ubuntu-latest"
+    needs:
+      - "lint"
+    # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.actor != 'repo-operator[bot]' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && needs.lint.result == 'success'))
+    environment: "plan-main"
+    permissions:
+      contents: "read"
+    concurrency:
+      group: "xfg-plan-${{ github.ref }}"
+      cancel-in-progress: true
+    outputs:
+      run_sync: "${{ steps.changes.outputs.run_sync }}"
+    steps:
+      # Unreviewed src/ (agent reverts) reaches this job with the write key, so egress is blocked
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
           fetch-depth: 0
+          persist-credentials: false
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Check for src/ changes since last deploy"
         id: "changes"
@@ -76,6 +172,18 @@ jobs:
             echo "run_sync=false" >> "$GITHUB_OUTPUT"
           else
             echo "run_sync=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      # A partial plan is the risk this job exists to remove, so never fall back to the Plan App
+      - name: "Require plan-main credentials"
+        if: "steps.changes.outputs.run_sync == 'true'"
+        env:
+          HAS_CLIENT_ID: "${{ vars.APP_CLIENT_ID != '' }}"
+          HAS_KEY: "${{ secrets.APP_PRIVATE_KEY != '' }}"
+        run: |
+          if [ "$HAS_CLIENT_ID" != "true" ] || [ "$HAS_KEY" != "true" ]; then
+            echo "::error::APP_CLIENT_ID or APP_PRIVATE_KEY is missing from the plan-main environment; refusing to produce a partial plan"
+            exit 1
           fi
 
       - name: "Plan Sync"
@@ -102,14 +210,18 @@ jobs:
     runs-on: "ubuntu-latest"
     needs:
       - "xfg-plan"
-    # Run only on push or manual dispatch (not PRs), and only if plan succeeded
     # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply
     if: >-
       !cancelled() &&
       needs.xfg-plan.result == 'success' &&
       needs.xfg-plan.outputs.run_sync == 'true' &&
       github.event_name != 'pull_request'
-    environment: "${{ (github.event_name == 'workflow_dispatch' && inputs.skip_approval) && '' || 'production' }}"
+    environment: "production"
+    permissions:
+      actions: "read"
+      contents: "write"
+      pull-requests: "write"
+      statuses: "write"
     concurrency:
       group: "xfg-apply"
       cancel-in-progress: false
@@ -117,12 +229,24 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            openrouter.ai:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
 
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
           fetch-depth: 2
+          persist-credentials: false
+
+      - name: "Check xfg config"
+        run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Apply Sync"
         uses: "anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd" # v7.5.0
@@ -162,7 +286,12 @@ jobs:
   summary:
     needs:
       - "lint"
+      - "guard-test"
+      - "xfg-preview"
       - "xfg-plan"
       - "xfg-apply"
     if: "always()"
+    permissions:
+      actions: "read"
+      contents: "read"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@main"
