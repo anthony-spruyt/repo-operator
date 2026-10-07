@@ -10,15 +10,10 @@ on:
   push:
     branches:
       - "main"
-  workflow_dispatch:
-    inputs:
-      skip_approval:
-        description: "Skip approval gate (emergency only)"
-        type: boolean
-        default: false
+  workflow_dispatch: {}
 
 permissions:
-  actions: "write"
+  actions: "read"
   contents: "write"
   pull-requests: "write"
   security-events: "write"
@@ -27,15 +22,17 @@ permissions:
 jobs:
   lint:
     if: "github.event_name != 'workflow_dispatch'"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@main"
-    secrets: "inherit"
+    permissions:
+      actions: "read"
+      contents: "read"
+      security-events: "write"
+    uses: "./.github/workflows/_lint.yaml"
 
   xfg-plan:
     name: "XFG Plan"
     runs-on: "ubuntu-latest"
     needs:
       - "lint"
-    # Run on push (after lint passes), PRs, or manual dispatch (lint skipped)
     # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
     if: >-
       always() &&
@@ -78,14 +75,15 @@ jobs:
             echo "run_sync=true" >> "$GITHUB_OUTPUT"
           fi
 
+      # Read-only Plan App; the write-App fallback only lasts until the owner provisions PLAN_APP_* (#544)
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
         uses: "anthony-spruyt/xfg@19d6e51b90781b77d487a5450e6c0611dd0474fd" # v7.5.0
         with:
           config: "./src"
           dry-run: true
-          github-client-id: "${{ vars.APP_CLIENT_ID }}"
-          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
+          github-client-id: "${{ vars.PLAN_APP_CLIENT_ID || vars.APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY || secrets.APP_PRIVATE_KEY }}"
 
       - name: "Plan Secrets Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
@@ -94,22 +92,21 @@ jobs:
           command: "secrets-sync"
           config: "./src"
           dry-run: true
-          github-client-id: "${{ vars.APP_CLIENT_ID }}"
-          github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
+          github-client-id: "${{ vars.PLAN_APP_CLIENT_ID || vars.APP_CLIENT_ID }}"
+          github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY || secrets.APP_PRIVATE_KEY }}"
 
   xfg-apply:
     name: "XFG Apply"
     runs-on: "ubuntu-latest"
     needs:
       - "xfg-plan"
-    # Run only on push or manual dispatch (not PRs), and only if plan succeeded
     # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply
     if: >-
       !cancelled() &&
       needs.xfg-plan.result == 'success' &&
       needs.xfg-plan.outputs.run_sync == 'true' &&
       github.event_name != 'pull_request'
-    environment: "${{ (github.event_name == 'workflow_dispatch' && inputs.skip_approval) && '' || 'production' }}"
+    environment: "production"
     concurrency:
       group: "xfg-apply"
       cancel-in-progress: false

@@ -21,7 +21,7 @@ A GitHub Repository Operator that manages and standardizes configuration across 
    - **XFG Apply** — pushes changes to target repos (requires production environment approval)
    - **Summary** — aggregates results for branch protection
 
-Authentication uses a GitHub App (`APP_CLIENT_ID` / `APP_PRIVATE_KEY`).
+XFG Apply authenticates as the `repo-operator` GitHub App, whose key (`APP_PRIVATE_KEY`) is a `production` environment secret. XFG Plan uses a read-only Plan App (`PLAN_APP_*`).
 
 ## Configuration
 
@@ -117,7 +117,8 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 | Actor                            | ID      | Credential                                                                                         | Can do                                           | Bypass                                                      |
 | -------------------------------- | ------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator only                                                                        | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` environment only                                               | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
+| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                   | Read-only metadata for `xfg` dry-runs            | none                                                        |
 | `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` where a release moves a tag (xfg `vN`) |
 | `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                                                                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
 | `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                         |
@@ -126,18 +127,17 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### Tokens
 
-| Token                       | Type                                                           | Where                    | Can do                                                                                                                                                                                                     |
-| --------------------------- | -------------------------------------------------------------- | ------------------------ | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `GHCR_READ_TOKEN`           | Classic PAT, `read:packages` only                              | Synced to `github-trivy` | Read every package; the list API rejects app tokens                                                                                                                                                        |
-| `GH_TOKEN` (local)          | Fine-grained PAT                                               | `~/.secrets/.env.common` | `gh` and local dry-runs; no secrets or packages access                                                                                                                                                     |
-| `CONTAINER_RETENTION_TOKEN` | PAT (retiring)                                                 | container-images only    | Deletes old versions of packages in `release-please-config.json`. Delete it only after a real (non-dry-run) dispatched retention run in container-images succeeds and `latest` plus recent tags still pull |
-| xfg test creds              | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                 | Integration tests against test orgs                                                                                                                                                                        |
+| Token              | Type                                                           | Where                    | Can do                                                 |
+| ------------------ | -------------------------------------------------------------- | ------------------------ | ------------------------------------------------------ |
+| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy` | Read every package; the list API rejects app tokens    |
+| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common` | `gh` and local dry-runs; no secrets or packages access |
+| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                 | Integration tests against test orgs                    |
 
 The local PAT stays on purpose: `gh` needs a user identity.
 
 ### Rotating a synced secret
 
-Secrets in `settings.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in repo-operator, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
+Secrets in `settings.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
 
 ## Related Projects
 

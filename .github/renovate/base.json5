@@ -16,6 +16,11 @@
   branchTopic: "{{{depNameSanitized}}}-{{{newVersion}}}",
   commitBodyTable: true,
   rebaseWhen: "conflicted",
+  vulnerabilityAlerts: {
+    enabled: true,
+    addLabels: ["security"]
+  },
+  osvVulnerabilityAlerts: true,
   hostRules: [
     {
       description: "Prevent GCR metadata token negotiation failures on hosted Renovate",
