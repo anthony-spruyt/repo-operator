@@ -1,0 +1,8 @@
+---
+watch:
+  - megalinter-factory/
+prepare-command: >-
+  pip install -q --require-hashes --only-binary :all: -r megalinter-factory/requirements.txt &&
+  python megalinter-factory/generate.py megalinter-python
+free-disk: true
+test-command: bash ./megalinter-python/test.sh "$IMAGE_REF"

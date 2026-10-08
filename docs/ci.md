@@ -43,6 +43,38 @@ Appends the image reference, digest and run link to a release-please draft relea
 
 Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.token`, which needs `contents: write`).
 
+### `detect-images`
+
+Lists a repo's images as a build matrix. An image is a package in `release-please-config.json` whose path holds a `Dockerfile` or `flavor.yaml` (not searched recursively). A repo without that file, or without such a package, has no images. The image name is the package's `component`, else the path's basename, else (path `.`) the lowercased repository name.
+
+An optional `<path>/metadata.yaml` sets each image's settings. All are optional, and paths are relative to the repo root:
+
+- `build_context`: build context directory (default: the package path); the Dockerfile stays `<path>/Dockerfile`
+- `watch`: extra paths whose changes rebuild the image; each matches that file or anything under that directory
+- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile
+- `free-disk` (default `false`): free runner disk space before building
+- `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
+- `test-command`: shell command run against the built image (`$IMAGE_REF`)
+
+In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a file under its
+`build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
+
+Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them too:
+
+- the package's `extra-files` (else the top-level ones): string entries and `{ "type", "path" }` objects, relative to the package path unless they start with `/`. Glob entries are not matched
+- `node`, release-please's default: `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `samples/package.json`, and the root `changelog.json`
+- `python`: `setup.cfg`, `setup.py`, `pyproject.toml`, `<name>/__init__.py`, `src/<name>/__init__.py`, any `version.py`, and the root `changelog.json`
+- `simple`: `version-file`, default `version.txt`
+- `go`: `version-file` when set
+
+Other release types count only their changelog and `extra-files`, so their release PRs still build.
+
+- `mode` (default `changed`): `changed`, or `all` for every image without diffing
+- `image`: build exactly this image, whatever the mode; fails when the repo has no such image
+- `base-sha` (default: the pull request's base commit): diff against the merge base with this commit; empty diffs `HEAD~1`
+
+The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags` and `test-command`, with the defaults filled in.
+
 ### `sonar-new-issues`
 
 Fails a pull request when SonarQube Cloud reports any open issue on it, or any security hotspot still to review. The free plan's locked "Sonar way" gate fails only when a rating drops, so new code smells pass it; this check closes that gap. Run it from `pull_request` events only.

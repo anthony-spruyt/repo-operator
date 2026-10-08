@@ -1,0 +1,1 @@
+megalinter-spruyt-labs/mega-linter-plugin-biome/biome.megalinter-descriptor.yml

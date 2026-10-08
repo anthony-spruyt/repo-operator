@@ -1,0 +1,9 @@
+config-schema.json
+docs/configuration/merge-strategies.md
+docs/reference/config-schema.md
+packages/xfg/src/config/merge.ts
+packages/xfg/src/config/normalizer.ts
+packages/xfg/src/config/validators/ruleset-validator.ts
+packages/xfg/test/unit/config/merge.test.ts
+packages/xfg/test/unit/config/normalizer.test.ts
+packages/xfg/test/unit/config/validator.test.ts
