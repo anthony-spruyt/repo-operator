@@ -158,21 +158,6 @@ runs:
     - name: Set up Docker Buildx
       uses: docker/setup-buildx-action@f87e5991a6d7451dcb8d9637bfbc97413f497069 # v4.4.1
 
-    - name: Log in to GHCR
-      if: inputs.push == 'true'
-      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-      with:
-        registry: ghcr.io
-        username: ${{ github.actor }}
-        password: ${{ inputs.github-token }}
-
-    - name: Log in to Docker Hub
-      if: inputs.push == 'true' && inputs.dockerhub-namespace != ''
-      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
-      with:
-        username: ${{ inputs.dockerhub-username || inputs.dockerhub-namespace }}
-        password: ${{ inputs.dockerhub-token }}
-
     - name: Docker metadata
       id: meta
       uses: docker/metadata-action@dc802804100637a589fabce1cb79ff13a1411302 # v6.2.0
@@ -206,6 +191,22 @@ runs:
         IMAGE_REF: ${{ steps.refs.outputs.ghcr-image }}:test
         TEST_COMMAND: ${{ inputs.test-command }}
       run: bash -euo pipefail -c "$TEST_COMMAND"
+
+    # Logins come after the test so test code runs before any credential is written
+    - name: Log in to GHCR
+      if: inputs.push == 'true'
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        registry: ghcr.io
+        username: ${{ github.actor }}
+        password: ${{ inputs.github-token }}
+
+    - name: Log in to Docker Hub
+      if: inputs.push == 'true' && inputs.dockerhub-namespace != ''
+      uses: docker/login-action@dbcb813823bdd20940b903addbd779551569679f # v4.6.0
+      with:
+        username: ${{ inputs.dockerhub-username || inputs.dockerhub-namespace }}
+        password: ${{ inputs.dockerhub-token }}
 
     - name: Build image
       id: build
