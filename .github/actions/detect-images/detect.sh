@@ -9,11 +9,15 @@ readonly CONFIG="release-please-config.json"
 readonly NAME_RE='^[a-z0-9]+([._-][a-z0-9]+)*$'
 readonly PATH_RE='^[A-Za-z0-9._][A-Za-z0-9._/-]*$'
 readonly SHA_RE='^([0-9a-f]{40}|[0-9a-f]{64})$'
+readonly VERSION_RE='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
+readonly TAG_RE='^[A-Za-z0-9][A-Za-z0-9._/@+-]*$'
 readonly NAMES_JQ='map(.name) | if length == 0 then "(none)" else join(", ") end'
 
 mode="${MODE:-changed}"
 image="${IMAGE:-}"
 base="${BASE_SHA:-}"
+releases="${RELEASES:-}"
+version="${VERSION:-}"
 repo_name="${REPO_NAME:-${GITHUB_REPOSITORY#*/}}"
 
 die() {
@@ -42,9 +46,17 @@ norm_path() {
 }
 
 validate() {
-  [[ "$mode" =~ ^(changed|all)$ ]] || die "mode must be changed or all, got: $mode"
+  [[ "$mode" =~ ^(changed|all|released|rebuild)$ ]] || die "mode must be changed, all, released or rebuild, got: $mode"
   [[ -z "$base" || "$base" =~ $SHA_RE ]] || die "Invalid base SHA"
   [[ -z "$image" || "$image" =~ ^[A-Za-z0-9._-]{1,128}$ ]] || die "Invalid image name"
+  if [[ "$mode" == "released" ]]; then
+    [[ -z "$image" ]] || die "image does not apply to released mode"
+    jq -e 'type == "object"' <<<"$releases" >/dev/null 2>&1 || die "releases must be the release-please outputs as JSON"
+  fi
+  if [[ "$mode" == "rebuild" ]]; then
+    [[ -n "$version" ]] || die "version is required in rebuild mode"
+    [[ "$version" =~ $VERSION_RE ]] || die "Invalid version: $version (no leading v)"
+  fi
   return 0
 }
 
@@ -97,7 +109,8 @@ image_entry() {
   return 0
 }
 
-# Version files mirror release-please's src/strategies/*.ts; other release types fall back to building
+# Version files mirror release-please's src/strategies/*.ts; other release types fall back to building.
+# The git tag prefix mirrors release-please's TagName; the docker tag gets a v only when include-v-in-tag is set true.
 readonly PACKAGES_JQ='
 def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def list: if type == "array" then .[] | strings else empty end;
@@ -108,11 +121,19 @@ def str_or($d): if type == "string" and . != "" then . else $d end;
     (.key | norm) as $p
     | .value as $v
     | def opt($k): $v[$k] // $c[$k];
+      def flag($k; $d): if $v | has($k) then $v[$k] elif $c | has($k) then $c[$k] else $d end == true;
       def add_path: (if $p == "." or startswith("/") then sub("^/+"; "") else "\($p)/\(.)" end) | sub("/+$"; "");
     (opt("release-type") | str_or("node")) as $type
     | (opt("version-file") | str_or("")) as $vf
+    | ($v.component // $v["package-name"] // $c.component // $c["package-name"] // "" | tostring) as $tag_component
     | {
         path: $p,
+        tag_prefix: (
+          (if $tag_component != "" and flag("include-component-in-tag"; true)
+            then $tag_component + (opt("tag-separator") | str_or("-")) else "" end)
+          + (if flag("include-v-in-tag"; true) then "v" else "" end)
+        ),
+        docker_prefix: (if flag("include-v-in-tag"; false) then "v" else "" end),
         component: ($v.component // "" | tostring),
         exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
         changelog: (opt("changelog-path") | str_or("CHANGELOG.md") | add_path),
@@ -206,9 +227,68 @@ def rel($p): if $p == "." then . else .[($p | length) + 1:] end;
   ))
 '
 
+# release-please-action sets <path>--<key> outputs, unprefixed for path "."
+readonly RELEASED_JQ='
+def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
+def valid($tag; $version): ($tag | type) == "string" and ($version | type) == "string"
+  and ($tag | test($tag_re)) and ($version | test($version_re)) and ($tag | endswith($version));
+$rel[0] as $r
+| ($r.paths_released // "[]" | if type == "string" then fromjson else . end) as $paths
+| [$paths[] | strings | (if . == "." then "" else "\(.)--" end) as $k
+    | {path: norm, tag: $r["\($k)tag_name"], version: $r["\($k)version"]}] as $released
+| .packages as $pkgs
+| .images
+| map(
+    . as $img
+    | first($released[] | select(.path == $img.path)) as $rl
+    | if valid($rl.tag; $rl.version) | not then error("Release of \($rl.path) has no valid tag_name and version") else . end
+    | . + {
+        version: $rl.version,
+        "tag-name": $rl.tag,
+        "tag-prefix": first($pkgs[] | select(.path == $img.path) | .docker_prefix)
+      }
+  )
+'
+
+released_images() {
+  local listing="$1" out="$2" result
+  printf '%s' "$releases" >"$out.releases"
+  result=$(jq -c --slurpfile rel "$out.releases" --arg tag_re "$TAG_RE" --arg version_re "$VERSION_RE" \
+    "try ($RELEASED_JQ) catch {error: .}" <<<"$listing")
+  if [[ "$(jq -r 'type == "object" and has("error")' <<<"$result")" == "true" ]]; then
+    die "$(jq -r '.error' <<<"$result")"
+  fi
+  printf '%s\n' "$result" >"$out"
+  return 0
+}
+
+rebuild_image() {
+  local listing="$1" out="$2" names count tag
+  names=$(jq -r ".images | $NAMES_JQ" <<<"$listing")
+  count=$(jq '.images | length' <<<"$listing")
+  if [[ -z "$image" ]]; then
+    [[ "$count" != "0" ]] || die "This repo has no images"
+    [[ "$count" == "1" ]] || die "This repo has several images; set image to one of: $names"
+    image=$(jq -r '.images[0].name' <<<"$listing")
+  fi
+  jq -c --arg n "$image" --arg v "$version" '
+    .packages as $pkgs
+    | .images | map(select(.name == $n) | . as $img
+      | first($pkgs[] | select(.path == $img.path)) as $pk
+      | . + {version: $v, "tag-name": ($pk.tag_prefix + $v), "tag-prefix": $pk.docker_prefix})' <<<"$listing" >"$out"
+  [[ "$(jq 'length' "$out")" != "0" ]] || die "Unknown image: $image. Images: $names"
+  tag=$(jq -r '.[0]."tag-name"' "$out")
+  [[ "$tag" =~ $TAG_RE ]] || die "$CONFIG: invalid tag for $image: $tag"
+  return 0
+}
+
 select_images() {
   local listing="$1" out="$2" names diff
-  if [[ -n "$image" ]]; then
+  if [[ "$mode" == "released" ]]; then
+    released_images "$listing" "$out"
+  elif [[ "$mode" == "rebuild" ]]; then
+    rebuild_image "$listing" "$out"
+  elif [[ -n "$image" ]]; then
     jq -c --arg n "$image" '.images | map(select(.name == $n))' <<<"$listing" >"$out"
     if [[ "$(jq 'length' "$out")" == "0" ]]; then
       names=$(jq -r ".images | $NAMES_JQ" <<<"$listing")
@@ -238,7 +318,7 @@ write_outputs() {
     {
       echo "### Images"
       echo
-      jq -r 'if length == 0 then "No images to build." else .[] | "- `\(.name)` (`\(.path)`)" end' "$selected"
+      jq -r 'if length == 0 then "No images to build." else .[] | "- `\(.name)` (`\(.path)`)\(if ."tag-name" then ", tag `\(."tag-name")`" else "" end)" end' "$selected"
     } >>"$GITHUB_STEP_SUMMARY"
   fi
   return 0

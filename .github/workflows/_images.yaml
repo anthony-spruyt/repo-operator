@@ -1,6 +1,6 @@
 ---
 # yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-name: Release Please
+name: Images
 
 on:
   workflow_call:
@@ -20,99 +20,53 @@ on:
         required: false
         type: string
         default: ""
-      dockerhub-namespace:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: ""
-      dockerhub-username:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: ""
       test-command:
         description: Passed to _build-image.yaml for images whose metadata.yaml sets no test-command
         required: false
         type: string
         default: ""
+      dockerhub-namespace:
+        description: Passed to _build-image.yaml for every image
+        required: false
+        type: string
+        default: ""
+      dockerhub-username:
+        description: Passed to _build-image.yaml for every image
+        required: false
+        type: string
+        default: ""
       python-version:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml for every image
         required: false
         type: string
         default: ""
       python-groups:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml for every image
         required: false
         type: string
         default: ""
       python-extras:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml for every image
         required: false
         type: string
         default: ""
       python-test-paths:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml for every image
         required: false
         type: string
         default: ""
       python-extra-commands:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml for every image
         required: false
         type: string
         default: ""
-    secrets:
-      RELEASE_PLEASE_APP_CLIENT_ID:
-        required: true
-      RELEASE_PLEASE_APP_PRIVATE_KEY:
-        required: true
-      DOCKERHUB_TOKEN:
-        required: false
-    outputs:
-      release-created:
-        description: "'true' when this run created a release"
-        value: ${{ jobs.release-please.outputs.release-created }}
-      images:
-        description: 'JSON matrix, {"include":[...]}, of the released images, each with its version and tag-name'
-        value: ${{ jobs.detect.outputs.matrix }}
 
-concurrency:
-  group: release-please-${{ github.ref }}
-  cancel-in-progress: false
+permissions:
+  contents: read
 
 jobs:
-  release-please:
-    name: Release please
-    runs-on: ubuntu-latest
-    # release-please acts with the app token; GITHUB_TOKEN needs nothing.
-    permissions:
-      contents: read
-    outputs:
-      release-created: ${{ steps.release.outputs.releases_created }}
-      releases: ${{ toJSON(steps.release.outputs) }}
-    steps:
-      - name: Harden Runner
-        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
-        with:
-          egress-policy: audit
-
-      # GITHUB_TOKEN pull requests do not trigger the status checks that pr-rules requires.
-      - name: Mint app token
-        id: app-token
-        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
-        with:
-          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
-          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-
-      - name: Run release-please
-        id: release
-        uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
-        with:
-          token: ${{ steps.app-token.outputs.token }}
-
   detect:
     name: Detect
-    needs: release-please
-    if: needs.release-please.outputs.release-created == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 5
     permissions:
@@ -126,17 +80,19 @@ jobs:
         with:
           egress-policy: audit
 
+      # Strings, not numbers: 0 is falsy in expressions, so a numeric && 0 || 2 would always be 2
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: ${{ github.event_name == 'pull_request' && '0' || '2' }}
           persist-credentials: false
 
-      - name: Detect released images
+      - name: Detect images
         id: detect
         uses: $/.github/actions/detect-images
         with:
-          mode: released
-          releases: ${{ needs.release-please.outputs.releases }}
+          mode: ${{ github.event_name == 'workflow_dispatch' && 'all' || 'changed' }}
+          image: ${{ github.event.inputs.image }}
           root-name: ${{ inputs.image }}
 
   build:
@@ -156,17 +112,11 @@ jobs:
       prepare-command: ${{ matrix.prepare-command }}
       free-disk: ${{ matrix.free-disk }}
       extra-tags: ${{ matrix.extra-tags }}
-      push: true
-      version: ${{ matrix.version }}
-      tag-name: ${{ matrix.tag-name }}
-      tag-prefix: ${{ matrix.tag-prefix }}
+      test-command: ${{ matrix.test-command || inputs.test-command }}
       dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
       dockerhub-username: ${{ inputs.dockerhub-username }}
-      test-command: ${{ matrix.test-command || inputs.test-command }}
       python-version: ${{ inputs.python-version }}
       python-groups: ${{ inputs.python-groups }}
       python-extras: ${{ inputs.python-extras }}
       python-test-paths: ${{ inputs.python-test-paths }}
       python-extra-commands: ${{ inputs.python-extra-commands }}
-    secrets:
-      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}

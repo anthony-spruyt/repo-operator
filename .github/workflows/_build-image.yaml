@@ -68,6 +68,21 @@ on:
         required: false
         type: string
         default: ""
+      prepare-command:
+        description: Shell command run from the repo root after checkout, before the build (e.g. to generate the Dockerfile)
+        required: false
+        type: string
+        default: ""
+      free-disk:
+        description: Remove preinstalled runner toolchains first, for images that need more disk than the runner leaves free
+        required: false
+        type: boolean
+        default: false
+      extra-tags:
+        description: Extra docker/metadata-action tag rules, one per line
+        required: false
+        type: string
+        default: ""
       python-version:
         description: Passed to _python-uv-test.yaml as python-version
         required: false
@@ -159,6 +174,20 @@ jobs:
         with:
           persist-credentials: false
 
+      - name: Free disk space
+        if: inputs.free-disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get clean
+          docker system prune -af
+          df -h
+
+      - name: Prepare build
+        if: inputs.prepare-command != ''
+        env:
+          PREPARE_COMMAND: ${{ inputs.prepare-command }}
+        run: bash -euo pipefail -c "$PREPARE_COMMAND"
+
       - name: Build image
         uses: $/.github/actions/build-image
         with:
@@ -167,6 +196,7 @@ jobs:
           dockerfile: ${{ inputs.dockerfile }}
           version: ${{ inputs.version }}
           tag-prefix: ${{ inputs.tag-prefix }}
+          extra-tags: ${{ inputs.extra-tags }}
           go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
           dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
           test-command: ${{ inputs.test-command }}
@@ -204,6 +234,7 @@ jobs:
           LANGUAGE: ${{ inputs.language }}
           TAG_NAME: ${{ inputs.tag-name }}
           VERSION: ${{ inputs.version }}
+          IMAGE: ${{ inputs.image || github.event.repository.name }}
         run: |
           case "$LANGUAGE" in
             go | python | none) ;;
@@ -232,9 +263,23 @@ jobs:
           TAG_SHA=$(gh api "repos/${GH_REPO}/commits/refs/tags/${TAG_NAME}" --jq .sha)
           HEAD_SHA=$(git rev-parse HEAD)
           if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
-            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run started from ${HEAD_SHA}, so its provenance would name the wrong source. Run Rebuild Release from the tag: gh workflow run rebuild-release.yaml --ref ${TAG_NAME} -f version=${VERSION}"
+            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run started from ${HEAD_SHA}, so its provenance would name the wrong source. Run Rebuild Release from the tag: gh workflow run rebuild-release.yaml --ref ${TAG_NAME} -f image=${IMAGE} -f version=${VERSION}"
             exit 1
           fi
+
+      - name: Free disk space
+        if: steps.verify.outputs.published != 'true' && inputs.free-disk
+        run: |
+          sudo rm -rf /usr/share/dotnet /usr/local/lib/android /opt/ghc
+          sudo apt-get clean
+          docker system prune -af
+          df -h
+
+      - name: Prepare build
+        if: steps.verify.outputs.published != 'true' && inputs.prepare-command != ''
+        env:
+          PREPARE_COMMAND: ${{ inputs.prepare-command }}
+        run: bash -euo pipefail -c "$PREPARE_COMMAND"
 
       - name: Build and push image
         id: build
@@ -247,6 +292,7 @@ jobs:
           push: "true"
           version: ${{ inputs.version }}
           tag-prefix: ${{ inputs.tag-prefix }}
+          extra-tags: ${{ inputs.extra-tags }}
           go-mod: ${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}
           dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
           dockerhub-username: ${{ inputs.dockerhub-username }}

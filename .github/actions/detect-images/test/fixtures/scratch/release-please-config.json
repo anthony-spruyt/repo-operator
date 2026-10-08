@@ -1,0 +1,25 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "draft": true,
+  "force-tag-creation": true,
+  "packages": {
+    "dot": {
+      "release-type": "simple",
+      "component": "dot",
+      "tag-separator": ".",
+      "include-v-in-tag": false
+    },
+    "dash": {
+      "release-type": "simple",
+      "component": "dash",
+      "tag-separator": "-",
+      "include-v-in-tag": false
+    },
+    "nested/slash": {
+      "release-type": "simple",
+      "component": "slash",
+      "tag-separator": "/",
+      "include-v-in-tag": true
+    }
+  }
+}
