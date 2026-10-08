@@ -83,13 +83,70 @@ image_entry() {
   [ "$(images)" = "mcp-header-proxy" ]
 }
 
-@test "single-image repo: a release PR that also bumps version files still builds (SunGather#402)" {
+@test "single-image repo: a release PR that bumps its extra-files builds nothing (SunGather#402)" {
   use_layout sungather
   export GITHUB_REPOSITORY=anthony-spruyt/SunGather
   commit_diff sungather-402-release
   detect
   [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "single-image repo: a dependency bump of the extra-files still builds" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  commit_files pyproject.toml uv.lock
+  detect
+  [ "$status" -eq 0 ]
   [ "$(images)" = "sungather" ]
+}
+
+@test "single-image repo: exclude-paths take files out of the package (SunGather)" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  commit_files .github/workflows/ci.yaml docs/index.md img/logo.png
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "single-image repo: an excluded path alongside a source change still builds" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  commit_files .github/workflows/ci.yaml src/sungather/sungather.py
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "sungather" ]
+}
+
+@test "python release-type: a release PR bumping version.py builds nothing (SunGather#378)" {
+  use_layout sungather
+  jq '.packages = {"SunGather": {"release-type": "python", "component": "sungather", "changelog-path": "/CHANGELOG.md"}}' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  mkdir "$REPO/SunGather"
+  git -C "$REPO" mv Dockerfile SunGather/Dockerfile
+  git -C "$REPO" commit -qam python
+  commit_diff sungather-378-release-python
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "python release-type: version files without the manifest still build" {
+  use_layout sungather
+  jq '.packages = {".": {"release-type": "python"}}' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam python
+  commit_files src/sungather/__init__.py src/sungather/version.py pyproject.toml setup.py setup.cfg
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "fixture" ]
+  : >"$GITHUB_OUTPUT"
+  commit_files .release-please-manifest.json CHANGELOG.md src/sungather/__init__.py src/sungather/version.py pyproject.toml setup.py setup.cfg
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
 }
 
 @test "release-only changes build nothing (container-images#2107)" {
@@ -157,6 +214,46 @@ image_entry() {
   [ "$(images)" = "megalinter-spruyt-labs" ]
 }
 
+@test "simple release-type: version.txt counts as a release file only in a release PR" {
+  use_layout container-images
+  commit_files .release-please-manifest.json chrony/CHANGELOG.md chrony/version.txt
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+  : >"$GITHUB_OUTPUT"
+  commit_files chrony/version.txt
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "chrony" ]
+}
+
+@test "simple release-type: version-file replaces version.txt" {
+  use_layout container-images
+  jq '.packages.chrony."version-file" = "VERSION"' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam version-file
+  commit_files .release-please-manifest.json chrony/CHANGELOG.md chrony/version.txt
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "chrony" ]
+  : >"$GITHUB_OUTPUT"
+  commit_files .release-please-manifest.json chrony/CHANGELOG.md chrony/VERSION
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "node release-type: root extra-files and a root changelog-path make a release PR (xfg#1121)" {
+  use_layout xfg
+  : >"$REPO/packages/xfg/Dockerfile"
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -qm image
+  commit_diff xfg-1121-release
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
 @test "container-images: flavor settings come from metadata.yaml" {
   use_layout container-images
   MODE=all detect
@@ -199,12 +296,112 @@ image_entry() {
   [ "$(images)" = "agent-queue-worker" ]
 }
 
-@test "spruyt-labs: a release PR that bumps package.json still builds that package (spruyt-labs#3380)" {
+@test "spruyt-labs: a release PR that bumps package.json builds nothing (spruyt-labs#3380)" {
   use_layout spruyt-labs
   commit_diff spruyt-labs-3380-release-bull-board
   detect
   [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "spruyt-labs: a release PR covering both nested node packages builds nothing (spruyt-labs#3183)" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-3183-release-both
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "spruyt-labs: a release PR with a source change too builds the changed package" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-3380-release-bull-board
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD~1)
+  export BASE_SHA
+  commit_files ts/agent-queue-worker/bull-board/src/index.ts
+  detect
+  [ "$status" -eq 0 ]
   [ "$(images)" = "bull-board" ]
+}
+
+@test "spruyt-labs: a Renovate lockfile-only bump builds both packages (spruyt-labs#2675)" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-2675-renovate-lockfiles
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker,bull-board" ]
+}
+
+@test "spruyt-labs: a Renovate package.json bump builds that package" {
+  use_layout spruyt-labs
+  commit_files ts/agent-queue-worker/package.json ts/agent-queue-worker/package-lock.json
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "extra-files: top-level entries apply to each package, relative to its path" {
+  use_layout spruyt-labs
+  jq '."extra-files" = [{"type": "json", "path": "version.json", "jsonpath": "$.version"}]' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam extra-files
+  commit_files .release-please-manifest.json ts/agent-queue-worker/bull-board/CHANGELOG.md ts/agent-queue-worker/bull-board/version.json
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "extra-files: string entries are relative to the package unless they start with /" {
+  use_layout spruyt-labs
+  jq '.packages["cmd/shutdown-orchestrator"]."extra-files" = ["VERSION"]' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam extra-files
+  commit_files .release-please-manifest.json cmd/shutdown-orchestrator/CHANGELOG.md cmd/shutdown-orchestrator/VERSION
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+  : >"$GITHUB_OUTPUT"
+  jq '.packages["cmd/shutdown-orchestrator"]."extra-files" = ["/VERSION"]' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam root
+  commit_files .release-please-manifest.json cmd/shutdown-orchestrator/CHANGELOG.md cmd/shutdown-orchestrator/VERSION
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
+}
+
+@test "exclude-paths: an excluded file falls through to the next-longest package" {
+  use_layout spruyt-labs
+  jq '.packages["ts/agent-queue-worker/bull-board"]."exclude-paths" = ["ts/agent-queue-worker/bull-board/docs/"]' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam exclude
+  commit_files ts/agent-queue-worker/bull-board/docs/usage.md
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+  : >"$GITHUB_OUTPUT"
+  jq 'del(.packages["ts/agent-queue-worker"]."exclude-paths")' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam parent
+  commit_files ts/agent-queue-worker/bull-board/docs/usage.md
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "go release-type: a release PR bumping version-file builds nothing" {
+  use_layout spruyt-labs
+  jq '.packages["cmd/shutdown-orchestrator"] += {"release-type": "go", "version-file": "version.go"}' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam go
+  commit_files .release-please-manifest.json cmd/shutdown-orchestrator/CHANGELOG.md cmd/shutdown-orchestrator/version.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
 }
 
 @test "spruyt-labs: cmd/shutdown-orchestrator builds from its own path" {

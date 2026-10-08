@@ -56,8 +56,18 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`)
 
-In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. An image builds when a file it owns changed, a `watch` path changed, or a file under its `build_context` changed. `CHANGELOG.md` files and `.release-please-manifest.json` never trigger a build. A pull request diffs against the merge base with
-`base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
+In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a file under its
+`build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
+
+Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them too:
+
+- the package's `extra-files` (else the top-level ones): string entries and `{ "type", "path" }` objects, relative to the package path unless they start with `/`. Glob entries are not matched
+- `node`, release-please's default: `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `samples/package.json`, and the root `changelog.json`
+- `python`: `setup.cfg`, `setup.py`, `pyproject.toml`, `<name>/__init__.py`, `src/<name>/__init__.py`, any `version.py`, and the root `changelog.json`
+- `simple`: `version-file`, default `version.txt`
+- `go`: `version-file` when set
+
+Other release types count only their changelog and `extra-files`, so their release PRs still build.
 
 - `mode` (default `changed`): `changed`, or `all` for every image without diffing
 - `image`: build exactly this image, whatever the mode; fails when the repo has no such image

@@ -97,17 +97,52 @@ image_entry() {
   return 0
 }
 
+# Version files mirror release-please's src/strategies/*.ts; other release types fall back to building
+readonly PACKAGES_JQ='
+def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
+def list: if type == "array" then .[] | strings else empty end;
+def str_or($d): if type == "string" and . != "" then . else $d end;
+. as $c
+| ($c.packages // {}) | to_entries
+| map(
+    (.key | norm) as $p
+    | .value as $v
+    | def opt($k): $v[$k] // $c[$k];
+      def add_path: (if $p == "." or startswith("/") then sub("^/+"; "") else "\($p)/\(.)" end) | sub("/+$"; "");
+    (opt("release-type") | str_or("node")) as $type
+    | (opt("version-file") | str_or("")) as $vf
+    | {
+        path: $p,
+        component: ($v.component // "" | tostring),
+        exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
+        changelog: (opt("changelog-path") | str_or("CHANGELOG.md") | add_path),
+        version_files: (
+          [opt("extra-files") | if type == "array" then .[] else empty end
+            | if type == "object" and (.glob | not) then .path else . end | strings | add_path]
+          + ({
+              node: ["package.json", "package-lock.json", "npm-shrinkwrap.json", "samples/package.json"],
+              python: ["setup.cfg", "setup.py", "pyproject.toml"],
+              simple: [$vf | str_or("version.txt")],
+              go: [$vf | select(. != "")]
+            }[$type] // [] | map(add_path))
+          + (if $type == "node" or $type == "python" then ["changelog.json"] else [] end)
+        ),
+        python: ($type == "python")
+      }
+  )
+'
+
 list_images() {
-  local packages=() entries=() line path component name entry
+  local pkgs entries=() line path component name entry
   if [[ ! -f "$CONFIG" ]]; then
     echo '{"packages":[],"images":[]}'
     return 0
   fi
+  pkgs=$(jq -c "$PACKAGES_JQ" "$CONFIG") || die "$CONFIG: invalid config"
   while IFS= read -r line; do
-    path=$(norm_path "$(jq -r '.path' <<<"$line")")
+    path=$(jq -r '.path' <<<"$line")
     component=$(jq -r '.component' <<<"$line")
     safe_path "$path" || die "$CONFIG: invalid package path: $path"
-    packages+=("$path")
     [[ -f "$path/Dockerfile" || -f "$path/flavor.yaml" ]] || continue
     if [[ -n "$component" ]]; then
       name="$component"
@@ -119,10 +154,10 @@ list_images() {
     [[ "$name" =~ $NAME_RE ]] || die "Invalid image name for package $path: $name"
     entry=$(image_entry "$path" "$name")
     entries+=("$entry")
-  done < <(jq -c '.packages // {} | to_entries[] | {path: .key, component: (.value.component // "" | tostring)}' "$CONFIG")
+  done < <(jq -c '.[]' <<<"$pkgs")
 
   local listing dup
-  listing=$(printf '%s\n' "${entries[@]}" | jq -cs --args '{packages: $ARGS.positional, images: .}' "${packages[@]}")
+  listing=$(printf '%s\n' "${entries[@]}" | jq -cs --argjson pkgs "$pkgs" '{packages: $pkgs, images: .}')
   dup=$(jq -r '.images | group_by(.name) | map(select(length > 1) | .[0].name) | first // empty' <<<"$listing")
   [[ -z "$dup" ]] || die "Duplicate image name: $dup"
   printf '%s\n' "$listing"
@@ -144,14 +179,23 @@ changed_files() {
   return 0
 }
 
-# The longest matching package path owns a file, so a nested package's changes skip its parent
+# Dependency bumps touch version files too, so they skip only in a release PR; the longest package path owns a file
 readonly SELECT_JQ='
 def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def under($p): . as $f | $p == "." or $f == $p or ($f | startswith($p + "/"));
-def release_only: test("(^|/)CHANGELOG\\.md$") or . == ".release-please-manifest.json";
-($files | map(select(release_only | not))) as $fs
-| .packages as $pkgs
-| [$fs[] as $f | $pkgs | map(select(. as $p | $f | under($p))) | max_by(if . == "." then -1 else length end) // empty] as $owners
+def rel($p): if $p == "." then . else .[($p | length) + 1:] end;
+.packages as $pkgs
+| ".release-please-manifest.json" as $manifest
+| ([$pkgs[].changelog] + [$manifest]) as $always
+| def release_always: . as $f | any($always[]; . == $f);
+  def version_file: . as $f | any($pkgs[]; . as $pk
+    | any($pk.version_files[]; . == $f)
+    or ($pk.python and ($f | under($pk.path))
+      and ($f | rel($pk.path) | test("^(src/)?[^/]+/__init__\\.py$|(^|/)version\\.py$"))));
+  def owns($f): .path as $p | ($f | under($p)) and (any(.exclude[] as $x | $f | under($x); .) | not);
+(($files | length) > 0 and any($files[]; . == $manifest) and all($files[]; release_always or version_file)) as $release_pr
+| (if $release_pr then [] else $files | map(select(release_always | not)) end) as $fs
+| [$fs[] as $f | $pkgs | map(select(owns($f)) | .path) | max_by(if . == "." then -1 else length end) // empty] as $owners
 | .images
 | map(select(
     . as $img
