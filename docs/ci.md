@@ -183,6 +183,31 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
+## Standard `ci.yaml` and `ci-repo.yaml`
+
+A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruyt/repo-operator/issues/610)):
+
+| File                             | Owner                                                         | Contents                                                                                                                                             |
+| -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yaml`      | repo-operator (`src/templates/.github/workflows/ci.yaml`)     | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `summary` (`needs: [lint, repo]`)        |
+| `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it |
+
+The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml` and `image-ci.yaml`; MegaLinter only lints this repo's own
+`.github/workflows/`.
+
+`summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
+runs ungated.
+
+`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the
+per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
+
+Single-image repos get `image-ci.yaml` as their `ci.yaml`, which adds the `image` job and the same `repo` call, and xfg writes it on every sync (see [Managed image repos](#managed-image-repos)). The `image` groups extend `github-ci`, so those repos get the seed too. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a
+`ci.yaml` that calls a missing `ci-repo.yaml` makes the whole run invalid.
+
+Everywhere else `github-ci` still seeds `ci.yaml` with `createOnly: true`, so each repo moves onto the standard file in its own PR: it moves its repo-only jobs into `ci-repo.yaml` and sets `ci.yaml` to what xfg renders for it, overlays included. Once every repo has, `ci.yaml` drops `createOnly`.
+
+xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
+
 ## Managed image repos
 
 Single-package image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
@@ -300,8 +325,14 @@ jobs:
     uses: anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@<sha> # main
     with:
       language: go
+  repo:
+    needs: [lint]
+    permissions:
+      contents: read
+    uses: ./.github/workflows/ci-repo.yaml
+    secrets: inherit
   summary:
-    needs: [lint, image]
+    needs: [lint, image, repo]
     if: always()
     permissions:
       actions: read

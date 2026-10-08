@@ -25,9 +25,10 @@ jobs:
           REPO: ${{ github.repository }}
           RUN_ID: ${{ github.run_id }}
         run: |
-          # Fetch all jobs in this workflow run (exclude this summary job)
-          jobs_json=$(gh api "repos/$REPO/actions/runs/$RUN_ID/jobs" \
-            --jq '[.jobs[] | select(.name != "summary / Check Results") | {name: .name, conclusion: .conclusion}]')
+          # --jq runs once per page, so emit one job per line and slurp them into one list
+          job_lines=$(gh api --paginate "repos/$REPO/actions/runs/$RUN_ID/jobs?per_page=100" \
+            --jq '.jobs[] | select(.name != "summary / Check Results") | {name: .name, conclusion: .conclusion}')
+          jobs_json=$(jq -s . <<<"$job_lines")
 
           # Build summary table
           {

@@ -82,6 +82,11 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
         content: "@templates/.github/workflows/ci.yaml"
+      .github/workflows/ci-repo.yaml:
+        createOnly: true
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: Repo-owned CI jobs; ci.yaml calls this after lint. See https://github.com/anthony-spruyt/repo-operator/blob/main/docs/ci.md
+        content: "@templates/.github/workflows/ci-repo.yaml"
   image:
     extends:
       - github-ci
