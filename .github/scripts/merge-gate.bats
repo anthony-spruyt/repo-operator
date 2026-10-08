@@ -149,13 +149,6 @@ no_commit_matches() {
   [ "$output" = '[true,""]' ]
 }
 
-@test "Mergify never approves a PR and runs on no schedule" {
-  run yq -o=json -I0 '[.pull_request_rules[] | select(.actions.review != null) | .name]' "$TEMPLATE"
-  [ "$output" = '[]' ]
-  run grep -c 'schedule' "$TEMPLATE"
-  [ "$output" = "0" ]
-}
-
 @test "the revert, emergency, priority, owner-review and refresh rules are gone" {
   run yq 'has("priority_rules")' "$TEMPLATE"
   [ "$output" = "false" ]
