@@ -111,11 +111,13 @@ A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` al
 
 A repo with several images passes them all in `packages`. container-images#2131 moves container-images onto this workflow, with a job before the call that reads the list from `release-please-config.json`.
 
-Start a caller with `workflow_dispatch` only, so nothing deletes before a dry run has been read:
+The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 
 ```yaml
 name: Container Retention
 on:
+  schedule:
+    - cron: "0 17 * * 6"
   workflow_dispatch:
     inputs:
       dry-run:
@@ -129,16 +131,15 @@ jobs:
       packages: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@<sha> # main
     with:
-      dry-run: ${{ inputs.dry-run || false }}
+      dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
 ```
 
-Roll it out in this order:
+A scheduled run has no inputs, so `inputs.dry-run` is null and `dry-run` is `false`. Before a new repo's first scheduled run:
 
 1. Give the calling repo the **Admin** role on each package.
 2. Dispatch with `dry-run` on, and check the logged deletions.
 3. Dispatch once with `dry-run` off.
 4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
-5. Only then add a `schedule` trigger, for example `cron: "0 5 * * 0"`. A scheduled run has no inputs, so `dry-run` falls back to `false` and the run deletes.
 
 ### Release flow
 
