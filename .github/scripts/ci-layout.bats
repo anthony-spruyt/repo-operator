@@ -79,7 +79,7 @@ repo_job_is_standard() {
   run yq -o=json -I0 '[(.on | keys), .permissions]' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [ "$output" = '[["workflow_call"],{}]' ]
   run yq -r '.jobs["guard-test"].steps[].run | select(. != null)' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
-  [[ "$output" == *"bats .github/scripts/ .github/actions/sonar-new-issues/test/"* ]]
+  [[ "$output" == *"bats .github/scripts/ .github/actions/sonar-new-issues/test/ .github/actions/detect-images/test/"* ]]
   run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
 }

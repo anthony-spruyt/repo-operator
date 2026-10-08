@@ -1,0 +1,4 @@
+.release-please-manifest.json
+CHANGELOG.md
+pyproject.toml
+uv.lock

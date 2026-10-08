@@ -1,0 +1,40 @@
+---
+# Caller must check out the repo first: fetch-depth 0 on pull requests, 2 or more on pushes.
+name: Detect Images
+description: >-
+  List the repo's images as a build matrix: release-please packages whose path
+  holds a Dockerfile or flavor.yaml, with settings from <path>/metadata.yaml.
+  By default only images whose files changed: against the merge base with
+  base-sha on a pull request, else against HEAD~1.
+inputs:
+  mode:
+    description: changed (images whose files changed) or all (every image, without diffing)
+    required: false
+    default: changed
+  image:
+    description: Build exactly this image, whatever the mode. Fails when the repo has no such image
+    required: false
+    default: ""
+  base-sha:
+    description: Base commit to diff against through the merge base. Empty diffs HEAD~1
+    required: false
+    default: ${{ github.event.pull_request.base.sha }}
+outputs:
+  matrix:
+    description: 'JSON matrix, {"include":[...]}, one entry per image'
+    value: ${{ steps.detect.outputs.matrix }}
+  has-images:
+    description: '"true" when the matrix holds at least one image, else "false"'
+    value: ${{ steps.detect.outputs.has-images }}
+runs:
+  using: composite
+  steps:
+    - name: Detect images
+      id: detect
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        IMAGE: ${{ inputs.image }}
+        BASE_SHA: ${{ inputs.base-sha }}
+        DETECT_SCRIPT: ${{ github.action_path }}/detect.sh
+      run: '"$DETECT_SCRIPT"'

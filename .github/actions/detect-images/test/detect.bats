@@ -1,0 +1,434 @@
+#!/usr/bin/env bats
+# shellcheck disable=SC2016,SC2030,SC2031 # each @test runs in its own subshell by design
+# Fixtures copy the release-please config of SunGather, container-images, spruyt-labs and xfg on 2026-10-09,
+# with empty Dockerfiles and flavor.yaml files. The megalinter-*/metadata.yaml files are the planned additions.
+# diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
+
+bats_require_minimum_version 1.5.0
+
+setup() {
+  SCRIPT="${BATS_TEST_DIRNAME}/../detect.sh"
+  FX="${BATS_TEST_DIRNAME}/fixtures"
+  REPO="${BATS_TEST_TMPDIR}/repo"
+  export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/output"
+  : >"$GITHUB_OUTPUT"
+  export GIT_AUTHOR_NAME=test GIT_AUTHOR_EMAIL=test@example.com
+  export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
+  export MODE=changed
+  unset IMAGE BASE_SHA REPO_NAME GITHUB_STEP_SUMMARY
+  export GITHUB_REPOSITORY=anthony-spruyt/fixture
+}
+
+# use_layout <fixture> - a git repo holding the fixture as its first commit
+use_layout() {
+  mkdir -p "$REPO"
+  cp -R "$FX/$1/." "$REPO/"
+  git -C "$REPO" init -q -b main
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m base
+}
+
+# commit_files <file>... - one commit that edits every listed path
+commit_files() {
+  local f
+  for f in "$@"; do
+    mkdir -p "$REPO/$(dirname "$f")"
+    echo "change $RANDOM" >>"$REPO/$f"
+    git -C "$REPO" add -- "$f"
+  done
+  git -C "$REPO" commit -q -m change
+}
+
+# commit_diff <diff-name> - one commit that edits every file a recorded diff lists
+commit_diff() {
+  local files
+  mapfile -t files <"$FX/diffs/$1.txt"
+  commit_files "${files[@]}"
+}
+
+detect() {
+  run --separate-stderr bash -c 'cd "$1" && "$2"' _ "$REPO" "$SCRIPT"
+}
+
+output_value() {
+  sed -n "s/^$1=//p" "$GITHUB_OUTPUT"
+}
+
+images() {
+  output_value matrix | jq -r '[.include[].name] | join(",")'
+}
+
+image_entry() {
+  output_value matrix | jq -c --arg n "$1" '.include[] | select(.name == $n)'
+}
+
+@test "single-image repo: path . is named after the lowercased repo and rebuilds on any change" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  commit_files src/sungather/sungather.py
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "sungather" ]
+  [ "$(output_value has-images)" = "true" ]
+  [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":""}' ]
+}
+
+@test "single-image repo: REPO_NAME overrides the repository name" {
+  use_layout sungather
+  export REPO_NAME=mcp-header-proxy
+  commit_files main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "mcp-header-proxy" ]
+}
+
+@test "single-image repo: a release PR that also bumps version files still builds (SunGather#402)" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  commit_diff sungather-402-release
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "sungather" ]
+}
+
+@test "release-only changes build nothing (container-images#2107)" {
+  use_layout container-images
+  commit_diff container-images-2107-release-only
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix)" = '{"include":[]}' ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "single-image repo: only CHANGELOG.md and the manifest build nothing" {
+  use_layout sungather
+  commit_files CHANGELOG.md .release-please-manifest.json
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "container-images: lists packages with a Dockerfile or flavor.yaml, not test-images or .devcontainer" {
+  use_layout container-images
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation" ]
+}
+
+@test "container-images: a build_context source change also rebuilds its dependent (container-images#2191)" {
+  use_layout container-images
+  commit_diff container-images-2191-llm-guard-app
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "llm-guard,llm-guard-cuda" ]
+  [ "$(image_entry llm-guard-cuda | jq -c '[.path, .context, .dockerfile]')" = '["llm-guard-cuda","llm-guard","llm-guard-cuda/Dockerfile"]' ]
+}
+
+@test "container-images: a change to the dependent alone does not rebuild its build_context source" {
+  use_layout container-images
+  commit_files llm-guard-cuda/Dockerfile
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "llm-guard-cuda" ]
+}
+
+@test "container-images: a megalinter-factory change rebuilds every flavor through watch (container-images#2154)" {
+  use_layout container-images
+  commit_diff container-images-2154-factory
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript" ]
+}
+
+@test "container-images: mixed change picks direct, build_context and watch images (container-images#2185)" {
+  use_layout container-images
+  commit_diff container-images-2185-refactor
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript" ]
+}
+
+@test "container-images: a biome plugin change rebuilds megalinter-spruyt-labs" {
+  use_layout container-images
+  commit_diff container-images-biome-plugin-only
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "megalinter-spruyt-labs" ]
+}
+
+@test "container-images: flavor settings come from metadata.yaml" {
+  use_layout container-images
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  run jq -r '.watch[0], ."free-disk", ."prepare-command", ."test-command", .dockerfile' <<<"$(image_entry megalinter-go)"
+  [ "${lines[0]}" = "megalinter-factory/" ]
+  [ "${lines[1]}" = "true" ]
+  [ "${lines[2]}" = "pip install -q --require-hashes --only-binary :all: -r megalinter-factory/requirements.txt && python megalinter-factory/generate.py megalinter-go" ]
+  [ "${lines[3]}" = 'bash ./megalinter-go/test.sh "$IMAGE_REF"' ]
+  [ "${lines[4]}" = "megalinter-go/Dockerfile" ]
+}
+
+@test "container-images: an image without metadata.yaml gets defaults" {
+  use_layout container-images
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry chrony)" = '{"name":"chrony","path":"chrony","context":"chrony","dockerfile":"chrony/Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":""}' ]
+}
+
+@test "spruyt-labs: lists nested packages and the Go service" {
+  use_layout spruyt-labs
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
+}
+
+@test "spruyt-labs: a nested bull-board change does not rebuild the parent agent-queue-worker" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-bull-board-src-only
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "bull-board" ]
+}
+
+@test "spruyt-labs: a parent change does not rebuild bull-board, and cluster files map to nothing (spruyt-labs#1462)" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-1462-agent-queue-worker
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "spruyt-labs: a release PR that bumps package.json still builds that package (spruyt-labs#3380)" {
+  use_layout spruyt-labs
+  commit_diff spruyt-labs-3380-release-bull-board
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "bull-board" ]
+}
+
+@test "spruyt-labs: cmd/shutdown-orchestrator builds from its own path" {
+  use_layout spruyt-labs
+  commit_files cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry shutdown-orchestrator | jq -c '[.path, .context, .dockerfile]')" = '["cmd/shutdown-orchestrator","cmd/shutdown-orchestrator","cmd/shutdown-orchestrator/Dockerfile"]' ]
+}
+
+@test "xfg: an npm package without a Dockerfile is not an image (xfg#1140)" {
+  use_layout xfg
+  commit_diff xfg-1140-feat
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix | tail -n1)" = '{"include":[]}' ]
+}
+
+@test "a repo without release-please-config.json has no images" {
+  mkdir -p "$REPO"
+  : >"$REPO/Dockerfile"
+  git -C "$REPO" init -q -b main
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m base
+  commit_files Dockerfile
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix)" = '{"include":[]}' ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "push: diffs HEAD~1 only, so earlier commits do not rebuild" {
+  use_layout container-images
+  commit_files chrony/Dockerfile
+  commit_files happy-server/Dockerfile
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "happy-server" ]
+}
+
+@test "pull request: diffs against the merge base, ignoring later commits on the base branch" {
+  use_layout container-images
+  git -C "$REPO" checkout -q -b feature
+  commit_files happy-server/Dockerfile
+  commit_files coder-gitops/Dockerfile
+  git -C "$REPO" checkout -q main
+  commit_files chrony/Dockerfile
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  git -C "$REPO" checkout -q feature
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "coder-gitops,happy-server" ]
+}
+
+@test "pull request: a renamed file rebuilds both the old and the new package" {
+  use_layout container-images
+  commit_files chrony/chrony.conf
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  git -C "$REPO" mv chrony/chrony.conf happy-server/chrony.conf
+  git -C "$REPO" commit -q -m move
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "chrony,happy-server" ]
+}
+
+@test "pull request: a base commit missing from the clone fails clearly" {
+  use_layout container-images
+  export BASE_SHA=0123456789abcdef0123456789abcdef01234567
+  detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Base commit 0123456789abcdef0123456789abcdef01234567 is not in the clone"* ]]
+}
+
+@test "push: a clone without HEAD~1 fails clearly" {
+  use_layout container-images
+  detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::HEAD~1 is not in the clone"* ]]
+}
+
+@test "dispatch: IMAGE builds exactly that image, whatever changed" {
+  use_layout container-images
+  commit_files chrony/Dockerfile
+  IMAGE=llm-guard-cuda detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "llm-guard-cuda" ]
+  [ "$(output_value has-images)" = "true" ]
+}
+
+@test "dispatch: an unknown image fails and lists the images" {
+  use_layout spruyt-labs
+  IMAGE=nope detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Unknown image: nope. Images: shutdown-orchestrator, agent-queue-worker, bull-board"* ]]
+  [ ! -s "$GITHUB_OUTPUT" ]
+}
+
+@test "dispatch: an image that is a package without a Dockerfile is unknown" {
+  use_layout xfg
+  IMAGE=xfg detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Unknown image: xfg. Images: (none)"* ]]
+}
+
+@test "dispatch: an image name with unsafe characters is rejected" {
+  use_layout spruyt-labs
+  IMAGE='bull-board%0A::warning::x' detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Invalid image name"* ]]
+}
+
+@test "an unknown mode fails" {
+  use_layout spruyt-labs
+  MODE=everything detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::mode must be changed or all"* ]]
+}
+
+@test "an invalid base SHA fails" {
+  use_layout spruyt-labs
+  BASE_SHA='main; rm -rf /' detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Invalid base SHA"* ]]
+}
+
+@test "metadata.yaml: extra-tags accepts a list and watch matches a single file" {
+  use_layout spruyt-labs
+  printf 'watch:\n  - go.work\nextra-tags:\n  - type=sha,prefix=\n  - type=raw,value=edge\n' >"$REPO/cmd/shutdown-orchestrator/metadata.yaml"
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m metadata
+  commit_files go.work
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
+  [ "$(image_entry shutdown-orchestrator | jq -r '."extra-tags"')" = $'type=sha,prefix=\ntype=raw,value=edge' ]
+}
+
+@test "metadata.yaml: watch is a path prefix, not a string prefix" {
+  use_layout spruyt-labs
+  printf 'watch:\n  - go\n' >"$REPO/cmd/shutdown-orchestrator/metadata.yaml"
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m metadata
+  commit_files go.work
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "metadata.yaml: a build_context that escapes the repo fails" {
+  use_layout spruyt-labs
+  printf 'build_context: ../secrets\n' >"$REPO/ts/agent-queue-worker/bull-board/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: build_context must be a relative path inside the repo"* ]]
+}
+
+@test "metadata.yaml: a build_context that does not exist fails" {
+  use_layout spruyt-labs
+  printf 'build_context: ts/missing\n' >"$REPO/ts/agent-queue-worker/bull-board/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: build_context directory does not exist: ts/missing"* ]]
+}
+
+@test "metadata.yaml: free-disk must be a boolean" {
+  use_layout spruyt-labs
+  printf 'free-disk: yes please\n' >"$REPO/ts/agent-queue-worker/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/metadata.yaml: free-disk must be true or false"* ]]
+}
+
+@test "metadata.yaml: watch must be a list of paths" {
+  use_layout spruyt-labs
+  printf 'watch: go.work\n' >"$REPO/ts/agent-queue-worker/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/metadata.yaml: watch must be a list of relative paths inside the repo"* ]]
+}
+
+@test "an image name that is not a valid image reference fails" {
+  use_layout spruyt-labs
+  jq '.packages["cmd/shutdown-orchestrator"].component = "Shutdown"' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Invalid image name for package cmd/shutdown-orchestrator: Shutdown"* ]]
+}
+
+@test "two packages with the same image name fail" {
+  use_layout spruyt-labs
+  jq '.packages["ts/agent-queue-worker/bull-board"].component = "agent-queue-worker"' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Duplicate image name: agent-queue-worker"* ]]
+}
+
+@test "a package without component is named after its path's basename" {
+  use_layout spruyt-labs
+  jq 'del(.packages["ts/agent-queue-worker/bull-board"].component)' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
+}
+
+@test "the step summary lists the images" {
+  use_layout spruyt-labs
+  export GITHUB_STEP_SUMMARY="${BATS_TEST_TMPDIR}/summary"
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  grep -qx -- '- `bull-board` (`ts/agent-queue-worker/bull-board`)' "$GITHUB_STEP_SUMMARY"
+}
+
+@test "action.yaml passes its inputs to detect.sh through env" {
+  ACTION="${BATS_TEST_DIRNAME}/../action.yaml"
+  run yq -r '.runs.steps[0].run' "$ACTION"
+  [ "$output" = '"$DETECT_SCRIPT"' ]
+  run yq -o=json -I0 '.runs.steps[0].env' "$ACTION"
+  [ "$output" = '{"MODE":"${{ inputs.mode }}","IMAGE":"${{ inputs.image }}","BASE_SHA":"${{ inputs.base-sha }}","DETECT_SCRIPT":"${{ github.action_path }}/detect.sh"}' ]
+}
