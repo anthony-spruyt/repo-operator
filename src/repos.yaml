@@ -394,6 +394,9 @@ repos:
     files:
       # Fork of linkphoenix/traefik-api-key-auth - must keep the upstream ISC license
       LICENSE: false
+      .mergify.yml:
+        vars:
+          gateFilesExtra: 'scripts/test-image\.sh$|'
       .github/workflows/ci.yaml:
         content:
           jobs:
