@@ -129,8 +129,7 @@ settings:
         refName:
           include:
             - "refs/heads/**"
-          exclude:
-            - "refs/heads/release-please--**"
+          exclude: []
       enforcement: active
       rules:
         - type: required_signatures
