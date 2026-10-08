@@ -63,7 +63,7 @@ repos:
                   - "some.extension"
 ```
 
-CI lives in two files. `.github/workflows/ci.yaml` is the standard workflow (`lint`, then a `repo` job that calls `ci-repo.yaml`, then `summary`), the same in every repo apart from per-repo xfg overlays. `.github/workflows/ci-repo.yaml` belongs to the repo and holds its own jobs. `github-ci` seeds both once without comments (`image` keeps its `ci.yaml` managed). Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` in a seeded `ci.yaml`, and in `ci-repo.yaml` when you add jobs, so Renovate keeps the pins current (see [Standard ci.yaml and ci-repo.yaml](docs/ci.md#standard-ciyaml-and-ci-repoyaml)).
+CI lives in two files. `.github/workflows/ci.yaml` is the standard workflow (`lint`, then a `repo` job that calls `ci-repo.yaml`, then `summary`), the same in every repo apart from per-repo xfg overlays. `.github/workflows/ci-repo.yaml` belongs to the repo and holds its own jobs. `github-ci` writes `ci.yaml` on every sync, so don't edit it in the repo; change the template or a per-repo overlay in repo-operator. It seeds only `ci-repo.yaml`, once and without comments. Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` in `ci-repo.yaml` when you add jobs, so Renovate keeps the pins current. Three repos keep their own `ci.yaml` through `createOnly` overrides (see [Standard ci.yaml and ci-repo.yaml](docs/ci.md#standard-ciyaml-and-ci-repoyaml)).
 
 ## Local Development
 
