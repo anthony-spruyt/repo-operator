@@ -12,7 +12,7 @@ repos:
       - protected-main-branch
       - cpp
       - python
-      - renovate-fork
+      - renovate
     files:
       .claude/rules/tdd.md: false
       .devcontainer/devcontainer.json:
@@ -29,9 +29,6 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.chromance"
-      renovate.json:
-        content:
-          forkProcessing: "enabled"
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
@@ -63,16 +60,6 @@ repos:
       - mergify
       - renovate
       - sonar
-    files:
-      .github/renovate.json5:
-        content:
-          extends:
-            $arrayMerge: append
-            $values:
-              - "local>anthony-spruyt/container-images//.github/renovate-overrides.json5"
-      .github/renovate-overrides.json5:
-        createOnly: true
-        content: "@templates/.github/renovate-overrides.json5"
     settings:
       labels:
         "renovate/upstream":
@@ -281,15 +268,6 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.spruyt-labs"
-      .github/renovate.json5:
-        content:
-          extends:
-            $arrayMerge: append
-            $values:
-              - "local>anthony-spruyt/spruyt-labs//.github/renovate-overrides.json5"
-      .github/renovate-overrides.json5:
-        createOnly: true
-        content: "@templates/.github/renovate-overrides.json5"
       .vscode/settings.json:
         content:
           "search.exclude":
@@ -370,7 +348,7 @@ repos:
       - python-image
       - release-please
       - mergify
-      - renovate-fork
+      - renovate
       - sonar
     files:
       .github/workflows/ci.yaml:
@@ -402,9 +380,6 @@ repos:
               command: "cclsp"
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/SunGather/.claude/cclsp.json"
-      renovate.json:
-        content:
-          forkProcessing: "enabled"
 
   - git: https://github.com/anthony-spruyt/traefik-api-key-auth.git
     groups:

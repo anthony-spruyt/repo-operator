@@ -103,9 +103,9 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 - For repo-specific rules, use `matchRepositories: ["owner/repo"]` in `package-rules.json5`
 - Don't use xfg overrides for Renovate array merging (YAML syntax limitation with `$arrayMerge`)
-- **Per-repo overrides**: instead of xfg array merges, repos use a `createOnly` `.github/renovate-overrides.json5` (seeded empty) and the synced `.github/renovate.json5` appends a `local>anthony-spruyt/<repo>//.github/renovate-overrides.json5` to its `extends`. Edit the override file in the target repo, not here.
+- **Layout, the same in every repo**: the `renovate` group syncs a root `renovate.json` on every Apply (the shared presets, `forkProcessing: "enabled"`, then `local>${xfg:repo.fullName}//renovate-overrides.json5` last) and seeds a root `renovate-overrides.json5` once with `createOnly`. Edit the override file in the target repo, not here. Don't add per-repo Renovate entries to `repos.yaml`.
+- **Why root `renovate.json`**: with the app on all repositories, Renovate skips a fork unless `forkProcessing` is enabled in the default config file, `renovate.json`, and nowhere else. Renovate reads only the first config file it finds and never merges two, so nothing else may sit beside it.
 - **xfg-managed files**: `xfg-managed.json5` is generated from `src/`. It stops target repos from bumping files that xfg manages there without `createOnly`. After any `src/` change, run `.github/scripts/gen-xfg-managed-renovate.sh src > .github/renovate/xfg-managed.json5`. Guard Tests fail if it drifts.
-- **Forks** use the `renovate-fork` group plus a `renovate.json: { content: { forkProcessing: "enabled" } }` override. Renovate reads `forkProcessing` only from a root `renovate.json`.
 
 ### CI/CD Pipeline
 

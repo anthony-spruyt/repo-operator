@@ -344,8 +344,12 @@ groups:
             "ghcr.io/devcontainers-extra/features/renovate-cli":
               # renovate: datasource=npm depName=renovate
               version: "44.115.13"
-      .github/renovate.json5:
-        content: "@templates/.github/renovate.json5"
+      renovate.json:
+        template: true
+        content: "@templates/renovate.json5"
+      renovate-overrides.json5:
+        createOnly: true
+        content: "@templates/renovate-overrides.json5"
     settings:
       labels:
         "renovate/devcontainer":
@@ -384,13 +388,6 @@ groups:
         "renovate/taskfile":
           color: "#ededed"
           description: ""
-  # Renovate reads forkProcessing only from a root renovate.json, which also shadows .github/renovate.json5
-  renovate-fork:
-    extends: renovate
-    files:
-      .github/renovate.json5: false
-      renovate.json:
-        content: "@templates/.github/renovate.json5"
   sonar:
     files:
       .sonarcloud.properties:
