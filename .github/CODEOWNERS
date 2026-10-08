@@ -1,6 +1,0 @@
-# Protect CI/CD configuration from unauthorized changes
-.github/workflows/ @anthony-spruyt
-.github/actions/   @anthony-spruyt
-.github/     @anthony-spruyt
-/src/        @anthony-spruyt
-/.mergify.yml @anthony-spruyt
