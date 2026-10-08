@@ -1,0 +1,9 @@
+.release-please-manifest.json
+CHANGELOG.md
+README.md
+docs/ci-cd/github-actions.md
+docs/configuration/secrets.md
+docs/index.md
+docs/platforms/github-app.md
+packages/xfg/package-lock.json
+packages/xfg/package.json

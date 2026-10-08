@@ -1,0 +1,36 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "always-update": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "changelog-sections": [
+    { "type": "feat", "section": "Features" },
+    { "type": "fix", "section": "Bug Fixes" },
+    { "type": "perf", "section": "Performance Improvements" },
+    { "type": "refactor", "section": "Code Refactoring", "hidden": false },
+    { "type": "chore", "section": "Dependencies", "hidden": false },
+    { "type": "docs", "section": "Documentation", "hidden": false },
+    { "type": "ci", "section": "Continuous Integration", "hidden": false }
+  ],
+  "packages": {
+    "cmd/shutdown-orchestrator": {
+      "release-type": "simple",
+      "component": "shutdown-orchestrator",
+      "tag-separator": "/",
+      "include-component-in-tag": true
+    },
+    "ts/agent-queue-worker": {
+      "release-type": "node",
+      "component": "agent-queue-worker",
+      "tag-separator": "/",
+      "include-component-in-tag": true,
+      "exclude-paths": ["ts/agent-queue-worker/bull-board"]
+    },
+    "ts/agent-queue-worker/bull-board": {
+      "release-type": "node",
+      "component": "bull-board",
+      "tag-separator": "/",
+      "include-component-in-tag": true
+    }
+  }
+}

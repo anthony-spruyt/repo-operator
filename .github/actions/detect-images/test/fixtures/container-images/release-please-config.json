@@ -1,0 +1,160 @@
+{
+  "$schema": "https://raw.githubusercontent.com/googleapis/release-please/main/schemas/config.json",
+  "always-update": true,
+  "draft": true,
+  "force-tag-creation": true,
+  "last-release-sha": "2fb338192f58c88abaa8b9607608128805697ac1",
+  "changelog-sections": [
+    {
+      "type": "feat",
+      "section": "Features"
+    },
+    {
+      "type": "fix",
+      "section": "Bug Fixes"
+    },
+    {
+      "type": "perf",
+      "section": "Performance Improvements"
+    },
+    {
+      "type": "refactor",
+      "section": "Code Refactoring",
+      "hidden": false
+    },
+    {
+      "type": "chore",
+      "section": "Dependencies",
+      "hidden": false
+    },
+    {
+      "type": "docs",
+      "section": "Documentation",
+      "hidden": false
+    },
+    {
+      "type": "ci",
+      "section": "Continuous Integration",
+      "hidden": false
+    }
+  ],
+  "packages": {
+    "chrony": {
+      "release-type": "simple",
+      "component": "chrony",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "claude-agent-read": {
+      "release-type": "simple",
+      "component": "claude-agent-read",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "claude-agent-spruyt-labs": {
+      "release-type": "simple",
+      "component": "claude-agent-spruyt-labs",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "claude-agent-write": {
+      "release-type": "simple",
+      "component": "claude-agent-write",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "coder-gitops": {
+      "release-type": "simple",
+      "component": "coder-gitops",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "devcontainer-common": {
+      "release-type": "simple",
+      "component": "devcontainer-common",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "happy-server": {
+      "release-type": "simple",
+      "component": "happy-server",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "llm-guard": {
+      "release-type": "simple",
+      "component": "llm-guard",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "llm-guard-cuda": {
+      "release-type": "simple",
+      "component": "llm-guard-cuda",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    },
+    "megalinter-base": {
+      "release-type": "simple",
+      "component": "megalinter-base",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "initial-version": "1.0.0"
+    },
+    "megalinter-cpp": {
+      "release-type": "simple",
+      "component": "megalinter-cpp",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "initial-version": "1.0.0"
+    },
+    "megalinter-go": {
+      "release-type": "simple",
+      "component": "megalinter-go",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "initial-version": "1.0.0"
+    },
+    "megalinter-python": {
+      "release-type": "simple",
+      "component": "megalinter-python",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "initial-version": "1.0.0"
+    },
+    "megalinter-spruyt-labs": {
+      "release-type": "simple",
+      "component": "megalinter-spruyt-labs",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": true
+    },
+    "megalinter-typescript": {
+      "release-type": "simple",
+      "component": "megalinter-typescript",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false,
+      "initial-version": "1.0.0"
+    },
+    "ssh-key-rotation": {
+      "release-type": "simple",
+      "component": "ssh-key-rotation",
+      "tag-separator": "-",
+      "include-component-in-tag": true,
+      "include-v-in-tag": false
+    }
+  }
+}
