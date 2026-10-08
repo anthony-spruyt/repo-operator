@@ -200,6 +200,17 @@ repos:
       repo:
         description: "Sidecar proxy that injects headers into MCP requests."
 
+  - git: https://github.com/anthony-spruyt/release-matrix-scratch.git
+    groups:
+      - release-please
+      - renovate
+    settings:
+      repo:
+        description: "Scratch repo for the repo-operator#604 release proof."
+      rulesets:
+        # Agents push unsigned straight to main and create tags through the API
+        inherit: false
+
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
