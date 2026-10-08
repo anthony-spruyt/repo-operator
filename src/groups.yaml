@@ -238,6 +238,9 @@ groups:
       - github-ci
     files:
       .mergify.yml:
+        template: true
+        vars:
+          gateFilesExtra: ""
         content: "@templates/.mergify.yml"
     settings:
       repo:
@@ -283,13 +286,6 @@ groups:
       rulesets:
         inherit: false
   protected-main-branch:
-    files:
-      .github/CODEOWNERS:
-        mergeStrategy: append # keep the base an inline list: an @templates string base is replaced, not appended to
-        content:
-          - "# Protect CI/CD configuration from unauthorized changes"
-          - ".github/workflows/ @anthony-spruyt"
-          - ".github/actions/   @anthony-spruyt"
     settings:
       rulesets:
         pr-rules:
@@ -322,11 +318,12 @@ groups:
                   allowedMergeMethods:
                     - squash
                   dismissStaleReviewsOnPush: true
-                  requireCodeOwnerReview: true
-                  requiredApprovingReviewCount: 0
+                  requireCodeOwnerReview: false
+                  requireExtraApprovalForUnattributedChanges: true
+                  requiredApprovingReviewCount: 1
                   requiredReviewers: []
                   requiredReviewThreadResolution: true
-                  requireLastPushApproval: false
+                  requireLastPushApproval: true
           target: branch
   python: {}
   release-please:
