@@ -29,35 +29,6 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.chromance"
-      .github/workflows/ci.yaml:
-        createOnly: false
-      .mergify.yml:
-        content:
-          # xfg replaces arrays, so this repeats the template's queue rule; merge-gate.bats fails if they drift
-          queue_rules:
-            - name: default
-              merge_method: squash
-              batch_size:
-                min: 1
-                max: 10
-              batch_max_wait_time: 5 min
-              max_checks_retries: 3
-              merge_conditions:
-                - -draft
-                - "check-success = summary / Check Results"
-                - "check-success = repo-summary / Check Results"
-    settings:
-      rulesets:
-        pr-rules:
-          rules:
-            $arrayMerge: merge
-            $values:
-              - type: required_status_checks
-                parameters:
-                  requiredStatusChecks:
-                    $arrayMerge: append
-                    $values:
-                      - context: "repo-summary / Check Results"
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
@@ -118,14 +89,11 @@ repos:
     groups:
       - claude
       - mcp
-      - github-ci
       - megalinter-flavor
       - mergify
       - renovate
     files:
       .claude/rules/tdd.md: false
-      .github/workflows/ci.yaml:
-        createOnly: false
       .devcontainer/devcontainer.json:
         content:
           customizations:

@@ -172,19 +172,6 @@ no_commit_matches() {
   [ "$output" = '[{"or":["-label=autorelease: pending","schedule = Mon-Mon 09:00-12:00[Australia/Melbourne]"]},"-label = blocked"]' ]
 }
 
-@test "a repo that replaces queue_rules keeps the template's rule and only adds checks" {
-  template=$(yq -o=json -I0 '.queue_rules' "$TEMPLATE")
-  while IFS= read -r overlay; do
-    [ "$(jq -c 'map(del(.merge_conditions))' <<<"$overlay")" = "$(jq -c 'map(del(.merge_conditions))' <<<"$template")" ]
-    jq -e --argjson t "$template" '.[0].merge_conditions[:($t[0].merge_conditions | length)] == $t[0].merge_conditions' <<<"$overlay"
-  done < <(yq -o=json -I0 '.repos[] | .files[".mergify.yml"].content.queue_rules | select(. != null)' "$SRC/repos.yaml")
-}
-
-@test "Chromance's merge queue also waits for repo-summary" {
-  run yq -o=json -I0 '.repos[] | select(.git == "https://github.com/anthony-spruyt/Chromance.git") | .files[".mergify.yml"].content.queue_rules[0].merge_conditions' "$SRC/repos.yaml"
-  [ "$output" = '["-draft","check-success = summary / Check Results","check-success = repo-summary / Check Results"]' ]
-}
-
 @test "the agent/revert and emergency/merge labels stay defined" {
   run yq -r '.groups.mergify.settings.labels | [has("agent/revert"), has("emergency/merge")] | all' "$SRC/groups.yaml"
   [ "$output" = "true" ]
