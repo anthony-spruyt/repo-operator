@@ -328,6 +328,14 @@ groups:
   python: {}
   release-please:
     settings:
+      rulesets:
+        tag-rules:
+          bypassActors:
+            $arrayMerge: append
+            $values:
+              - actorId: 4745999 # repo-operator-release-bot: creates release tags and moves xfg's floating vN tag
+                actorType: Integration
+                bypassMode: always
       secrets:
         RELEASE_PLEASE_APP_CLIENT_ID:
           env: RELEASE_PLEASE_APP_CLIENT_ID
