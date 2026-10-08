@@ -78,7 +78,6 @@ groups:
                 $values:
                   - "github.vscode-github-actions"
       .github/workflows/ci.yaml:
-        createOnly: true
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/ci.yaml for template comments
         content: "@templates/.github/workflows/ci.yaml"

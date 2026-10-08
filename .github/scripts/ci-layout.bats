@@ -34,6 +34,27 @@ repo_job_is_standard() {
   [ "$output" = '[true,"@templates/.github/workflows/ci-repo.yaml"]' ]
 }
 
+@test "github-ci enforces ci.yaml" {
+  run yq -o=json -I0 '.groups["github-ci"].files[".github/workflows/ci.yaml"] | [.createOnly // false, .content]' "$SRC/groups.yaml"
+  [ "$output" = '[false,"@templates/.github/workflows/ci.yaml"]' ]
+}
+
+@test "only container-images, repo-operator and spruyt-labs keep their own ci.yaml" {
+  run yq -r '[.repos[] | select(.files[".github/workflows/ci.yaml"].createOnly == true) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
+  [ "$output" = "container-images repo-operator spruyt-labs" ]
+}
+
+@test "xfg's ci.yaml overlay adds the labeled trigger and guards every template job with it" {
+  overlay='.repos[] | select(.git == "https://github.com/anthony-spruyt/xfg.git") | .files[".github/workflows/ci.yaml"].content'
+  guard="github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
+  run yq -o=json -I0 "$overlay | .on.pull_request.types" "$SRC/repos.yaml"
+  [ "$output" = '["opened","synchronize","reopened","labeled"]' ]
+  run yq -o=json -I0 "$overlay | [(.jobs | keys), (.jobs | to_entries | map(.value.if))]" "$SRC/repos.yaml"
+  [ "$output" = "$(jq -cn --arg g "$guard" '[["lint","repo","summary"],[$g,$g,"always() && (\($g))"]]')" ]
+  run yq -o=json -I0 '.jobs | keys' "$WORKFLOWS/ci.yaml"
+  [ "$output" = '["lint","repo","summary"]' ]
+}
+
 @test "every group that syncs a ci.yaml calling ci-repo.yaml also gets the seed" {
   run yq -r '[.groups | to_entries[] | select(.value.files[".github/workflows/ci.yaml"] != null) | select(.key != "github-ci") | select((.value.extends // []) | any_c(. == "github-ci") | not) | .key] | join(" ")' "$SRC/groups.yaml"
   [ "$output" = "go-image python-image" ]
