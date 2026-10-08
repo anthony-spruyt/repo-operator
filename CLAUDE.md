@@ -78,10 +78,15 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 - `prOptions.ai.prompt` in `base.yaml` keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
 - `template: true` + `vars` - substitutes `${xfg:name}` (and built-ins like `${xfg:repo.fullName}`) in a file. Unknown variables fail the sync. `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed
   CI/release callers. Shell templates holding `${xfg:...}` use a `.tmpl` extension so this repo's shellcheck skips them. See `docs/ci.md`.
-- `.mergify.yml` merge protections need an `anthony-spruyt` approval on every PR except Renovate's, the release bot's and the owner's own (any approval). A change under `.github/` or to `.mergify.yml` always needs the owner, so a bot approval (for example `skynet-rw[bot]`) never merges one. `revert-approved` trusts only `skynet-rw[bot]`, the platform's revert agent. In repo-operator its `src/`
-  changes are gated by the owner reading the Plan before approving XFG Apply, not by Mergify. The `main` XFG Plan runs that unreviewed `src/` with the write key, so it runs behind a harden-runner egress block and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, or `files` path with a
-  `.git` segment. Mergify is an `exempt` `pr-rules` bypass actor, so these protections are the real gate.
-- The `request owner review` rule in `.mergify.yml` skips bots by exact login. An `author~=\[bot\]$` regex would also skip `skynet-rw[bot]` agent PRs, the ones it exists for.
+- **PR approval gate** (design in [#581](https://github.com/anthony-spruyt/repo-operator/issues/581)). Each rule lives in one place:
+  - `pr-rules` (`protected-main-branch`): one approval from someone who is neither the PR author nor the latest pusher; a real commit dismisses it, an "Update branch" keeps it. No CODEOWNERS.
+  - `.mergify.yml` merge protections: `approval` (one approval on every PR; the only gate in repos without `pr-rules`, such as spruyt-labs and esphome), `outsider` (an author outside the trusted bot and owner list needs `anthony-spruyt`) and `gate-files` (`.github/`, `.mergify.yml` and the repo's `gateFilesExtra` need `anthony-spruyt` unless the PR is pure Renovate). Mergify is an `exempt`
+    `pr-rules` bypass actor, so these protections are the real gate.
+  - The `release` rule has Mergify approve a pure release-please PR in the Monday window; outside it, any collaborator approves. Mergify re-approves every head that still matches, so its conditions are the only guard.
+  - "Pure" means the bot opened the PR and every commit has that bot's author login and `<id>+<login>@users.noreply.github.com` email, committer `noreply@github.com` and a valid signature. Only GitHub's web-flow key signs that combination; a commit signed with any other key carries its signer's committer email.
+  - megalinter-refresh PRs commit unsigned through `git push`, so they need a normal approval until they commit through the API.
+  - `gateFilesExtra` is a template var prepended to the gate-files regex, with its own trailing `|`: repo-operator adds `src/` (the config the next Apply syncs), litellm-middleware its release gate script. Leave it empty elsewhere, where `src/` is application code.
+- The `main` XFG Plan runs `src/` before the owner reads it with the write key, so it runs behind a harden-runner egress block and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, or `files` path with a `.git` segment.
 - Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
 ### Adding a New Repository
@@ -111,10 +116,10 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`, the rendered `lint.sh`).
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`, the rendered `lint.sh`, the merge gate in `merge-gate.bats`).
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
-3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because agent reverts can merge `src/` with no review. This is the plan to read before approving Apply. Skips when
-   `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
+3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because a pure Renovate PR can merge a `src/` pin bump without the owner's review. This is the plan to read before
+   approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
 4. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, always gated by the `production` environment and its required reviewer; no workflow input skips it. The Apply-side secrets live in that environment (`GHCR_READ_TOKEN` is also a repo secret, because the `github-trivy` sync writes it back for the Trivy scan). Records `LAST_XFG_DEPLOY_SHA` after applying. Egress is blocked to GitHub,
    npm and OpenRouter (AI commit messages).
 5. **summary** - Aggregates results for branch protection

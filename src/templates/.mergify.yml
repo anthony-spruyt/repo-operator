@@ -18,18 +18,6 @@ queue_rules:
       - -draft
       - "check-success = summary / Check Results"
 
-priority_rules:
-  - name: revert PRs
-    conditions:
-      - label = agent/revert
-    priority: high
-    allow_checks_interruption: true
-  - name: emergency merge
-    conditions:
-      - label = emergency/merge
-    priority: high
-    allow_checks_interruption: true
-
 pull_request_rules:
   - name: cleanup labels on close
     conditions:
@@ -42,77 +30,61 @@ pull_request_rules:
           - agent/fixing
           - agent/fixable
           - agent/needs-review
-  - name: request owner review
+  # Mergify re-approves every new head that still matches, so these conditions
+  # are the only guard on its approval and must stay strict.
+  - name: release
     conditions:
       - base = main
-      - -closed
-      - -draft
-      - -author = renovate[bot]
-      - -author = repo-operator-release-bot[bot]
-      - -label = agent/revert
+      - "label=autorelease: pending"
+      - author = repo-operator-release-bot[bot]
+      - "head~=^release-please--branches--"
+      - "files~=^\\.release-please-manifest\\.json$"
+      - "-commits[*].author~=^(?!repo-operator-release-bot\\[bot\\]$)"
+      - "-commits[*].email_author~=^(?!321986956\\+repo-operator-release-bot\\[bot\\]@users\\.noreply\\.github\\.com$)"
+      - "-commits[*].email_committer~=^(?!noreply@github\\.com$)"
+      - "#commits-unverified = 0"
+      - schedule = Mon-Mon 09:00-12:00[Australia/Melbourne]
     actions:
-      request_reviews:
-        users:
-          - anthony-spruyt
+      review:
+        type: APPROVE
 
 merge_protections:
-  # This is the only approval gate for repos without GitHub branch protection.
-  # Removing it lets auto_merge_conditions queue unapproved PRs.
-  - name: default
+  # The only approval gate in repos without the pr-rules ruleset, and Mergify
+  # is an exempt bypass actor where the ruleset exists.
+  - name: approval
     if:
       - base = main
-      - -label = agent/revert
-      - -label = emergency/merge
-      - "-label=autorelease: pending"
-      - "-head~=^chore/megalinter-refresh-"
+    success_conditions:
+      - "#approved-reviews-by >= 1"
+
+  - name: outsider
+    if:
+      - base = main
+      - -author = anthony-spruyt
+      - -author = spruyt-labs-bot
+      - -author = skynet-rw[bot]
+      - -author = skynet-r[bot]
+      - -author = renovate[bot]
+      - -author = repo-operator-release-bot[bot]
+      - -author = repo-operator[bot]
+    success_conditions:
+      - approved-reviews-by = anthony-spruyt
+
+  # A Renovate author alone is forgeable: a GitHub-signed commit with Renovate's
+  # author email and a noreply@github.com committer is what proves purity.
+  - name: gate-files
+    if:
+      - base = main
+      - "files~=^(${xfg:gateFilesExtra}\\.github/|\\.mergify\\.yml$)"
     success_conditions:
       - or:
           - approved-reviews-by = anthony-spruyt
           - and:
               - author = renovate[bot]
-              - "#approved-reviews-by >= 1"
-          - and:
-              - author = anthony-spruyt
-              - "#approved-reviews-by >= 1"
-
-  - name: ci-config-owner-approval
-    if:
-      - base = main
-      - -author = anthony-spruyt
-      - "files~=^(\\.github/|\\.mergify\\.yml$)"
-    success_conditions:
-      - approved-reviews-by = anthony-spruyt
-
-  - name: megalinter-refresh
-    if:
-      - base = main
-      - "head~=^chore/megalinter-refresh-"
-    success_conditions:
-      - author = repo-operator-release-bot[bot]
-      - "-files~=^(?!megalinter-[^/]+/\\.rebuild-stamp$)"
-
-  - name: release-please
-    if:
-      - base = main
-      - "label=autorelease: pending"
-    success_conditions:
-      - author = repo-operator-release-bot[bot]
-      - "head~=^release-please--branches--"
-      - "files~=^\\.release-please-manifest\\.json$"
-
-  - name: revert-approved
-    if:
-      - base = main
-      - label = agent/revert
-    success_conditions:
-      - author = skynet-rw[bot]
-
-  - name: emergency-merge
-    if:
-      - base = main
-      - label = emergency/merge
-    success_conditions:
-      - author = anthony-spruyt
+              - "-commits[*].author~=^(?!renovate\\[bot\\]$)"
+              - "-commits[*].email_author~=^(?!29139614\\+renovate\\[bot\\]@users\\.noreply\\.github\\.com$)"
+              - "-commits[*].email_committer~=^(?!noreply@github\\.com$)"
+              - "#commits-unverified = 0"
 
 merge_protections_settings:
   reporting_method: check-runs

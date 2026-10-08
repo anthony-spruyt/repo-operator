@@ -141,10 +141,9 @@ repos:
       - renovate
       - sonar
     files:
-      .github/CODEOWNERS:
-        content:
-          - "/scripts/release_gate.py                @anthony-spruyt"
-          - "/tests/unit/scripts/test_release_gate.py @anthony-spruyt"
+      .mergify.yml:
+        vars:
+          gateFilesExtra: 'scripts/release_gate\.py$|'
       .github/workflows/ci.yaml:
         content:
           jobs:
@@ -210,11 +209,9 @@ repos:
       - renovate
       - sonar
     files:
-      .github/CODEOWNERS:
-        content:
-          - ".github/     @anthony-spruyt"
-          - "/src/        @anthony-spruyt"
-          - "/.mergify.yml @anthony-spruyt"
+      .mergify.yml:
+        vars:
+          gateFilesExtra: "src/|"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
