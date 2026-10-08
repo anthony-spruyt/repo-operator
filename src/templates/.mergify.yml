@@ -30,8 +30,6 @@ pull_request_rules:
           - agent/fixing
           - agent/fixable
           - agent/needs-review
-  # Mergify re-approves every new head that still matches, so these conditions
-  # are the only guard on its approval and must stay strict.
   - name: release
     conditions:
       - base = main
@@ -49,8 +47,6 @@ pull_request_rules:
         type: APPROVE
 
 merge_protections:
-  # The only approval gate in repos without the pr-rules ruleset, and Mergify
-  # is an exempt bypass actor where the ruleset exists.
   - name: approval
     if:
       - base = main
@@ -70,8 +66,6 @@ merge_protections:
     success_conditions:
       - approved-reviews-by = anthony-spruyt
 
-  # Author names are forgeable: a signed commit is verified only for its committer
-  # email's owner, so author email, committer email and signature prove purity.
   - name: gate-files
     if:
       - base = main
