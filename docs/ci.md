@@ -134,7 +134,7 @@ jobs:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
 ```
 
-A scheduled run has no inputs, so `inputs.dry-run` is null and `dry-run` is `false`. Before a new repo's first scheduled run:
+On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-run` is `false` without reading `inputs.dry-run`. Before a new repo's first scheduled run:
 
 1. Give the calling repo the **Admin** role on each package.
 2. Dispatch with `dry-run` on, and check the logged deletions.
