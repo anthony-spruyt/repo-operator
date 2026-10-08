@@ -102,6 +102,19 @@
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}",
       extractVersionTemplate: "^v?(?<version>.+)$"
     },
+    // YAML: release tag line, then a line holding the sha256 of one of its assets.
+    // "digest=sha256" keeps the "YAML field" managers off the tag line, which would leave the hash stale.
+    {
+      customType: "regex",
+      description: ["Annotated YAML release tag with asset sha256."],
+      managerFilePatterns: ["/\\.ya?ml$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=github-release-attachments\\s+digest=sha256\\n\\s*\\w+:[ \\t]+\"(?<currentValue>[^\"\\s]+)\"\\n\\s*\\w+:[ \\t]+\"(?<currentDigest>[a-f0-9]{64})\"",
+        "#\\s*renovate:\\s*datasource=github-release-attachments\\s+depName=(?<depName>\\S+)\\s+digest=sha256\\n\\s*\\w+:[ \\t]+\"(?<currentValue>[^\"\\s]+)\"\\n\\s*\\w+:[ \\t]+\"(?<currentDigest>[a-f0-9]{64})\""
+      ],
+      datasourceTemplate: "github-release-attachments",
+      versioningTemplate: "semver"
+    },
     // YAML: raw.githubusercontent.com URL, where the ref sits between the repo
     // and the file path. The "release URL" managers above only anchor on
     // "/releases/download/", and the "YAML field" managers require a "key: value"
