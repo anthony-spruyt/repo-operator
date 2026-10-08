@@ -117,7 +117,8 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **guard-test** runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`, the rendered `lint.sh`, the merge gate in `merge-gate.bats`).
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`, the rendered `lint.sh`, the merge gate in `merge-gate.bats`, the CI layout and actionlint on
+   the `ci.yaml` templates and seed in `ci-layout.bats`, `_summary.yaml`'s job check in `summary.bats`). See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because a pure Renovate PR can merge a `src/` pin bump without the owner's review. This is the plan to read before
    approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).

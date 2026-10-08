@@ -1,0 +1,43 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "CI (repo)"
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  guard-test:
+    name: "Guard Tests"
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: "read"
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Install bats"
+        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
+
+      - name: "Install actionlint"
+        env:
+          # renovate: depName=rhysd/actionlint datasource=github-tags
+          ACTIONLINT_VERSION: "v1.7.12"
+        run: |
+          base="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}"
+          tarball="actionlint_${ACTIONLINT_VERSION#v}_linux_amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -fsSLO --proto '=https' "$base/$tarball"
+          curl -fsSL --proto '=https' "$base/actionlint_${ACTIONLINT_VERSION#v}_checksums.txt" | grep " ${tarball}\$" | sha256sum -c -
+          sudo tar -xzf "$tarball" -C /usr/local/bin actionlint
+
+      - name: "Run bats tests"
+        run: "bats .github/scripts/ .github/actions/sonar-new-issues/test/"

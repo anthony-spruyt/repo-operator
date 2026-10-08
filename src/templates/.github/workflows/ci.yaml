@@ -10,7 +10,6 @@ on:
   push:
     branches:
       - "main"
-  # workflow_dispatch:  # Uncomment to enable manual runs
 
 permissions: {}
 
@@ -22,19 +21,20 @@ jobs:
       security-events: "write"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@8e7d66f8fd86d59d9b65b28d567844821bea019e" # main
 
-  # Add your repository-specific jobs here:
-  # build:
-  #   runs-on: ubuntu-latest
-  #   permissions:
-  #     contents: read
-  #   steps:
-  #     - uses: actions/checkout@v4
-  #     - run: npm ci && npm run build
+  # Repo-only jobs go in ci-repo.yaml, which the repo owns; xfg seeds it once
+  repo:
+    needs:
+      - "lint"
+    permissions:
+      contents: "read"
+    uses: "./.github/workflows/ci-repo.yaml"
+    secrets: "inherit"
 
-  # Summary job for branch protection - add jobs to 'needs' array
+  # The one required check: it judges every job in the run, the repo / ... jobs included
   summary:
     needs:
       - "lint"
+      - "repo"
     if: "always()"
     permissions:
       actions: "read"
