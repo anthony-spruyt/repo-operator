@@ -35,8 +35,8 @@ jobs:
           base="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}"
           tarball="actionlint_${ACTIONLINT_VERSION#v}_linux_amd64.tar.gz"
           cd "$RUNNER_TEMP"
-          curl -fsSLO "$base/$tarball"
-          curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION#v}_checksums.txt" | grep " ${tarball}\$" | sha256sum -c -
+          curl -fsSLO --proto '=https' "$base/$tarball"
+          curl -fsSL --proto '=https' "$base/actionlint_${ACTIONLINT_VERSION#v}_checksums.txt" | grep " ${tarball}\$" | sha256sum -c -
           sudo tar -xzf "$tarball" -C /usr/local/bin actionlint
 
       - name: "Run bats tests"
