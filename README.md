@@ -148,7 +148,7 @@ Every credential that can act on the managed repos. Keep this current when addin
 | `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                                                                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
 | `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                         |
 
-`pr-rules` only exists on `protected-main-branch` repos. Mergify merge protections trust PRs authored by `repo-operator-release-bot[bot]` (`release-please`, `megalinter-refresh`); that is an author match, not a ruleset bypass.
+`pr-rules` only exists on `protected-main-branch` repos. Mergify approves a pure `repo-operator-release-bot[bot]` release-please PR in the Monday window with its own review, which counts towards `pr-rules`' one approval; that is a review, not a ruleset bypass.
 
 ### Tokens
 
