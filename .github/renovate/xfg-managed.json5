@@ -122,7 +122,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/trivy-scan.yaml",
         ".markdownlint.json",
         ".mcp.json",
@@ -135,6 +134,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "ruff-base.toml",
         "trivy-mega-linter.yaml"
       ],
@@ -168,7 +168,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/trivy-scan.yaml",
         ".markdownlint.json",
         ".mcp.json",
@@ -181,6 +180,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "ruff-base.toml",
         "trivy-mega-linter.yaml"
       ],
@@ -210,7 +210,6 @@
         ".devcontainer/post-start.d/claude-state.sh",
         ".devcontainer/post-start.sh",
         ".editorconfig",
-        ".github/renovate.json5",
         ".markdownlint.json",
         ".mcp.json",
         ".mdformat.toml",
@@ -222,6 +221,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
@@ -254,7 +254,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/ci.yaml",
         ".github/workflows/container-retention.yaml",
         ".github/workflows/rebuild-release.yaml",
@@ -272,6 +271,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
@@ -304,7 +304,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/ci.yaml",
         ".github/workflows/container-retention.yaml",
         ".github/workflows/rebuild-release.yaml",
@@ -321,6 +320,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "ruff-base.toml",
         "trivy-mega-linter.yaml"
       ],
@@ -354,7 +354,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/ci.yaml",
         ".github/workflows/container-retention.yaml",
         ".github/workflows/rebuild-release.yaml",
@@ -372,6 +371,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
@@ -403,7 +403,6 @@
         ".devcontainer/post-start.d/claude-state.sh",
         ".devcontainer/post-start.sh",
         ".editorconfig",
-        ".github/renovate.json5",
         ".github/workflows/trivy-scan.yaml",
         ".markdownlint.json",
         ".mcp.json",
@@ -417,6 +416,7 @@
         ".yamllint.yml",
         "biome.json",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
@@ -449,7 +449,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/ci.yaml",
         ".github/workflows/container-retention.yaml",
         ".github/workflows/rebuild-release.yaml",
@@ -467,6 +466,7 @@
         ".vscode/settings.json",
         ".yamllint.yml",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
@@ -499,7 +499,6 @@
         ".devcontainer/post-start.sh",
         ".editorconfig",
         ".github/CODEOWNERS",
-        ".github/renovate.json5",
         ".github/workflows/trivy-scan.yaml",
         ".markdownlint.json",
         ".mcp.json",
@@ -513,6 +512,7 @@
         ".yamllint.yml",
         "eslint.config.js",
         "lint.sh",
+        "renovate.json",
         "trivy-mega-linter.yaml"
       ],
       "enabled": false
