@@ -150,7 +150,7 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 `tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag) and garbo on container-images. Repos outside `release-please` take no tags.
 
-`pr-rules` only exists on `protected-main-branch` repos. Mergify approves a pure `repo-operator-release-bot[bot]` release-please PR in the Monday window with its own review, which counts towards `pr-rules`' one approval; that is a review, not a ruleset bypass.
+`pr-rules` only exists on `protected-main-branch` repos. Release PRs get no special path: they merge when a collaborator approves, like any other PR.
 
 ### Tokens
 

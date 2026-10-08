@@ -149,11 +149,11 @@ no_commit_matches() {
   [ "$output" = '[true,""]' ]
 }
 
-@test "Mergify approves only a pure release-please PR in the Monday window" {
+@test "Mergify never approves a PR and runs on no schedule" {
   run yq -o=json -I0 '[.pull_request_rules[] | select(.actions.review != null) | .name]' "$TEMPLATE"
-  [ "$output" = '["release"]' ]
-  run yq -o=json -I0 '.pull_request_rules[] | select(.name == "release") | [.conditions, .actions]' "$TEMPLATE"
-  [ "$output" = '[["base = main","label=autorelease: pending","author = repo-operator-release-bot[bot]","head~=^release-please--branches--","files~=^\\.release-please-manifest\\.json$","-commits[*].author~=^(?!repo-operator-release-bot\\[bot\\]$)","-commits[*].email_author~=^(?!321986956\\+repo-operator-release-bot\\[bot\\]@users\\.noreply\\.github\\.com$)","-commits[*].email_committer~=^(?!noreply@github\\.com$)","#commits-unverified = 0","schedule = Mon-Mon 09:00-12:00[Australia/Melbourne]"],{"review":{"type":"APPROVE"}}]' ]
+  [ "$output" = '[]' ]
+  run grep -c 'schedule' "$TEMPLATE"
+  [ "$output" = "0" ]
 }
 
 @test "the revert, emergency, priority, owner-review and refresh rules are gone" {
@@ -162,14 +162,14 @@ no_commit_matches() {
   run grep -cE 'agent/revert|emergency/merge|megalinter-refresh|request_reviews' "$TEMPLATE"
   [ "$output" = "0" ]
   run yq -o=json -I0 '[.pull_request_rules[].name]' "$TEMPLATE"
-  [ "$output" = '["cleanup labels on close","release"]' ]
+  [ "$output" = '["cleanup labels on close"]' ]
 }
 
-@test "the merge queue, blocked label and Monday window are kept" {
+@test "the merge queue and blocked label are kept" {
   run yq -o=json -I0 '.queue_rules[0] | [.name, .merge_method, .merge_conditions]' "$TEMPLATE"
   [ "$output" = '["default","squash",["-draft","check-success = summary / Check Results"]]' ]
   run yq -o=json -I0 '.merge_protections_settings.auto_merge_conditions' "$TEMPLATE"
-  [ "$output" = '[{"or":["-label=autorelease: pending","schedule = Mon-Mon 09:00-12:00[Australia/Melbourne]"]},"-label = blocked"]' ]
+  [ "$output" = '["-label = blocked"]' ]
 }
 
 @test "the agent/revert and emergency/merge labels stay defined" {
