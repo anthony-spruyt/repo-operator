@@ -490,13 +490,6 @@ repos:
           color: "#ededed"
           description: ""
       rulesets:
-        tag-rules:
-          bypassActors:
-            $arrayMerge: append
-            $values:
-              - actorId: 4745999 # repo-operator-release-bot: creates release tags and moves the floating vN tag
-                actorType: Integration
-                bypassMode: always
         branch-signatures:
           conditions:
             refName:

@@ -144,9 +144,11 @@ Every credential that can act on the managed repos. Keep this current when addin
 | -------------------------------- | ------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
 | `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                     | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
 | Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                   | Read-only metadata for `xfg` dry-runs            | none                                                        |
-| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` where a release moves a tag (xfg `vN`) |
+| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos              |
 | `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only                                                                   | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
 | `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                         |
+
+`tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag) and garbo on container-images. Repos outside `release-please` take no tags.
 
 `pr-rules` only exists on `protected-main-branch` repos. Mergify approves a pure `repo-operator-release-bot[bot]` release-please PR in the Monday window with its own review, which counts towards `pr-rules`' one approval; that is a review, not a ruleset bypass.
 
