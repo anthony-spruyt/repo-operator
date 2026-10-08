@@ -26,10 +26,19 @@ jobs:
     with:
       language: "${xfg:language}"
 
+  repo:
+    needs:
+      - "lint"
+    permissions:
+      contents: "read"
+    uses: "./.github/workflows/ci-repo.yaml"
+    secrets: "inherit"
+
   summary:
     needs:
       - "lint"
       - "image"
+      - "repo"
     if: "always()"
     permissions:
       actions: "read"

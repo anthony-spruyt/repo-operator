@@ -1,0 +1,31 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "CI (repo)"
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  guard-test:
+    name: "Guard Tests"
+    runs-on: "ubuntu-latest"
+    permissions:
+      contents: "read"
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          persist-credentials: false
+
+      - name: "Install bats"
+        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
+
+      - name: "Run bats tests"
+        run: "bats .github/scripts/ .github/actions/sonar-new-issues/test/"

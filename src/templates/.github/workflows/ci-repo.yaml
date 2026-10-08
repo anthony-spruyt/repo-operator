@@ -1,0 +1,16 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: "CI (repo)"
+
+on:
+  workflow_call: {}
+
+permissions: {}
+
+jobs:
+  # A workflow needs at least one job; replace this one with the repo's own jobs
+  none:
+    if: false
+    runs-on: "ubuntu-latest"
+    steps:
+      - run: "true"
