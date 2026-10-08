@@ -3,6 +3,8 @@
 name: "Container Retention"
 
 on:
+  schedule:
+    - cron: "0 17 * * 6" # Weekly, Saturdays 17:00 UTC (Sunday morning Melbourne); deletes for real
   workflow_dispatch:
     inputs:
       dry-run:
@@ -19,5 +21,5 @@ jobs:
     uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@8e7d66f8fd86d59d9b65b28d567844821bea019e" # main
     with:
       packages: "${xfg:retentionPackages}"
-      # Other triggers get no inputs, and null == false in expressions, so they dry-run
-      dry-run: "${{ github.event_name != 'workflow_dispatch' || inputs.dry-run }}"
+      # Scheduled runs get no inputs, so only a dispatch can dry-run
+      dry-run: "${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}"
