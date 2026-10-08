@@ -1,4 +1,5 @@
 #!/usr/bin/env bats
+# shellcheck disable=SC2016
 
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
@@ -42,13 +43,28 @@ repo_job_is_standard() {
   [ "$output" = "true" ]
 }
 
-@test "the seed is a callable workflow with one disabled job and nothing to pin" {
+@test "the seed is a callable workflow with one never-run job and nothing to pin" {
   run yq -o=json -I0 '[.name, (.on | keys), .permissions]' "$WORKFLOWS/ci-repo.yaml"
   [ "$output" = '["CI (repo)",["workflow_call"],{}]' ]
-  run yq -o=json -I0 '[.jobs[] | .if]' "$WORKFLOWS/ci-repo.yaml"
-  [ "$output" = '[false]' ]
+  run yq -o=json -I0 '.jobs | to_entries | map([.key, .value.name, .value.if])' "$WORKFLOWS/ci-repo.yaml"
+  [ "$output" = '[["no-repo-jobs","No repo jobs yet","github.event_name == '"'never'"'"]]' ]
   run grep -c 'uses:' "$WORKFLOWS/ci-repo.yaml"
   [ "$output" = "0" ]
+}
+
+@test "the rendered ci.yaml, image-ci.yaml and seed pass actionlint with the synced config" {
+  target="$BATS_TEST_TMPDIR/target"
+  mkdir -p "$target/.github/workflows"
+  cp "$SRC/templates/.github/actionlint.yaml" "$target/.github/actionlint.yaml"
+  cp "$WORKFLOWS/ci-repo.yaml" "$WORKFLOWS/ci.yaml" "$target/.github/workflows/"
+  sed 's/\${xfg:language}/go/' "$WORKFLOWS/image-ci.yaml" >"$target/.github/workflows/image-ci.yaml"
+  run grep -rn 'xfg:' "$target/.github/workflows/"
+  [ "$status" -eq 1 ]
+  git init -q "$target"
+  cd "$target"
+  run actionlint -no-color
+  echo "$output"
+  [ "$status" -eq 0 ]
 }
 
 @test "repo-operator's ci.yaml calls its ci-repo.yaml like the template and summary judges it" {
@@ -64,4 +80,6 @@ repo_job_is_standard() {
   [ "$output" = '[["workflow_call"],{}]' ]
   run yq -r '.jobs["guard-test"].steps[].run | select(. != null)' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *"bats .github/scripts/ .github/actions/sonar-new-issues/test/"* ]]
+  run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
+  [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
 }

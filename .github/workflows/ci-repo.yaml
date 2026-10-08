@@ -27,5 +27,17 @@ jobs:
       - name: "Install bats"
         run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
 
+      - name: "Install actionlint"
+        env:
+          # renovate: depName=rhysd/actionlint datasource=github-tags
+          ACTIONLINT_VERSION: "v1.7.12"
+        run: |
+          base="https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}"
+          tarball="actionlint_${ACTIONLINT_VERSION#v}_linux_amd64.tar.gz"
+          cd "$RUNNER_TEMP"
+          curl -fsSLO "$base/$tarball"
+          curl -fsSL "$base/actionlint_${ACTIONLINT_VERSION#v}_checksums.txt" | grep " ${tarball}\$" | sha256sum -c -
+          sudo tar -xzf "$tarball" -C /usr/local/bin actionlint
+
       - name: "Run bats tests"
         run: "bats .github/scripts/ .github/actions/sonar-new-issues/test/"
