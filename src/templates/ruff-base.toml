@@ -19,6 +19,10 @@ select = [
     "PERF",
     "PIE",
     "PLE",
+    "PLR0911",
+    "PLR0912",
+    "PLR0913",
+    "PLR0915",
     "PLW",
     "PT",
     "RET",
@@ -27,6 +31,12 @@ select = [
     "UP",
     "W",
 ]
+
+[lint.pylint]
+max-args = 5
+max-branches = 12
+max-returns = 6
+max-statements = 50
 
 [format]
 quote-style = "double"
