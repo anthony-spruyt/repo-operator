@@ -129,21 +129,21 @@ EOF
 @test "file false in a group removes the file" {
   cat >"$CFG/groups.yaml" <<'EOF'
 groups:
-  renovate:
+  base:
     files:
-      .github/renovate.json5:
+      old.json:
         content: {}
-  renovate-fork:
-    extends: renovate
+  variant:
+    extends: base
     files:
-      .github/renovate.json5: false
-      renovate.json:
+      old.json: false
+      new.json:
         content: {}
 EOF
-  printf 'repos:\n  - git: https://github.com/anthony-spruyt/fork.git\n    groups: [renovate-fork]\n' >"$CFG/repos.yaml"
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/a.git\n    groups: [variant]\n' >"$CFG/repos.yaml"
   run disabled_files
   [ "$status" -eq 0 ]
-  [ "$output" = "anthony-spruyt/fork renovate.json" ]
+  [ "$output" = "anthony-spruyt/a new.json" ]
 }
 
 @test "repo files inherit false keeps only the repo's own files" {

@@ -105,7 +105,14 @@ alerts override `enabled: false`, so a security fix can still open a PR in a tar
 
 Guard Tests fail when the committed preset doesn't match `src/`.
 
-Forks join `renovate-fork` instead of `renovate`, and set `renovate.json: { content: { forkProcessing: "enabled" } }` in `repos.yaml`. When the Renovate app is installed on all repositories rather than selected ones, it skips forks unless a root `renovate.json` enables `forkProcessing`. It ignores that setting in `.github/renovate.json5`.
+Every repo in the `renovate` group gets the same two files at its root:
+
+| File                       | Owner         | Sync                                                                                                                                     |
+| -------------------------- | ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `renovate.json`            | repo-operator | Overwritten on every Apply: the shared presets above, `forkProcessing: "enabled"`, and `local>owner/repo//renovate-overrides.json5` last |
+| `renovate-overrides.json5` | the repo      | Seeded once (`createOnly`), then never touched. Put repo-specific rules here                                                             |
+
+`forkProcessing` sits in the root `renovate.json` because the Renovate app is installed on all repositories, and in that mode it skips a fork unless its default config file, `renovate.json`, enables forks. Renovate uses only the first config file it finds and never merges two, so no repo keeps a `.github/renovate.json5` beside it.
 
 ## SonarQube Cloud Configuration
 
