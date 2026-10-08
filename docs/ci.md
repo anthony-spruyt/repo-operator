@@ -183,6 +183,24 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
 
 `_rebuild-release.yaml` derives the tag from the root package in `release-please-config.json`, using release-please's defaults (component in tag, `v` in tag, `-` separator). It reads the component from `component` or `package-name`. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
+## Standard `ci.yaml` and `ci-repo.yaml`
+
+A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruyt/repo-operator/issues/610)):
+
+| File                             | Owner                              | Contents                                                                                                                          |
+| -------------------------------- | ---------------------------------- | --------------------------------------------------------------------------------------------------------------------------------- |
+| `.github/workflows/ci.yaml`      | repo-operator, synced and enforced | `lint` and `summary` from `src/templates/.github/workflows/ci.yaml`. The same in every repo apart from template vars              |
+| `.github/workflows/ci-repo.yaml` | the repo, only if it needs one     | Its own triggers, concurrency and permissions, then the repo-only jobs, ending in a `repo-summary` job that calls `_summary.yaml` |
+
+A CI fix to `ci.yaml` is one change to the template here, which the next Apply writes to every enforced repo. Single-image repos get `image-ci.yaml` as their `ci.yaml` instead, which adds the `image` job (see [Managed image repos](#managed-image-repos)). Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them.
+
+The `github-ci` group still seeds `ci.yaml` with `createOnly: true`. A repo moves onto the enforced file by setting `createOnly: false` on it in `src/repos.yaml`; esphome and Chromance have. Before that, a repo PR sets its `ci.yaml` to what xfg renders (no YAML comments, so its pins carry no `# main`) and moves its repo-only jobs to `ci-repo.yaml`, so the first Apply changes nothing.
+
+xfg never touches `ci-repo.yaml`. Its pins keep their `# main` comment, so the repo's own Renovate bumps them. `_summary.yaml` reads the jobs of its own workflow run only, so `ci-repo.yaml` needs its own summary, and its check is `repo-summary / Check Results`. A repo with a `ci-repo.yaml` requires that check next to `summary / Check Results`, in two places in `src/repos.yaml`:
+
+- `pr-rules`: a `required_status_checks` rule merged in with `$arrayMerge: merge` that appends `repo-summary / Check Results`.
+- `.mergify.yml`: a `queue_rules` overlay that adds `check-success = repo-summary / Check Results` to the merge conditions. xfg replaces arrays and can't merge into one queue rule, so the overlay repeats the template's whole rule. `merge-gate.bats` fails if the copy drifts from the template in anything but the added checks.
+
 ## Managed image repos
 
 Single-package image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
