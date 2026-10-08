@@ -19,10 +19,10 @@ jobs:
       actions: "read"
       contents: "read"
       security-events: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@5cbe1a184d32fd631420e30e20b46a85b5aa244f" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@8e7d66f8fd86d59d9b65b28d567844821bea019e" # main
 
   image:
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@5cbe1a184d32fd631420e30e20b46a85b5aa244f" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_build-image.yaml@8e7d66f8fd86d59d9b65b28d567844821bea019e" # main
     with:
       language: "${xfg:language}"
 
@@ -34,4 +34,4 @@ jobs:
     permissions:
       actions: "read"
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@5cbe1a184d32fd631420e30e20b46a85b5aa244f" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@8e7d66f8fd86d59d9b65b28d567844821bea019e" # main
