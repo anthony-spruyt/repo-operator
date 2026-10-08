@@ -60,6 +60,10 @@ repos:
       - mergify
       - renovate
       - sonar
+    files:
+      # Repo-owned until #604 moves it onto the standard images job
+      .github/workflows/ci.yaml:
+        createOnly: true
     settings:
       labels:
         "renovate/upstream":
@@ -209,6 +213,9 @@ repos:
       - renovate
       - sonar
     files:
+      # Repo-owned for good: it hosts XFG Plan and Apply, which the standard ci.yaml lacks
+      .github/workflows/ci.yaml:
+        createOnly: true
       .mergify.yml:
         vars:
           gateFilesExtra: "src/|"
@@ -229,6 +236,9 @@ repos:
       - renovate
       - sonar
     files:
+      # Repo-owned until #604 moves it onto the standard images job
+      .github/workflows/ci.yaml:
+        createOnly: true
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
@@ -449,6 +459,23 @@ repos:
       - renovate
       - sonar
     files:
+      # A label other than run-integration must not post a green summary over a failed run
+      .github/workflows/ci.yaml:
+        content:
+          on:
+            pull_request:
+              types:
+                - "opened"
+                - "synchronize"
+                - "reopened"
+                - "labeled"
+          jobs:
+            lint:
+              if: "github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
+            repo:
+              if: "github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
+            summary:
+              if: "always() && (github.event.action != 'labeled' || github.event.label.name == 'run-integration')"
       .devcontainer/devcontainer.json:
         content:
           features:

@@ -4,8 +4,8 @@ Reusable workflows and composite actions that other repos call from this repo. C
 `repo-operator shared CI` PR. Every merge here moves `main`, so that PR comes every month whether or not a shared workflow changed. A pin with no comment is never bumped, and an unpinned `@main` gets a pin PR.
 
 The synced callers (`src/templates/.github/workflows/`) carry the comment here, so Renovate bumps them in this repo and the next sync carries the new SHA out. xfg drops YAML comments when it writes a file, so the synced copies hold a bare SHA that Renovate skips: downstream repos get no pin PRs for managed files. Callers a repo owns (a hand-edited `ci.yaml`, or an unmanaged workflow) keep the
-comment, and Renovate bumps them in that repo. A `createOnly` `ci.yaml` that xfg seeds also arrives without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out), or the owning repo's for its own
-callers.
+comment, and Renovate bumps them in that repo. A `ci.yaml` that a repo keeps through a `createOnly` override is seeded the same way, without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out),
+or the owning repo's for its own callers.
 
 Reusable workflows suit single-package repos that follow the standard layout: the project at the repo root and a `Dockerfile` there too. For Go, `go.mod` sits at the root and binaries live under `cmd/`. Monorepos can call the composite actions from their own jobs instead.
 
@@ -189,7 +189,7 @@ A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruy
 
 | File                             | Owner                                                         | Contents                                                                                                                                             |
 | -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yaml`      | repo-operator (`src/templates/.github/workflows/ci.yaml`)     | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `summary` (`needs: [lint, repo]`)        |
+| `.github/workflows/ci.yaml`      | repo-operator, written on every sync by the `github-ci` group | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `summary` (`needs: [lint, repo]`)        |
 | `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it |
 
 The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml` and `image-ci.yaml`; MegaLinter only lints this repo's own
@@ -198,13 +198,13 @@ The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name ==
 `summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
 runs ungated.
 
-`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the
-per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
+`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. xfg's overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo` and
+`summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
 
 Single-image repos get `image-ci.yaml` as their `ci.yaml`, which adds the `image` job and the same `repo` call, and xfg writes it on every sync (see [Managed image repos](#managed-image-repos)). The `image` groups extend `github-ci`, so those repos get the seed too. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a
 `ci.yaml` that calls a missing `ci-repo.yaml` makes the whole run invalid.
 
-Everywhere else `github-ci` still seeds `ci.yaml` with `createOnly: true`, so each repo moves onto the standard file in its own PR: it moves its repo-only jobs into `ci-repo.yaml` and sets `ci.yaml` to what xfg renders for it, overlays included. Once every repo has, `ci.yaml` drops `createOnly`.
+Three repos keep their own `ci.yaml` through a per-repo `createOnly: true` override: repo-operator for good, because its `ci.yaml` hosts XFG Plan and Apply, and spruyt-labs and container-images until [#604](https://github.com/anthony-spruyt/repo-operator/issues/604) moves them onto the standard file.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
 
