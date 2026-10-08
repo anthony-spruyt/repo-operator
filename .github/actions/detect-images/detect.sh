@@ -185,6 +185,7 @@ def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def under($p): . as $f | $p == "." or $f == $p or ($f | startswith($p + "/"));
 def rel($p): if $p == "." then . else .[($p | length) + 1:] end;
 .packages as $pkgs
+| ($diff | split("\u0000") | map(select(length > 0))) as $files
 | ".release-please-manifest.json" as $manifest
 | ([$pkgs[].changelog] + [$manifest]) as $always
 | def release_always: . as $f | any($always[]; . == $f);
@@ -206,7 +207,7 @@ def rel($p): if $p == "." then . else .[($p | length) + 1:] end;
 '
 
 select_images() {
-  local listing="$1" out="$2" names files diff
+  local listing="$1" out="$2" names diff
   if [[ -n "$image" ]]; then
     jq -c --arg n "$image" '.images | map(select(.name == $n))' <<<"$listing" >"$out"
     if [[ "$(jq 'length' "$out")" == "0" ]]; then
@@ -218,8 +219,8 @@ select_images() {
   else
     diff="$out.diff"
     changed_files "$diff"
-    files=$(jq -Rs 'split("\u0000") | map(select(length > 0))' "$diff")
-    jq -c --argjson files "$files" "$SELECT_JQ" <<<"$listing" >"$out"
+    # --rawfile, not --argjson: one argument caps at 128 KB, so large diffs would fail
+    jq -c --rawfile diff "$diff" "$SELECT_JQ" <<<"$listing" >"$out"
   fi
   return 0
 }

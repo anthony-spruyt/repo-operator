@@ -392,6 +392,28 @@ image_entry() {
   [ "$(images)" = "agent-queue-worker" ]
 }
 
+@test "longest path: a nested file goes only to the nested package, without exclude-paths" {
+  use_layout spruyt-labs
+  jq 'del(.packages["ts/agent-queue-worker"]."exclude-paths")' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam parent
+  commit_diff spruyt-labs-bull-board-src-only
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "bull-board" ]
+}
+
+@test "longest path: a parent file outside the nested package goes only to the parent, without exclude-paths" {
+  use_layout spruyt-labs
+  jq 'del(.packages["ts/agent-queue-worker"]."exclude-paths")' "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" commit -qam parent
+  commit_files ts/agent-queue-worker/src/index.ts
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
 @test "go release-type: a release PR bumping version-file builds nothing" {
   use_layout spruyt-labs
   jq '.packages["cmd/shutdown-orchestrator"] += {"release-type": "go", "version-file": "version.go"}' \
@@ -458,6 +480,21 @@ image_entry() {
   detect
   [ "$status" -eq 0 ]
   [ "$(images)" = "coder-gitops,happy-server" ]
+}
+
+@test "pull request: a diff too large for one argument still selects images" {
+  use_layout container-images
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  mkdir -p "$REPO/happy-server/generated"
+  for i in $(seq 1 5000); do
+    : >"$REPO/happy-server/generated/file-with-a-long-name-to-pass-the-argument-limit-$i.txt"
+  done
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m generated
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "happy-server" ]
 }
 
 @test "pull request: a renamed file rebuilds both the old and the new package" {
