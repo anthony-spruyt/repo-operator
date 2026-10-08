@@ -70,12 +70,12 @@ merge_protections:
     success_conditions:
       - approved-reviews-by = anthony-spruyt
 
-  # A Renovate author alone is forgeable: a GitHub-signed commit with Renovate's
-  # author email and a noreply@github.com committer is what proves purity.
+  # Author names are forgeable: a signed commit is verified only for its committer
+  # email's owner, so author email, committer email and signature prove purity.
   - name: gate-files
     if:
       - base = main
-      - "files~=^(${xfg:gateFilesExtra}\\.github/|\\.mergify\\.yml$)"
+      - "files~=^(${xfg:gateFilesExtra}\\.github/|\\.mergify\\.yml$|renovate\\.json$|renovate-overrides\\.json5$)"
     success_conditions:
       - or:
           - approved-reviews-by = anthony-spruyt
@@ -84,6 +84,11 @@ merge_protections:
               - "-commits[*].author~=^(?!renovate\\[bot\\]$)"
               - "-commits[*].email_author~=^(?!29139614\\+renovate\\[bot\\]@users\\.noreply\\.github\\.com$)"
               - "-commits[*].email_committer~=^(?!noreply@github\\.com$)"
+              - "#commits-unverified = 0"
+          - and:
+              - author = anthony-spruyt
+              - "-commits[*].email_author~=^(?!(aspruyt@hotmail\\.co\\.uk|99536297\\+anthony-spruyt@users\\.noreply\\.github\\.com)$)"
+              - "-commits[*].email_committer~=^(?!(aspruyt@hotmail\\.co\\.uk|99536297\\+anthony-spruyt@users\\.noreply\\.github\\.com|noreply@github\\.com)$)"
               - "#commits-unverified = 0"
 
 merge_protections_settings:

@@ -143,7 +143,7 @@ repos:
     files:
       .mergify.yml:
         vars:
-          gateFilesExtra: 'scripts/release_gate\.py$|'
+          gateFilesExtra: 'scripts/release_gate\.py$|tests/unit/scripts/test_release_gate\.py$|'
       .github/workflows/ci.yaml:
         content:
           jobs:

@@ -12,6 +12,12 @@ setup() {
     "-commits[*].email_committer~=^(?!noreply@github\\.com$)",
     "#commits-unverified = 0"
   ]'
+  OWNER_ONLY='[
+    "author = anthony-spruyt",
+    "-commits[*].email_author~=^(?!(aspruyt@hotmail\\.co\\.uk|99536297\\+anthony-spruyt@users\\.noreply\\.github\\.com)$)",
+    "-commits[*].email_committer~=^(?!(aspruyt@hotmail\\.co\\.uk|99536297\\+anthony-spruyt@users\\.noreply\\.github\\.com|noreply@github\\.com)$)",
+    "#commits-unverified = 0"
+  ]'
 }
 
 # Renders the template the way xfg does for one repo: substitution runs on parsed strings, and per-repo vars win.
@@ -55,9 +61,41 @@ not_gated() {
   [ "$output" = '[["base = main","-author = anthony-spruyt","-author = spruyt-labs-bot","-author = skynet-rw[bot]","-author = skynet-r[bot]","-author = renovate[bot]","-author = repo-operator-release-bot[bot]","-author = repo-operator[bot]"],["approved-reviews-by = anthony-spruyt"]]' ]
 }
 
-@test "a gate-file change needs the owner unless it is a pure Renovate PR" {
+@test "a gate-file change needs the owner unless it is a pure Renovate PR or wholly the owner's" {
   run yq -o=json -I0 '.merge_protections[] | select(.name == "gate-files") | .success_conditions' "$TEMPLATE"
-  [ "$output" = "$(jq -c --argjson pure "$PURE_RENOVATE" -n '[{"or": ["approved-reviews-by = anthony-spruyt", {"and": $pure}]}]')" ]
+  [ "$output" = "$(jq -c --argjson pure "$PURE_RENOVATE" --argjson owner "$OWNER_ONLY" -n '[{"or": ["approved-reviews-by = anthony-spruyt", {"and": $pure}, {"and": $owner}]}]')" ]
+}
+
+owner_skip() {
+  yq -o=json -I0 '.merge_protections[] | select(.name == "gate-files") | .success_conditions[0].or[2].and[]' "$TEMPLATE" | jq -r '.'
+}
+
+# Mimics Mergify: a "-commits[*].x~=re" condition fails when any commit's field matches re.
+no_commit_matches() {
+  local field="$1" value
+  shift
+  local re
+  re=$(owner_skip | grep -F -- "-commits[*].$field~=" | sed "s/^-commits\\[\\*\\]\\.$field~=//")
+  [ -n "$re" ] || return 2
+  for value in "$@"; do
+    python3 -c 'import re, sys; sys.exit(1 if re.search(sys.argv[1], sys.argv[2]) else 0)' "$re" "$value" || return 1
+  done
+}
+
+@test "the owner skip accepts the owner's local and web-flow commits" {
+  no_commit_matches email_author "aspruyt@hotmail.co.uk" "99536297+anthony-spruyt@users.noreply.github.com"
+  no_commit_matches email_committer "aspruyt@hotmail.co.uk" "99536297+anthony-spruyt@users.noreply.github.com" "noreply@github.com"
+}
+
+@test "the owner skip rejects agent and bot commits" {
+  for email in "spruyt-labs-bot@users.noreply.github.com" "aspruyt@hotmail.co.uk.evil" "xaspruyt@hotmail.co.uk" "ASPRUYT@hotmail.co.uk" "29139614+renovate[bot]@users.noreply.github.com"; do
+    run no_commit_matches email_author "$email"
+    [ "$status" -eq 1 ]
+    run no_commit_matches email_committer "$email"
+    [ "$status" -eq 1 ]
+  done
+  run no_commit_matches email_author "noreply@github.com"
+  [ "$status" -eq 1 ]
 }
 
 @test "gate files are .github/ and .mergify.yml everywhere" {
@@ -70,6 +108,15 @@ not_gated() {
   done
 }
 
+@test "the root Renovate config is a gate file everywhere" {
+  for repo in esphome spruyt-labs Chromance SunGather xfg litellm-middleware repo-operator; do
+    gated "$repo" "renovate.json"
+    gated "$repo" "renovate-overrides.json5"
+    not_gated "$repo" "renovate.json.bak"
+    not_gated "$repo" "docs/renovate.json"
+  done
+}
+
 @test "src/ is a gate path only in repo-operator" {
   gated repo-operator "src/groups.yaml"
   for repo in Chromance SunGather litellm-middleware spruyt-labs; do
@@ -79,14 +126,17 @@ not_gated() {
 
 @test "litellm-middleware gates its release gate script" {
   gated litellm-middleware "scripts/release_gate.py"
+  gated litellm-middleware "tests/unit/scripts/test_release_gate.py"
   not_gated litellm-middleware "scripts/release_gate.pyc"
+  not_gated litellm-middleware "tests/unit/scripts/test_release_gate.pyc"
+  not_gated litellm-middleware "tests/unit/scripts/test_other.py"
   not_gated litellm-middleware "scripts/other.py"
   not_gated repo-operator "scripts/release_gate.py"
 }
 
 @test "only repo-operator and litellm-middleware widen the gate files" {
   run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/litellm-middleware.git":"scripts/release_gate\\.py$|","https://github.com/anthony-spruyt/repo-operator.git":"src/|"}' ]
+  [ "$output" = '{"https://github.com/anthony-spruyt/litellm-middleware.git":"scripts/release_gate\\.py$|tests/unit/scripts/test_release_gate\\.py$|","https://github.com/anthony-spruyt/repo-operator.git":"src/|"}' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }
