@@ -136,8 +136,8 @@ The `megalinter` allowlist comes from egress logged across all repos: GitHub, GH
 
 ### Images
 
-The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image, or only the one in the
-caller's `image` dispatch input. Each image's jobs show up as `image / <name> / ...`.
+The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image,
+or only the one in the caller's `image` dispatch input. Each image's jobs show up as `image / <name> / ...`.
 
 Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-images`](#detect-images)), so a new image needs no change here. The `with:` inputs on the `image` job apply to every image.
 
@@ -206,7 +206,8 @@ from.
 
 A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft and the run fails with the rebuild command.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag**, once per failed image (`gh workflow run rebuild-release.yaml --ref <tag> -f image=<image> -f version=X.Y.Z`; `image` may be left out in a repo with one image). It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version of that image is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild
+If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag**, once per failed image (`gh workflow run rebuild-release.yaml --ref <tag> -f image=<image> -f version=X.Y.Z`; `image` may be left out in a repo with one image).
+It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version of that image is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild
 if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
 
 `publish-release` leaves a release that is already published unchanged, so a rebuild that overlaps the release run's image job doesn't append a second image section.
@@ -241,10 +242,10 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
 
 A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruyt/repo-operator/issues/610)):
 
-| File                             | Owner                                                         | Contents                                                                                                                                             |
-| -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                             | Owner                                                         | Contents                                                                                                                                                                                                         |
+| -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.github/workflows/ci.yaml`      | repo-operator, written on every sync by the `github-ci` group | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `image` (`needs: [lint, repo]`, calls `_images.yaml`), then `summary` (`needs: [lint, repo, image]`) |
-| `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it |
+| `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it                                                             |
 
 The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own
 `.github/workflows/`.
@@ -252,7 +253,8 @@ The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name ==
 `summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
 runs ungated.
 
-`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. xfg's overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and
+`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`.
+xfg's overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and
 `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
 
 Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
@@ -270,8 +272,8 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
 | `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list |
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                        |
-| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                        |
-| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                |
+| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                       |
+| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                               |
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
