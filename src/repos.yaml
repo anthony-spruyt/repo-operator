@@ -158,11 +158,6 @@ repos:
           jobs:
             release:
               with: *litellm-middleware-with
-      .github/workflows/rebuild-release.yaml:
-        content:
-          jobs:
-            rebuild:
-              with: *litellm-middleware-with
     settings:
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
@@ -366,11 +361,6 @@ repos:
           jobs:
             release:
               with: *sungather-with
-      .github/workflows/rebuild-release.yaml:
-        content:
-          jobs:
-            rebuild:
-              with: *sungather-with
       .github/workflows/container-retention.yaml:
         vars:
           retentionPackages: "sungather"
@@ -412,11 +402,6 @@ repos:
         content:
           jobs:
             release:
-              with: *traefik-api-key-auth-with
-      .github/workflows/rebuild-release.yaml:
-        content:
-          jobs:
-            rebuild:
               with: *traefik-api-key-auth-with
       .golangci.yml:
         content:

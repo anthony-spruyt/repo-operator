@@ -99,13 +99,9 @@ release_env() {
   [ "$output" = $'0\n0' ]
 }
 
-@test "the release callers run only from main pushes or dispatch, and pass every release secret by name" {
+@test "the release caller runs only from main pushes or dispatch, and passes every release secret by name" {
   run yq -o=json -I0 '[(.on | keys), .on.push.branches]' "$TEMPLATES/image-release-please.yaml"
   [ "$output" = '[["push","workflow_dispatch"],["main"]]' ]
-  run yq -o=json -I0 '.on | keys' "$TEMPLATES/image-rebuild-release.yaml"
-  [ "$output" = '["workflow_dispatch"]' ]
   run yq -o=json -I0 '.jobs.release.secrets' "$TEMPLATES/image-release-please.yaml"
   [ "$output" = '{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}","DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
-  run yq -o=json -I0 '.jobs.rebuild.secrets' "$TEMPLATES/image-rebuild-release.yaml"
-  [ "$output" = '{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
 }
