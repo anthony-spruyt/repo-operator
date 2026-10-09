@@ -90,16 +90,22 @@ groups:
     extends:
       - github-ci
       - release-please
+      - dockerhub
     files:
+      # language is not "": _build-image.yaml rejects an empty language for an image whose metadata.yaml sets none
       .github/workflows/release-please.yaml:
         template: true
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
+        vars:
+          language: none
         content: "@templates/.github/workflows/image-release-please.yaml"
       .github/workflows/rebuild-release.yaml:
         template: true
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
+        vars:
+          language: none
         content: "@templates/.github/workflows/image-rebuild-release.yaml"
       .github/workflows/container-retention.yaml:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json

@@ -54,16 +54,16 @@ repos:
       - megalinter-flavor
       - protected-main-branch
       - docker
-      - dockerhub
+      - image
       - python
       - release-please
       - mergify
       - renovate
       - sonar
     files:
-      # Repo-owned until #604 moves it onto the standard images job
-      .github/workflows/ci.yaml:
-        createOnly: true
+      .github/workflows/container-retention.yaml:
+        vars:
+          retentionPackages: "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation"
     settings:
       labels:
         "renovate/upstream":
@@ -231,13 +231,6 @@ repos:
                 actions: "read"
                 contents: "read"
                 pull-requests: "read"
-      # Not "": _build-image.yaml rejects an empty language for an image whose metadata.yaml sets none
-      .github/workflows/release-please.yaml:
-        vars:
-          language: none
-      .github/workflows/rebuild-release.yaml:
-        vars:
-          language: none
       .github/workflows/container-retention.yaml:
         vars:
           retentionPackages: "shutdown-orchestrator,agent-queue-worker,bull-board"

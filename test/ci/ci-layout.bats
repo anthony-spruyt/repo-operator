@@ -51,9 +51,9 @@ repo_job_is_standard() {
   [ "$output" = '[false,"@templates/.github/workflows/ci.yaml"]' ]
 }
 
-@test "only container-images and repo-operator keep their own ci.yaml" {
+@test "only repo-operator keeps its own ci.yaml" {
   run yq -r '[.repos[] | select(.files[".github/workflows/ci.yaml"].createOnly == true) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "container-images repo-operator" ]
+  [ "$output" = "repo-operator" ]
 }
 
 @test "spruyt-labs joins image with no language group, so each image's metadata.yaml sets its language" {
@@ -62,10 +62,53 @@ repo_job_is_standard() {
   [ "$output" = '[true,false]' ]
   run yq -o=json -I0 "$repo | .files[\".github/workflows/ci.yaml\"].content.jobs | [(.repo.permissions | to_entries | sort_by(.key) | from_entries), (.image.with.language // null)]" "$SRC/repos.yaml"
   [ "$output" = '[{"actions":"read","contents":"read","pull-requests":"read"},null]' ]
-  run yq -o=json -I0 "$repo | .files | [.[\".github/workflows/release-please.yaml\"].vars.language, .[\".github/workflows/rebuild-release.yaml\"].vars.language]" "$SRC/repos.yaml"
-  [ "$output" = '["none","none"]' ]
   run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
   [ "$output" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
+}
+
+@test "container-images joins image with retention for its 16 packages and no separate dockerhub group" {
+  repo='.repos[] | select(.git == "https://github.com/anthony-spruyt/container-images.git")'
+  run yq -o=json -I0 "$repo | .groups | [any_c(. == \"image\"), any_c(. == \"dockerhub\")]" "$SRC/repos.yaml"
+  [ "$output" = '[true,false]' ]
+  run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
+  [ "$output" = "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation" ]
+}
+
+@test "the 7 image repos all get the image group, directly or through go-image or python-image" {
+  run yq -r '[.repos[] | select(.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
+  [ "$output" = "SunGather container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
+}
+
+@test "the image group defaults the release callers' language to none, and no repo repeats it" {
+  run yq -o=json -I0 '.groups.image.files | [.[".github/workflows/release-please.yaml"].vars.language, .[".github/workflows/rebuild-release.yaml"].vars.language]' "$SRC/groups.yaml"
+  [ "$output" = '["none","none"]' ]
+  run yq -o=json -I0 '[.repos[] | select(.files[".github/workflows/release-please.yaml"].vars.language == "none" or .files[".github/workflows/rebuild-release.yaml"].vars.language == "none") | .git]' "$SRC/repos.yaml"
+  [ "$output" = '[]' ]
+}
+
+@test "the image group syncs DOCKERHUB_TOKEN through the dockerhub group, and no image repo also lists dockerhub" {
+  run yq -r '.groups.image.extends | any_c(. == "dockerhub")' "$SRC/groups.yaml"
+  [ "$output" = "true" ]
+  run grep -c 'DOCKERHUB_TOKEN:' "$SRC/groups.yaml"
+  [ "$output" = "1" ]
+  run yq -o=json -I0 '[.repos[] | select((.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) and (.groups | any_c(. == "dockerhub"))) | .git]' "$SRC/repos.yaml"
+  [ "$output" = '[]' ]
+}
+
+@test "the image release callers publish to Docker Hub as aspruyt with the DOCKERHUB_TOKEN secret" {
+  local file job
+  for file in image-release-please.yaml:release image-rebuild-release.yaml:rebuild; do
+    job="${file#*:}"
+    file="${file%%:*}"
+    run yq -o=json -I0 ".jobs.$job | [.with[\"dockerhub-namespace\"], .secrets.DOCKERHUB_TOKEN]" "$WORKFLOWS/$file"
+    echo "$file: $output"
+    [ "$output" = '["aspruyt","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
+  done
+  for file in _release-please.yaml _rebuild-release.yaml; do
+    run yq -o=json -I0 '[(.on.workflow_call.inputs["dockerhub-namespace"].type), (.on.workflow_call.secrets | has("DOCKERHUB_TOKEN")), .jobs.build.with["dockerhub-namespace"], .jobs.build.secrets.DOCKERHUB_TOKEN]' "$REPO_ROOT/.github/workflows/$file"
+    echo "$file: $output"
+    [ "$output" = '["string",true,"${{ inputs.dockerhub-namespace }}","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
+  done
 }
 
 @test "xfg's ci.yaml overlay adds the labeled trigger and guards every template job with it" {
