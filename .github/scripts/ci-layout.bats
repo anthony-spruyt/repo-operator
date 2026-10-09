@@ -23,6 +23,11 @@ repo_job_is_standard() {
   [ "$output" = '[["lint","repo"],{"contents":"read"},"anthony-spruyt/repo-operator/.github/workflows/_images.yaml@<sha>",false]' ]
 }
 
+@test "the ci.yaml template's image job runs when repo is skipped, not when lint fails or the run is cancelled" {
+  run yq -r '.jobs.image.if' "$WORKFLOWS/ci.yaml"
+  [ "$output" = "!cancelled() && needs.lint.result == 'success' && (needs.repo.result == 'success' || needs.repo.result == 'skipped')" ]
+}
+
 @test "image-ci.yaml is retired: no group overrides ci.yaml, and the image groups only set its language" {
   [ ! -e "$WORKFLOWS/image-ci.yaml" ]
   run grep -rn 'image-ci' "$SRC"
