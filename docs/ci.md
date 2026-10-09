@@ -133,6 +133,8 @@ Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also need
 The `release-please` group also creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads them. No job on the pull request path (`_images.yaml`, the
 `build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
+xfg publishes from its own `release.yaml`, whose `Publish` job already runs in the `npm` environment, and a job can use only one environment. xfg's entry in `src/repos.yaml` therefore syncs both release App secrets into `npm` as well. It sets no deployment branch policy, matching the live `npm` environment (any branch), so the sync adds only the secrets.
+
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 `_lint.yaml` runs three jobs. Callers grant `actions: read`, `contents: read` and `security-events: write`:

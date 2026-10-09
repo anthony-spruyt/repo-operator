@@ -23,17 +23,24 @@ release_env() {
   [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
-@test "only the release-please and dockerhub groups define environments, and only release" {
+@test "only the release-please and dockerhub groups define environments, only release, and only xfg adds one, npm" {
   run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings.environments != null) | {(.key): (.value.settings.environments | keys)}]' "$SRC/groups.yaml"
   [ "$output" = '[{"dockerhub":["release"]},{"release-please":["release"]}]' ]
   local f
-  for f in repos.yaml settings.yaml base.yaml; do
+  for f in settings.yaml base.yaml; do
     run yq -r '[.. | select(tag == "!!map" and has("environments"))] | length' "$SRC/$f"
     echo "$f: $output"
     [ "$output" = "0" ]
   done
   run yq -r '[.conditionalGroups[] | .. | select(tag == "!!map" and has("environments"))] | length' "$SRC/groups.yaml"
   [ "$output" = "0" ]
+  run yq -o=json -I0 '[.repos[] | select([.. | select(tag == "!!map" and has("environments"))] | length > 0) | {(.git): (.settings.environments | keys)}]' "$SRC/repos.yaml"
+  [ "$output" = '[{"https://github.com/anthony-spruyt/xfg.git":["npm"]}]' ]
+}
+
+@test "xfg's npm environment holds the release App secrets and keeps its live any-branch policy" {
+  run yq -o=json -I0 '.repos[] | select(.git == "https://github.com/anthony-spruyt/xfg.git") | .settings.environments.npm' "$SRC/repos.yaml"
+  [ "$(jq -cS . <<<"$output")" = '{"secrets":{"RELEASE_PLEASE_APP_CLIENT_ID":{"env":"RELEASE_PLEASE_APP_CLIENT_ID"},"RELEASE_PLEASE_APP_PRIVATE_KEY":{"env":"RELEASE_PLEASE_APP_PRIVATE_KEY"}}}' ]
 }
 
 @test "the release-please job and the publish job use the release environment" {
