@@ -16,9 +16,11 @@ permissions:
 
 jobs:
   release:
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@f08d5279c60ec8f1ab8d611aedc2dca995a99ab6" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@2bb0362170266430d2277de0dde5a204ecbf0eee" # main
     with:
       language: "${xfg:language}"
+      dockerhub-namespace: "aspruyt"
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
       RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
+      DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}"

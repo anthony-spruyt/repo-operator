@@ -166,7 +166,7 @@ The calling job needs `packages: write`, and each package must give the calling 
 
 A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
 
-A repo with several images passes them all in `packages`. container-images#2131 moves container-images onto this workflow, with a job before the call that reads the list from `release-please-config.json`.
+A repo with several images passes them all in `packages`: container-images and spruyt-labs list theirs in the `retentionPackages` var in `src/repos.yaml`. Only GHCR is cleaned; Docker Hub tags are kept, and so are old GitHub releases and git tags.
 
 The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 
@@ -217,7 +217,7 @@ if a run dies between creating the release and relabelling the release PR: the n
 
 ### Verifying an image attestation
 
-The attestation is signed by the workflow that ran `build-image`, not by the repo that owns the image. Images built by the shared `_build-image.yaml` (mcp-header-proxy, kata-tap-qdisc-fix, traefik-api-key-auth, litellm-middleware, SunGather, and spruyt-labs' shutdown-orchestrator, agent-queue-worker and bull-board) are signed by repo-operator:
+The attestation is signed by the workflow that ran `build-image`, not by the repo that owns the image. Every image repo publishes through the shared `_build-image.yaml`, so its images are signed by repo-operator:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
@@ -227,7 +227,7 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
 
 `--repo` is the source repo that the attestation names. Without `--signer-repo` the check fails, because by default `gh` expects the signer to be a workflow in the source repo.
 
-llm-guard (container-images), and bull-board tags released before spruyt-labs joined the `image` group, are signed by their own repo's `_build-image.yaml`, which calls the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
+Tags released before container-images or spruyt-labs joined the `image` group are signed by that repo's own `_build-image.yaml`, which called the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/llm-guard:<tag> \
@@ -263,7 +263,7 @@ xfg's overlay adds the `labeled` pull request trigger for its `run-integration` 
 Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
 `ci-repo.yaml` makes the whole run invalid.
 
-Two repos keep their own `ci.yaml` through a per-repo `createOnly: true` override: repo-operator for good, because its `ci.yaml` hosts XFG Plan and Apply, and container-images until [#604](https://github.com/anthony-spruyt/repo-operator/issues/604) moves it onto the standard file.
+Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
 
@@ -271,14 +271,16 @@ xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg
 
 Image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
 
-| Group               | Extends                                | Syncs                                                                                                              |
-| ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
-| `megalinter-flavor` | `megalinter`                           | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list |
-| `image`             | `github-ci`, `release-please`          | `.github/workflows/release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                        |
-| `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                       |
-| `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                               |
+| Group               | Extends                                    | Syncs                                                                                                                                              |
+| ------------------- | ------------------------------------------ | -------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list                                 |
+| `image`             | `github-ci`, `release-please`, `dockerhub` | `.github/workflows/release-please.yaml` and `rebuild-release.yaml` with `language: none`, `container-retention.yaml`; the `DOCKERHUB_TOKEN` secret |
+| `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                                                       |
+| `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                                               |
 
-A repo whose images use more than one language, such as spruyt-labs, joins `image` without a language group. Each image's `metadata.yaml` sets its `language`, and the repo sets the `language` var to `none` for `release-please.yaml` and `rebuild-release.yaml` in `src/repos.yaml`.
+A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` sets its `language`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml` when it has more than one image or its image name isn't the lowercased repo name.
+
+Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml` and `_rebuild-release.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
