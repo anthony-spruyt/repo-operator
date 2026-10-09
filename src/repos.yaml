@@ -214,6 +214,7 @@ repos:
       - megalinter
       - docker
       - go
+      - image
       - release-please
       - terraform
       - biome
@@ -221,9 +222,25 @@ repos:
       - renovate
       - sonar
     files:
-      # Repo-owned until #604 moves it onto the standard images job
       .github/workflows/ci.yaml:
-        createOnly: true
+        content:
+          jobs:
+            repo:
+              # Its ci-repo.yaml paths-filter needs these, and a called workflow can't exceed the caller job
+              permissions:
+                actions: "read"
+                contents: "read"
+                pull-requests: "read"
+      # Not "": _build-image.yaml rejects an empty language for an image whose metadata.yaml sets none
+      .github/workflows/release-please.yaml:
+        vars:
+          language: none
+      .github/workflows/rebuild-release.yaml:
+        vars:
+          language: none
+      .github/workflows/container-retention.yaml:
+        vars:
+          retentionPackages: "shutdown-orchestrator,agent-queue-worker,bull-board"
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs

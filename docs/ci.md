@@ -217,7 +217,7 @@ if a run dies between creating the release and relabelling the release PR: the n
 
 ### Verifying an image attestation
 
-The attestation is signed by the workflow that ran `build-image`, not by the repo that owns the image. Images built by the shared `_build-image.yaml` (mcp-header-proxy, kata-tap-qdisc-fix, traefik-api-key-auth, litellm-middleware, SunGather) are signed by repo-operator:
+The attestation is signed by the workflow that ran `build-image`, not by the repo that owns the image. Images built by the shared `_build-image.yaml` (mcp-header-proxy, kata-tap-qdisc-fix, traefik-api-key-auth, litellm-middleware, SunGather, and spruyt-labs' shutdown-orchestrator, agent-queue-worker and bull-board) are signed by repo-operator:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
@@ -227,7 +227,7 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
 
 `--repo` is the source repo that the attestation names. Without `--signer-repo` the check fails, because by default `gh` expects the signer to be a workflow in the source repo.
 
-llm-guard (container-images) and bull-board (spruyt-labs) are signed by their own repo's `_build-image.yaml`, which calls the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
+llm-guard (container-images), and bull-board tags released before spruyt-labs joined the `image` group, are signed by their own repo's `_build-image.yaml`, which calls the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/llm-guard:<tag> \
@@ -256,20 +256,20 @@ The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name ==
 `summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
 runs ungated.
 
-`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`.
+`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. spruyt-labs' overlay gives `repo` `actions: read` and `pull-requests: read` as well, for its paths filter.
 xfg's overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and
 `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
 
 Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
 `ci-repo.yaml` makes the whole run invalid.
 
-Three repos keep their own `ci.yaml` through a per-repo `createOnly: true` override: repo-operator for good, because its `ci.yaml` hosts XFG Plan and Apply, and spruyt-labs and container-images until [#604](https://github.com/anthony-spruyt/repo-operator/issues/604) moves them onto the standard file.
+Two repos keep their own `ci.yaml` through a per-repo `createOnly: true` override: repo-operator for good, because its `ci.yaml` hosts XFG Plan and Apply, and container-images until [#604](https://github.com/anthony-spruyt/repo-operator/issues/604) moves it onto the standard file.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
 
 ## Managed image repos
 
-Single-package image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
+Image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
 
 | Group               | Extends                                | Syncs                                                                                                              |
 | ------------------- | -------------------------------------- | ------------------------------------------------------------------------------------------------------------------ |
@@ -277,6 +277,8 @@ Single-package image repos don't write these callers themselves. The xfg groups 
 | `image`             | `github-ci`, `release-please`          | `.github/workflows/release-please.yaml`, `rebuild-release.yaml`, `container-retention.yaml`                        |
 | `go-image`          | `image`, `go`, `megalinter-flavor`     | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                       |
 | `python-image`      | `image`, `python`, `megalinter-flavor` | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                               |
+
+A repo whose images use more than one language, such as spruyt-labs, joins `image` without a language group. Each image's `metadata.yaml` sets its `language`, and the repo sets the `language` var to `none` for `release-please.yaml` and `rebuild-release.yaml` in `src/repos.yaml`.
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
