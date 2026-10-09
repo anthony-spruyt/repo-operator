@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   release:
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@6ac30f4a40fc9e09569d7e39b993c6a6414547a0" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@c2d153bb417df2c6e65602b595e2204a0704b2a5" # main
     with:
       language: "${xfg:language}"
     secrets:
