@@ -124,16 +124,6 @@ no_commit_matches() {
   done
 }
 
-@test "litellm-middleware gates its release gate script" {
-  gated litellm-middleware "scripts/release_gate.py"
-  gated litellm-middleware "tests/unit/scripts/test_release_gate.py"
-  not_gated litellm-middleware "scripts/release_gate.pyc"
-  not_gated litellm-middleware "tests/unit/scripts/test_release_gate.pyc"
-  not_gated litellm-middleware "tests/unit/scripts/test_other.py"
-  not_gated litellm-middleware "scripts/other.py"
-  not_gated repo-operator "scripts/release_gate.py"
-}
-
 @test "traefik-api-key-auth gates its image test script" {
   gated traefik-api-key-auth "scripts/test-image.sh"
   not_gated traefik-api-key-auth "scripts/test-image.sh.bak"
@@ -142,9 +132,9 @@ no_commit_matches() {
   not_gated repo-operator "scripts/test-image.sh"
 }
 
-@test "only repo-operator, litellm-middleware and traefik-api-key-auth widen the gate files" {
+@test "only repo-operator and traefik-api-key-auth widen the gate files" {
   run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/litellm-middleware.git":"scripts/release_gate\\.py$|tests/unit/scripts/test_release_gate\\.py$|","https://github.com/anthony-spruyt/repo-operator.git":"src/|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
+  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }
