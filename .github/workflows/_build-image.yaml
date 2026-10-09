@@ -285,7 +285,6 @@ jobs:
           LANGUAGE: ${{ inputs.language }}
           TAG_NAME: ${{ inputs.tag-name }}
           VERSION: ${{ inputs.version }}
-          IMAGE: ${{ inputs.image || github.event.repository.name }}
         run: |
           case "$LANGUAGE" in
             go | python | node | none) ;;
@@ -314,7 +313,7 @@ jobs:
           TAG_SHA=$(gh api "repos/${GH_REPO}/commits/refs/tags/${TAG_NAME}" --jq .sha)
           HEAD_SHA=$(git rev-parse HEAD)
           if [ "$TAG_SHA" != "$HEAD_SHA" ]; then
-            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run started from ${HEAD_SHA}, so its provenance would name the wrong source. Run Rebuild Release from the tag: gh workflow run rebuild-release.yaml --ref ${TAG_NAME} -f image=${IMAGE} -f version=${VERSION}"
+            echo "::error::Tag ${TAG_NAME} is ${TAG_SHA}, but this run started from ${HEAD_SHA}, so its provenance would name the wrong source. Re-running its failed jobs cannot publish ${TAG_NAME}, because a re-run builds the same commit. Cut the next release instead, then delete the ${TAG_NAME} draft."
             exit 1
           fi
 

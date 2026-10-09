@@ -100,13 +100,6 @@ groups:
         vars:
           language: none
         content: "@templates/.github/workflows/image-release-please.yaml"
-      .github/workflows/rebuild-release.yaml:
-        template: true
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-        header: This file is automatically updated - do not modify directly
-        vars:
-          language: none
-        content: "@templates/.github/workflows/image-rebuild-release.yaml"
       .github/workflows/container-retention.yaml:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
@@ -129,9 +122,6 @@ groups:
       .github/workflows/release-please.yaml:
         vars:
           language: go
-      .github/workflows/rebuild-release.yaml:
-        vars:
-          language: go
   python-image:
     extends:
       - image
@@ -145,9 +135,6 @@ groups:
               with:
                 language: "python"
       .github/workflows/release-please.yaml:
-        vars:
-          language: python
-      .github/workflows/rebuild-release.yaml:
         vars:
           language: python
   github-trivy:
