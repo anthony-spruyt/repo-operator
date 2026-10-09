@@ -110,3 +110,12 @@ repo_job_is_standard() {
   run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
 }
+
+@test "every repo-operator ref pinned in src/templates is an ancestor of origin/main" {
+  git -C "$REPO_ROOT" rev-parse --verify --quiet origin/main >/dev/null || { echo "origin/main is not fetched"; return 1; }
+  bad=""
+  while IFS=: read -r file line sha; do
+    git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null || bad+="${file}:${line} ${sha}"$'\n'
+  done < <(grep -rnoE 'anthony-spruyt/repo-operator/[^"@ ]*@[0-9a-f]{40}' "$SRC/templates" | sed -E 's/^([^:]+):([0-9]+):.*@([0-9a-f]{40})$/\1:\2:\3/')
+  [ -z "$bad" ] || { echo "pins not reachable from origin/main:"; echo "$bad"; return 1; }
+}
