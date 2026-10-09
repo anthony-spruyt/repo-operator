@@ -1,7 +1,7 @@
 #!/usr/bin/env bats
 # shellcheck disable=SC2016,SC2030,SC2031 # each @test runs in its own subshell by design
 # Fixtures copy the release-please config of SunGather, container-images, spruyt-labs and xfg on 2026-10-09,
-# with empty Dockerfiles and flavor.yaml files. The megalinter-*/metadata.yaml files are the planned additions.
+# with empty Dockerfiles and flavor.yaml files. The megalinter-*/ and spruyt-labs metadata.yaml files are the planned additions.
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
 # releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
 # the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
@@ -83,7 +83,7 @@ released() {
   [ "$status" -eq 0 ]
   [ "$(images)" = "sungather" ]
   [ "$(output_value has-images)" = "true" ]
-  [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":""}' ]
+  [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":"."}' ]
 }
 
 @test "single-image repo: REPO_NAME overrides the repository name" {
@@ -282,7 +282,7 @@ released() {
   use_layout container-images
   MODE=all detect
   [ "$status" -eq 0 ]
-  [ "$(image_entry chrony)" = '{"name":"chrony","path":"chrony","context":"chrony","dockerfile":"chrony/Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":""}' ]
+  [ "$(image_entry chrony)" = '{"name":"chrony","path":"chrony","context":"chrony","dockerfile":"chrony/Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":"chrony"}' ]
 }
 
 @test "spruyt-labs: lists nested packages and the Go service" {
@@ -290,6 +290,37 @@ released() {
   MODE=all detect
   [ "$status" -eq 0 ]
   [ "$(images)" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
+}
+
+@test "spruyt-labs: each image takes its language from its metadata.yaml" {
+  use_layout spruyt-labs
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix | jq -c '[.include[] | [.name, .context, .language]]')" = '[["shutdown-orchestrator","cmd/shutdown-orchestrator","go"],["agent-queue-worker","ts/agent-queue-worker","node"],["bull-board","ts/agent-queue-worker/bull-board","node"]]' ]
+}
+
+@test "spruyt-labs: each image's workdir defaults to its package path" {
+  use_layout spruyt-labs
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix | jq -c '[.include[] | [.name, .workdir]]')" = '[["shutdown-orchestrator","cmd/shutdown-orchestrator"],["agent-queue-worker","ts/agent-queue-worker"],["bull-board","ts/agent-queue-worker/bull-board"]]' ]
+}
+
+@test "spruyt-labs: metadata.yaml workdir overrides the package path" {
+  use_layout spruyt-labs
+  printf 'language: go\nworkdir: ./cmd/\n' >"$REPO/cmd/shutdown-orchestrator/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry shutdown-orchestrator | jq -c '[.context, .workdir]')" = '["cmd/shutdown-orchestrator","cmd"]' ]
+}
+
+@test "spruyt-labs: an image without metadata.yaml leaves language empty, so the workflow's input applies" {
+  use_layout spruyt-labs
+  git -C "$REPO" rm -q ts/agent-queue-worker/bull-board/metadata.yaml
+  git -C "$REPO" commit -q -m no-metadata
+  MODE=all detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry bull-board | jq -c '.language')" = '""' ]
 }
 
 @test "spruyt-labs: a nested bull-board change does not rebuild the parent agent-queue-worker" {
@@ -306,6 +337,22 @@ released() {
   detect
   [ "$status" -eq 0 ]
   [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "spruyt-labs: a source-only change in ts/agent-queue-worker/src builds only agent-queue-worker" {
+  use_layout spruyt-labs
+  commit_files ts/agent-queue-worker/src/processor.ts ts/agent-queue-worker/src/queue/lifecycle.ts
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "spruyt-labs: a cmd/ change builds only shutdown-orchestrator" {
+  use_layout spruyt-labs
+  commit_files cmd/shutdown-orchestrator/main.go cmd/shutdown-orchestrator/go.mod
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
 }
 
 @test "spruyt-labs: a release PR that bumps package.json builds nothing (spruyt-labs#3380)" {
@@ -612,6 +659,14 @@ released() {
   [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: build_context must be a relative path inside the repo"* ]]
 }
 
+@test "metadata.yaml: a workdir that escapes the repo fails" {
+  use_layout spruyt-labs
+  printf 'workdir: ts/../../secrets\n' >"$REPO/ts/agent-queue-worker/bull-board/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: workdir must be a relative path inside the repo"* ]]
+}
+
 @test "metadata.yaml: a build_context that does not exist fails" {
   use_layout spruyt-labs
   printf 'build_context: ts/missing\n' >"$REPO/ts/agent-queue-worker/bull-board/metadata.yaml"
@@ -626,6 +681,14 @@ released() {
   MODE=all detect
   [ "$status" -eq 1 ]
   [[ "$stderr" == *"::error::ts/agent-queue-worker/metadata.yaml: free-disk must be true or false"* ]]
+}
+
+@test "metadata.yaml: language must be go, node, python or none" {
+  use_layout spruyt-labs
+  printf 'language: rust\n' >"$REPO/ts/agent-queue-worker/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/metadata.yaml: language must be go, node, python or none"* ]]
 }
 
 @test "metadata.yaml: watch must be a list of paths" {
@@ -678,6 +741,7 @@ released() {
   [ "$(images)" = "agent-queue-worker,bull-board" ]
   [ "$(release_of agent-queue-worker)" = '["3.3.61","agent-queue-worker/v3.3.61",""]' ]
   [ "$(release_of bull-board)" = '["0.2.40","bull-board/v0.2.40",""]' ]
+  [ "$(output_value matrix | jq -c '[.include[] | [.language, .workdir]]')" = '[["node","ts/agent-queue-worker"],["node","ts/agent-queue-worker/bull-board"]]' ]
   [ "$(image_entry bull-board | jq -c '[.path, .context, .dockerfile]')" = '["ts/agent-queue-worker/bull-board","ts/agent-queue-worker/bull-board","ts/agent-queue-worker/bull-board/Dockerfile"]' ]
 }
 

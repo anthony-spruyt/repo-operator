@@ -66,6 +66,8 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
 . as $m
 | ($m.build_context // "") as $bc
 | if ($bc | type) != "string" or ($bc != "" and ($bc | safe | not)) then error("build_context must be a relative path inside the repo") else . end
+| ($m.workdir // "") as $wd
+| if ($wd | type) != "string" or ($wd != "" and ($wd | safe | not)) then error("workdir must be a relative path inside the repo") else . end
 | ($m.watch // []) as $w
 | if ($w | type) != "array" or ($w | all(safe) | not) then error("watch must be a list of relative paths inside the repo") else . end
 | ($m["free-disk"] // false) as $fd
@@ -75,6 +77,8 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
   elif ($et | type) == "string" then $et
   else error("extra-tags must be a string or a list of strings") end
 | . as $tags
+| ($m | str_or_empty("language")) as $lang
+| if ["", "go", "node", "python", "none"] | index($lang) | not then error("language must be go, node, python or none") else . end
 | {
     name: $name,
     path: $path,
@@ -84,12 +88,14 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
     "prepare-command": ($m | str_or_empty("prepare-command")),
     "free-disk": $fd,
     "extra-tags": $tags,
-    "test-command": ($m | str_or_empty("test-command"))
+    "test-command": ($m | str_or_empty("test-command")),
+    language: $lang,
+    workdir: (if $wd == "" then $path else $wd end)
   }
 '
 
 image_entry() {
-  local path="$1" name="$2" meta_file="$1/metadata.yaml" meta="{}" entry ctx
+  local path="$1" name="$2" meta_file="$1/metadata.yaml" meta="{}" entry ctx workdir
   if [[ "$path" == "." ]]; then
     meta_file="metadata.yaml"
   fi
@@ -105,7 +111,8 @@ image_entry() {
   ctx=$(jq -r '.context' <<<"$entry")
   ctx=$(norm_path "$ctx")
   [[ -d "$ctx" ]] || die "$meta_file: build_context directory does not exist: $ctx"
-  jq -c --arg ctx "$ctx" '.context = $ctx' <<<"$entry"
+  workdir=$(norm_path "$(jq -r '.workdir' <<<"$entry")")
+  jq -c --arg ctx "$ctx" --arg workdir "$workdir" '.context = $ctx | .workdir = $workdir' <<<"$entry"
   return 0
 }
 

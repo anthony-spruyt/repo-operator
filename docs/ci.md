@@ -7,7 +7,7 @@ The synced callers (`src/templates/.github/workflows/`) carry the comment here, 
 comment, and Renovate bumps them in that repo. A `ci.yaml` that a repo keeps through a `createOnly` override is seeded the same way, without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out),
 or the owning repo's for its own callers.
 
-The image workflows build every release-please package that holds a `Dockerfile`, so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). For Go tests, `go.mod` sits in `workdir` (default the repo root). Repos with their own build jobs can call the composite actions instead.
+The image workflows build every release-please package that holds a `Dockerfile`, so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). Each image's tests run in its `workdir`: the package path (the repo root for a single-image repo) unless its `metadata.yaml` sets one, so `go.mod`, `pyproject.toml` or `package.json` sits there. Repos with their own build jobs can call the composite actions instead.
 
 A reusable workflow resolves `uses: ./...` against the caller's checkout, not against this repo. That is why these workflows refer to each other, and to the actions, with `$/` (for example `uses: $/.github/actions/build-image`), which resolves to this repo at the same ref as the calling workflow. To test a branch of this repo, point the caller at the branch; the internal references follow it.
 
@@ -55,6 +55,8 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `free-disk` (default `false`): free runner disk space before building
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`)
+- `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
+- `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a file under its
 `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
@@ -76,7 +78,7 @@ Other release types count only their changelog and `extra-files`, so their relea
 - `version`: `rebuild` mode only, the version without a leading `v`
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
-The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags` and `test-command`, with the defaults filled in. In `released` and `rebuild` mode each entry also holds `version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
+The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` and `rebuild` mode each entry also holds `version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
 
 `released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` is not an image and is left out. `rebuild` mode derives the git tag the way release-please's `TagName` does: the component (`component`, else `package-name`), then
 `tag-separator` (default `-`), then `v` when `include-v-in-tag` (default `true`), then the version; `include-component-in-tag: false` drops the component and separator. Each setting comes from the package, else the top level. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
@@ -105,7 +107,8 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
 - `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
-- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python` or `none`), then `build-image`. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
+- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts`
+  and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` stays a draft.
 - `_rebuild-release.yaml`: rebuild and publish one release whose image job failed. Needs the publishing permissions.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
@@ -114,13 +117,13 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 `_images.yaml`, `_release-please.yaml` and `_rebuild-release.yaml` share these inputs, which apply to every image:
 
-- `language`, `workdir`
+- `language` (default `none`): for images whose `metadata.yaml` sets none
 - `image`: the name of an image at the repo root (default: the lowercased repository name)
 - `test-command`: for images whose `metadata.yaml` sets none
 - `dockerhub-namespace`, `dockerhub-username`
 - `python-version`, `python-groups`, `python-extras`, `python-test-paths`, `python-extra-commands`
 
-`_rebuild-release.yaml` also takes `version`. `_build-image.yaml` takes the same inputs plus the per-image ones that `detect-images` fills in: `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`.
+`_rebuild-release.yaml` also takes `version`. `_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`.
 
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
@@ -323,7 +326,7 @@ The base is not named `ruff.toml` or `.ruff.toml`: ruff prefers those over `pypr
 
 ### Per-repo values
 
-The group sets `language`: with xfg `vars` in `release-please.yaml` and `rebuild-release.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the three files can't drift apart:
+The group sets `language`: with xfg `vars` in `release-please.yaml` and `rebuild-release.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`, whose `language` overrides the group's. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the three files can't drift apart:
 
 ```yaml
 files:

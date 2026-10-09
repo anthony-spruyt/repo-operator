@@ -6,15 +6,10 @@ on:
   workflow_call:
     inputs:
       language:
-        description: Passed to _build-image.yaml for every image
+        description: Passed to _build-image.yaml for images whose metadata.yaml sets no language
         required: false
         type: string
         default: none
-      workdir:
-        description: Passed to _build-image.yaml for every image
-        required: false
-        type: string
-        default: "."
       image:
         description: Image name for a package at the repo root. Defaults to the lowercased repository name
         required: false
@@ -148,8 +143,8 @@ jobs:
       matrix: ${{ fromJSON(needs.detect.outputs.matrix) }}
     uses: $/.github/workflows/_build-image.yaml
     with:
-      language: ${{ inputs.language }}
-      workdir: ${{ inputs.workdir }}
+      language: ${{ matrix.language || inputs.language }}
+      workdir: ${{ matrix.workdir }}
       image: ${{ matrix.name }}
       context: ${{ matrix.context }}
       dockerfile: ${{ matrix.dockerfile }}
