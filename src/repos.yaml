@@ -487,6 +487,8 @@ repos:
               if: "github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
             repo:
               if: "github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
+            image:
+              if: "github.event.action != 'labeled' || github.event.label.name == 'run-integration'"
             summary:
               if: "always() && (github.event.action != 'labeled' || github.event.label.name == 'run-integration')"
       .devcontainer/devcontainer.json:

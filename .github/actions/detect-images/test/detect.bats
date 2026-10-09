@@ -3,6 +3,9 @@
 # Fixtures copy the release-please config of SunGather, container-images, spruyt-labs and xfg on 2026-10-09,
 # with empty Dockerfiles and flavor.yaml files. The megalinter-*/metadata.yaml files are the planned additions.
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
+# releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
+# the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
+# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout.
 
 bats_require_minimum_version 1.5.0
 
@@ -16,7 +19,7 @@ setup() {
   export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
   export MODE=changed
-  unset IMAGE BASE_SHA REPO_NAME GITHUB_STEP_SUMMARY
+  unset IMAGE BASE_SHA REPO_NAME GITHUB_STEP_SUMMARY RELEASES VERSION
   export GITHUB_REPOSITORY=anthony-spruyt/fixture
 }
 
@@ -61,6 +64,15 @@ images() {
 
 image_entry() {
   output_value matrix | jq -c --arg n "$1" '.include[] | select(.name == $n)'
+}
+
+# release_of <name> - the image's [version, tag-name, tag-prefix]
+release_of() {
+  image_entry "$1" | jq -c '[.version, ."tag-name", ."tag-prefix"]'
+}
+
+released() {
+  RELEASES=$(cat "$FX/releases/$1.json") MODE=released detect
 }
 
 @test "single-image repo: path . is named after the lowercased repo and rebuilds on any change" {
@@ -559,7 +571,7 @@ image_entry() {
   use_layout spruyt-labs
   MODE=everything detect
   [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::mode must be changed or all"* ]]
+  [[ "$stderr" == *"::error::mode must be changed, all, released or rebuild"* ]]
 }
 
 @test "an invalid base SHA fails" {
@@ -659,10 +671,211 @@ image_entry() {
   grep -qx -- '- `bull-board` (`ts/agent-queue-worker/bull-board`)' "$GITHUB_STEP_SUMMARY"
 }
 
+@test "released: one merge releasing two nested packages publishes each with its own tag (spruyt-labs#3183)" {
+  use_layout spruyt-labs
+  released spruyt-labs-3183-release-both
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker,bull-board" ]
+  [ "$(release_of agent-queue-worker)" = '["3.3.61","agent-queue-worker/v3.3.61",""]' ]
+  [ "$(release_of bull-board)" = '["0.2.40","bull-board/v0.2.40",""]' ]
+  [ "$(image_entry bull-board | jq -c '[.path, .context, .dockerfile]')" = '["ts/agent-queue-worker/bull-board","ts/agent-queue-worker/bull-board","ts/agent-queue-worker/bull-board/Dockerfile"]' ]
+}
+
+@test "released: eight releases on one merge publish the six that are images, each with its own tag (container-images#2088)" {
+  use_layout container-images
+  released container-images-2088-release
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "claude-agent-read,happy-server,llm-guard,llm-guard-cuda,megalinter-go,megalinter-spruyt-labs" ]
+  [ "$(release_of llm-guard)" = '["1.0.43","llm-guard-1.0.43",""]' ]
+  [ "$(release_of llm-guard-cuda)" = '["1.0.15","llm-guard-cuda-1.0.15",""]' ]
+  [ "$(release_of megalinter-go)" = '["2.0.0","megalinter-go-2.0.0",""]' ]
+  [ "$(release_of megalinter-spruyt-labs)" = '["3.0.0","megalinter-spruyt-labs-v3.0.0","v"]' ]
+  [ "$(image_entry llm-guard-cuda | jq -r .context)" = "llm-guard" ]
+  [ "$(image_entry megalinter-go | jq -r '."free-disk"')" = "true" ]
+}
+
+@test "released: a root package's release uses the unprefixed outputs (SunGather v3.0.0)" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  released sungather-v3.0.0
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "sungather" ]
+  [ "$(release_of sungather)" = '["3.0.0","v3.0.0",""]' ]
+  [ "$(output_value has-images)" = "true" ]
+}
+
+@test "released: the '.' and '/'+v tags of one release run, as release-please-action output them (release-matrix-scratch#7)" {
+  use_layout scratch
+  released release-matrix-scratch-7-release-two
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "dot,slash" ]
+  [ "$(release_of dot)" = '["0.2.0","dot.0.2.0",""]' ]
+  [ "$(release_of slash)" = '["0.2.0","slash/v0.2.0","v"]' ]
+}
+
+@test "released: a run that created no release publishes nothing" {
+  use_layout spruyt-labs
+  RELEASES='{"releases_created":"false","paths_released":"[]","prs_created":"true"}' MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value matrix)" = '{"include":[]}' ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "released: a released package without a Dockerfile is not published" {
+  use_layout xfg
+  RELEASES='{"releases_created":"true","paths_released":"[\"packages/xfg\"]","packages/xfg--tag_name":"v8.1.0","packages/xfg--version":"8.1.0"}' MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "released: a released path written with ./ still matches its package" {
+  use_layout spruyt-labs
+  RELEASES='{"releases_created":"true","paths_released":"[\"./cmd/shutdown-orchestrator\"]","./cmd/shutdown-orchestrator--tag_name":"shutdown-orchestrator/v1.1.25","./cmd/shutdown-orchestrator--version":"1.1.25"}' MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(release_of shutdown-orchestrator)" = '["1.1.25","shutdown-orchestrator/v1.1.25",""]' ]
+}
+
+@test "released: a release without a tag_name fails clearly" {
+  use_layout spruyt-labs
+  RELEASES=$(jq -c 'del(.["ts/agent-queue-worker/bull-board--tag_name"])' "$FX/releases/spruyt-labs-3183-release-both.json") MODE=released detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Release of ts/agent-queue-worker/bull-board has no valid tag_name and version"* ]]
+  [ ! -s "$GITHUB_OUTPUT" ]
+}
+
+@test "released: a tag that does not end with the version fails" {
+  use_layout spruyt-labs
+  RELEASES=$(jq -c '.["ts/agent-queue-worker/bull-board--version"] = "9.9.9"' "$FX/releases/spruyt-labs-3183-release-both.json") MODE=released detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Release of ts/agent-queue-worker/bull-board has no valid tag_name and version"* ]]
+}
+
+@test "released: outputs that are not JSON fail" {
+  use_layout spruyt-labs
+  RELEASES='not json' MODE=released detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::releases must be the release-please outputs as JSON"* ]]
+}
+
+@test "released: image is refused, so a release never builds an image it did not release" {
+  use_layout spruyt-labs
+  IMAGE=bull-board RELEASES='{"releases_created":"false"}' MODE=released detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::image does not apply to released mode"* ]]
+}
+
+@test "rebuild: derives the tag release-please created, for every image release in the fixtures" {
+  local spec fixture layout repo all path tag version name checked=0
+  for spec in spruyt-labs-3183-release-both:spruyt-labs:spruyt-labs \
+    container-images-2088-release:container-images:container-images \
+    sungather-v3.0.0:sungather:SunGather; do
+    IFS=: read -r fixture layout repo <<<"$spec"
+    rm -rf "$REPO"
+    use_layout "$layout"
+    export GITHUB_REPOSITORY="anthony-spruyt/$repo"
+    : >"$GITHUB_OUTPUT"
+    MODE=all detect
+    all=$(output_value matrix)
+    while IFS=$'\t' read -r -u 9 path tag version; do
+      name=$(jq -r --arg p "$path" '.include[] | select(.path == $p) | .name' <<<"$all")
+      [ -n "$name" ] || continue
+      : >"$GITHUB_OUTPUT"
+      IMAGE=$name VERSION=$version MODE=rebuild detect
+      echo "$fixture $name: $(release_of "$name") want $tag"
+      [ "$status" -eq 0 ]
+      [ "$(image_entry "$name" | jq -r '."tag-name"')" = "$tag" ]
+      checked=$((checked + 1))
+    done 9< <(jq -r '(.paths_released | fromjson)[] as $p
+      | (if $p == "." then "" else "\($p)--" end) as $k
+      | [$p, .["\($k)tag_name"], .["\($k)version"]] | @tsv' "$FX/releases/$fixture.json")
+  done
+  [ "$checked" -eq 9 ]
+}
+
+@test "rebuild: the '.', '-' and '/' separators with and without include-v-in-tag" {
+  use_layout scratch
+  IMAGE=dot VERSION=1.2.3 MODE=rebuild detect
+  [ "$status" -eq 0 ]
+  [ "$(release_of dot)" = '["1.2.3","dot.1.2.3",""]' ]
+  : >"$GITHUB_OUTPUT"
+  IMAGE=dash VERSION=1.2.3 MODE=rebuild detect
+  [ "$(release_of dash)" = '["1.2.3","dash-1.2.3",""]' ]
+  : >"$GITHUB_OUTPUT"
+  IMAGE=slash VERSION=1.2.3-rc.1 MODE=rebuild detect
+  [ "$(release_of slash)" = '["1.2.3-rc.1","slash/v1.2.3-rc.1","v"]' ]
+  [ "$(image_entry slash | jq -r .path)" = "nested/slash" ]
+}
+
+@test "rebuild: release-please defaults put the component, '-' and v in the tag but no v in the docker tag" {
+  use_layout scratch
+  jq '.packages = {"svc": {"release-type": "simple"}, "named": {"release-type": "simple", "package-name": "pkg"}}' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  mkdir -p "$REPO/svc" "$REPO/named"
+  : >"$REPO/svc/Dockerfile"
+  : >"$REPO/named/Dockerfile"
+  IMAGE=svc VERSION=2.0.0 MODE=rebuild detect
+  [ "$status" -eq 0 ]
+  [ "$(release_of svc)" = '["2.0.0","v2.0.0",""]' ]
+  : >"$GITHUB_OUTPUT"
+  IMAGE=named VERSION=2.0.0 MODE=rebuild detect
+  [ "$(release_of named)" = '["2.0.0","pkg-v2.0.0",""]' ]
+}
+
+@test "rebuild: top-level tag settings apply when the package sets none" {
+  use_layout scratch
+  jq '. + {"tag-separator": "@", "include-v-in-tag": true, "include-component-in-tag": true} | .packages.dash = {"release-type": "simple", "component": "dash"}' \
+    "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  IMAGE=dash VERSION=1.0.0 MODE=rebuild detect
+  [ "$status" -eq 0 ]
+  [ "$(release_of dash)" = '["1.0.0","dash@v1.0.0","v"]' ]
+}
+
+@test "rebuild: without image, a repo with one image rebuilds it" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  VERSION=3.0.0 MODE=rebuild detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "sungather" ]
+  [ "$(release_of sungather)" = '["3.0.0","v3.0.0",""]' ]
+}
+
+@test "rebuild: without image, a repo with several images fails and lists them" {
+  use_layout scratch
+  VERSION=1.0.0 MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::This repo has several images; set image to one of: dot, dash, slash"* ]]
+}
+
+@test "rebuild: an unknown image fails and lists the images" {
+  use_layout scratch
+  IMAGE=nope VERSION=1.0.0 MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Unknown image: nope. Images: dot, dash, slash"* ]]
+}
+
+@test "rebuild: a version with a leading v or junk fails" {
+  use_layout scratch
+  IMAGE=dot VERSION=v1.0.0 MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Invalid version: v1.0.0 (no leading v)"* ]]
+  IMAGE=dot VERSION='1.0.0; rm -rf /' MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::Invalid version"* ]]
+}
+
+@test "rebuild: needs a version" {
+  use_layout scratch
+  IMAGE=dot MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::version is required in rebuild mode"* ]]
+}
+
 @test "action.yaml passes its inputs to detect.sh through env" {
   ACTION="${BATS_TEST_DIRNAME}/../action.yaml"
   run yq -r '.runs.steps[0].run' "$ACTION"
   [ "$output" = '"$DETECT_SCRIPT"' ]
   run yq -o=json -I0 '.runs.steps[0].env' "$ACTION"
-  [ "$output" = '{"MODE":"${{ inputs.mode }}","IMAGE":"${{ inputs.image }}","BASE_SHA":"${{ inputs.base-sha }}","DETECT_SCRIPT":"${{ github.action_path }}/detect.sh"}' ]
+  [ "$output" = '{"MODE":"${{ inputs.mode }}","IMAGE":"${{ inputs.image }}","BASE_SHA":"${{ inputs.base-sha }}","RELEASES":"${{ inputs.releases }}","VERSION":"${{ inputs.version }}","REPO_NAME":"${{ inputs.root-name }}","DETECT_SCRIPT":"${{ github.action_path }}/detect.sh"}' ]
 }
