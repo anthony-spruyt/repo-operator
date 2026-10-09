@@ -5,7 +5,7 @@
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
 # releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
 # the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
-# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout.
+# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout. top-level-v/ and its release are synthetic.
 
 bats_require_minimum_version 1.5.0
 
@@ -783,6 +783,15 @@ released() {
   [ "$(images)" = "dot,slash" ]
   [ "$(release_of dot)" = '["0.2.0","dot.0.2.0",""]' ]
   [ "$(release_of slash)" = '["0.2.0","slash/v0.2.0","v"]' ]
+}
+
+@test "released: a top-level include-v-in-tag gives a package that sets none a v docker tag, and a package's own false wins" {
+  use_layout top-level-v
+  released top-level-v-release
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "app,plain" ]
+  [ "$(release_of app)" = '["1.2.0","app-v1.2.0","v"]' ]
+  [ "$(release_of plain)" = '["1.0.0","plain-1.0.0",""]' ]
 }
 
 @test "released: a run that created no release publishes nothing" {

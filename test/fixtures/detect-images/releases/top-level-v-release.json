@@ -1,0 +1,13 @@
+{
+  "releases_created": "true",
+  "app--release_created": "true",
+  "app--tag_name": "app-v1.2.0",
+  "app--path": "app",
+  "app--version": "1.2.0",
+  "plain--release_created": "true",
+  "plain--tag_name": "plain-1.0.0",
+  "plain--path": "plain",
+  "plain--version": "1.0.0",
+  "paths_released": "[\"app\",\"plain\"]",
+  "prs_created": "false"
+}
