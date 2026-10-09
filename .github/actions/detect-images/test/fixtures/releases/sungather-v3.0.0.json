@@ -1,0 +1,20 @@
+{
+  "release_created": "true",
+  "id": "404730223",
+  "name": "v3.0.0",
+  "tag_name": "v3.0.0",
+  "sha": "8b341677fc27010a90cd158d7419a4186d17d034",
+  "body": "## [3.0.0](https://github.com/anthony-spruyt/SunGather/compare/v2.0.1...v3.0.0) (2026-10-06)\n\n\n### ⚠ BREAKING CHANGES\n\n* the code now lives in src/sungather and installs as the sungather package; run it with `uv run sungather` or the `sungather` console script instead of `python3 sungather.py`. SunGather/requirements.txt and setup.py are gone. Inside the image the app is no longer copied to /opt/sungather, so `-r` paths pointing there must change; the packaged registers file is the default.\n\n### Features\n\n* **devcontainer:** add claude state management script ([4ddfc28](https://github.com/anthony-spruyt/SunGather/commit/4ddfc2804c56363dd1a25d28e211e1f2b9b9f2a0))\n* restructure as a uv package to join the python-image group ([#399](https://github.com/anthony-spruyt/SunGather/issues/399)) ([864696b](https://github.com/anthony-spruyt/SunGather/commit/864696ba9843f533630d5c124c191718de2eaec4))\n\n## Container Image\n\n```\nghcr.io/anthony-spruyt/sungather:3.0.0\n```\n\n**Digest:** `sha256:d645eada0b1d1f265953d487b14b58897fc361ab073a35c4a208ac69498996d5`\n\n**Run:** [#37470041430](https://github.com/anthony-spruyt/SunGather/actions/runs/37470041430)\n",
+  "html_url": "https://github.com/anthony-spruyt/SunGather/releases/tag/v3.0.0",
+  "draft": "true",
+  "upload_url": "https://uploads.github.com/repos/anthony-spruyt/SunGather/releases/404730223/assets{?name,label}",
+  "path": ".",
+  "version": "3.0.0",
+  "major": "3",
+  "minor": "0",
+  "patch": "0",
+  "prNumber": "402",
+  "releases_created": "true",
+  "paths_released": "[\".\"]",
+  "prs_created": "false"
+}

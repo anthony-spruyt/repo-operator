@@ -9,11 +9,14 @@ on:
         description: Version to rebuild, without a leading v (e.g. 1.2.3)
         required: true
         type: string
-      config-file:
-        description: release-please config, read to derive the git tag of the root (".") package
+      image:
+        description: >-
+          Image name for a package at the repo root. Defaults to the lowercased
+          repository name. The image to rebuild is the caller's workflow_dispatch
+          image input, which may be empty when the repo has one image
         required: false
         type: string
-        default: release-please-config.json
+        default: ""
       language:
         description: Passed to _build-image.yaml
         required: false
@@ -24,26 +27,6 @@ on:
         required: false
         type: string
         default: "."
-      image:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: ""
-      context:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: "."
-      dockerfile:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: ""
-      tag-prefix:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: ""
       dockerhub-namespace:
         description: Passed to _build-image.yaml
         required: false
@@ -55,7 +38,7 @@ on:
         type: string
         default: ""
       test-command:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml when the image's metadata.yaml sets no test-command
         required: false
         type: string
         default: ""
@@ -89,18 +72,19 @@ on:
         required: false
 
 concurrency:
-  group: rebuild-${{ inputs.version }}
+  group: rebuild-${{ github.event.inputs.image }}-${{ inputs.version }}
   cancel-in-progress: false
 
 jobs:
   resolve:
     name: Resolve
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     # Draft releases are invisible to a read-only token.
     permissions:
       contents: write
     outputs:
-      tag: ${{ steps.tag.outputs.tag }}
+      matrix: ${{ steps.detect.outputs.matrix }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
@@ -113,40 +97,24 @@ jobs:
           fetch-depth: 0
           persist-credentials: false
 
-      - name: Derive tag
-        id: tag
-        env:
-          CONFIG: ${{ inputs.config-file }}
-          VERSION: ${{ inputs.version }}
-        run: |
-          if ! echo "$VERSION" | grep -qE '^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'; then
-            echo "::error::Invalid version: $VERSION (no leading v)"
-            exit 1
-          fi
-          # Mirrors release-please's TagName defaults: component-in-tag true, v-in-tag true, separator "-".
-          PREFIX=$(jq -er '
-            . as $c | .packages["."] as $p
-            | if $p == null then error("no root (\".\") package") else . end
-            | def opt($k; $d): if $p | has($k) then $p[$k] elif $c | has($k) then $c[$k] else $d end;
-            ($p.component // $p["package-name"] // $c.component // $c["package-name"] // "") as $component
-            | opt("include-component-in-tag"; true) as $withComponent
-            | opt("include-v-in-tag"; true) as $withV
-            | ($p["tag-separator"] // $c["tag-separator"] // "-") as $sep
-            | (if $component != "" and $withComponent then $component + $sep else "" end)
-              + (if $withV then "v" else "" end)
-          ' "$CONFIG")
-          {
-            echo "prefix=$PREFIX"
-            echo "tag=${PREFIX}${VERSION}"
-          } >> "$GITHUB_OUTPUT"
+      - name: Detect the image and its tag
+        id: detect
+        uses: $/.github/actions/detect-images
+        with:
+          mode: rebuild
+          image: ${{ github.event.inputs.image }}
+          version: ${{ inputs.version }}
+          root-name: ${{ inputs.image }}
 
       - name: Verify the release is recoverable
         env:
           GH_TOKEN: ${{ github.token }}
-          TAG: ${{ steps.tag.outputs.tag }}
-          PREFIX: ${{ steps.tag.outputs.prefix }}
+          MATRIX: ${{ steps.detect.outputs.matrix }}
           VERSION: ${{ inputs.version }}
         run: |
+          TAG=$(jq -r '.include[0]."tag-name"' <<<"$MATRIX")
+          IMAGE=$(jq -r '.include[0].name' <<<"$MATRIX")
+          PREFIX="${TAG%"$VERSION"}"
           if ! git rev-parse -q --verify "refs/tags/${TAG}" > /dev/null; then
             echo "::error::Tag ${TAG} does not exist. This workflow rebuilds an existing release; it does not create one."
             exit 1
@@ -154,7 +122,7 @@ jobs:
 
           # The image job builds the checked-out ref, so the run itself must start from the tag.
           if [ "$GITHUB_REF" != "refs/tags/${TAG}" ]; then
-            echo "::error::Run this workflow from the tag, not ${GITHUB_REF}: gh workflow run rebuild-release.yaml --ref ${TAG} -f version=${VERSION}"
+            echo "::error::Run this workflow from the tag, not ${GITHUB_REF}: gh workflow run rebuild-release.yaml --ref ${TAG} -f image=${IMAGE} -f version=${VERSION}"
             exit 1
           fi
 
@@ -168,6 +136,7 @@ jobs:
             exit 1
           fi
 
+          # The digit after the prefix keeps llm-guard from matching llm-guard-cuda tags.
           NEWEST=$(gh release list --limit 200 --json tagName,isDraft \
             --jq '.[] | select(.isDraft == false) | .tagName' \
             | while IFS= read -r t; do
@@ -175,27 +144,32 @@ jobs:
               done | sort -V | tail -n 1)
 
           if [ -n "$NEWEST" ] && [ "$(printf '%s\n%s\n' "$NEWEST" "$VERSION" | sort -V | tail -n 1)" != "$VERSION" ]; then
-            echo "::error::${NEWEST} is already published, so rebuilding ${VERSION} would move the latest and major.minor tags backwards. Cut a new version instead."
+            echo "::error::${IMAGE} ${NEWEST} is already published, so rebuilding ${VERSION} would move the latest and major.minor tags backwards. Cut a new version instead."
             exit 1
           fi
 
   build:
-    name: Image
+    name: ${{ matrix.name }}
     needs: resolve
+    strategy:
+      matrix: ${{ fromJSON(needs.resolve.outputs.matrix) }}
     uses: $/.github/workflows/_build-image.yaml
     with:
       language: ${{ inputs.language }}
       workdir: ${{ inputs.workdir }}
-      image: ${{ inputs.image }}
-      context: ${{ inputs.context }}
-      dockerfile: ${{ inputs.dockerfile }}
+      image: ${{ matrix.name }}
+      context: ${{ matrix.context }}
+      dockerfile: ${{ matrix.dockerfile }}
+      prepare-command: ${{ matrix.prepare-command }}
+      free-disk: ${{ matrix.free-disk }}
+      extra-tags: ${{ matrix.extra-tags }}
       push: true
-      version: ${{ inputs.version }}
-      tag-name: ${{ needs.resolve.outputs.tag }}
-      tag-prefix: ${{ inputs.tag-prefix }}
+      version: ${{ matrix.version }}
+      tag-name: ${{ matrix.tag-name }}
+      tag-prefix: ${{ matrix.tag-prefix }}
       dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
       dockerhub-username: ${{ inputs.dockerhub-username }}
-      test-command: ${{ inputs.test-command }}
+      test-command: ${{ matrix.test-command || inputs.test-command }}
       python-version: ${{ inputs.python-version }}
       python-groups: ${{ inputs.python-groups }}
       python-extras: ${{ inputs.python-extras }}
