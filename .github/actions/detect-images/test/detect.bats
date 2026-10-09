@@ -4,7 +4,8 @@
 # with empty Dockerfiles and flavor.yaml files. The megalinter-*/metadata.yaml files are the planned additions.
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
 # releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
-# the GitHub releases API the way the action's outputReleases maps them. scratch/ is release-matrix-scratch's layout.
+# the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
+# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout.
 
 bats_require_minimum_version 1.5.0
 
@@ -701,6 +702,15 @@ released() {
   [ "$(images)" = "sungather" ]
   [ "$(release_of sungather)" = '["3.0.0","v3.0.0",""]' ]
   [ "$(output_value has-images)" = "true" ]
+}
+
+@test "released: the '.' and '/'+v tags of one release run, as release-please-action output them (release-matrix-scratch#7)" {
+  use_layout scratch
+  released release-matrix-scratch-7-release-two
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "dot,slash" ]
+  [ "$(release_of dot)" = '["0.2.0","dot.0.2.0",""]' ]
+  [ "$(release_of slash)" = '["0.2.0","slash/v0.2.0","v"]' ]
 }
 
 @test "released: a run that created no release publishes nothing" {
