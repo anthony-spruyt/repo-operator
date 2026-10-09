@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   SCRIPT="$BATS_TEST_TMPDIR/check-job-results.sh"
   yq -r '.jobs.summary.steps[] | select(.name == "Check job results") | .run' \
     "$REPO_ROOT/.github/workflows/_summary.yaml" >"$SCRIPT"

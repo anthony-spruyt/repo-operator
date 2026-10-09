@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   SRC="$REPO_ROOT/src"
   WORKFLOWS="$SRC/templates/.github/workflows"
   REPO_JOB='{"needs":["lint"],"uses":"./.github/workflows/ci-repo.yaml","permissions":{"contents":"read"},"secrets":"inherit"}'

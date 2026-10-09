@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WORK="${BATS_TEST_TMPDIR}/repo"
   mkdir -p "$WORK"
   sed -e 's/\${xfg:megalinterImage}/example.test\/megalinter:1/' -e 's/\$\$/$/g' \

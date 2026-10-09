@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   SRC="$REPO_ROOT/src"
   TEMPLATE="$SRC/templates/.mergify.yml"
   PURE_RENOVATE='[
@@ -117,10 +117,15 @@ no_commit_matches() {
   done
 }
 
-@test "src/ is a gate path only in repo-operator" {
+@test "src/ and test/ci/ are gate paths only in repo-operator, and the rest of test/ is not" {
   gated repo-operator "src/groups.yaml"
-  for repo in Chromance SunGather litellm-middleware spruyt-labs; do
+  gated repo-operator "test/ci/merge-gate.bats"
+  not_gated repo-operator "test/detect-images.bats"
+  not_gated repo-operator "test/fixtures/ci/x"
+  not_gated repo-operator "docs/test/ci/x"
+  for repo in Chromance SunGather litellm-middleware spruyt-labs traefik-api-key-auth; do
     not_gated "$repo" "src/main.py"
+    not_gated "$repo" "test/ci/x"
   done
 }
 
@@ -134,7 +139,7 @@ no_commit_matches() {
 
 @test "only repo-operator and traefik-api-key-auth widen the gate files" {
   run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
+  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }
