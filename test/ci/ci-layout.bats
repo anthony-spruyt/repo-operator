@@ -89,8 +89,8 @@ repo_job_is_standard() {
 @test "the image group syncs DOCKERHUB_TOKEN through the dockerhub group, and no image repo also lists dockerhub" {
   run yq -r '.groups.image.extends | any_c(. == "dockerhub")' "$SRC/groups.yaml"
   [ "$output" = "true" ]
-  run grep -c 'DOCKERHUB_TOKEN:' "$SRC/groups.yaml"
-  [ "$output" = "1" ]
+  run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings | .. | select(tag == "!!map" and has("DOCKERHUB_TOKEN"))) | .key] | unique' "$SRC/groups.yaml"
+  [ "$output" = '["dockerhub"]' ]
   run yq -o=json -I0 '[.repos[] | select((.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) and (.groups | any_c(. == "dockerhub"))) | .git]' "$SRC/repos.yaml"
   [ "$output" = '[]' ]
 }
@@ -163,12 +163,19 @@ repo_job_is_standard() {
 }
 
 @test "every repo-operator ref pinned in src/templates is an ancestor of origin/main" {
-  git -C "$REPO_ROOT" rev-parse --verify --quiet origin/main >/dev/null || { echo "origin/main is not fetched"; return 1; }
+  git -C "$REPO_ROOT" rev-parse --verify --quiet origin/main >/dev/null || {
+    echo "origin/main is not fetched"
+    return 1
+  }
   bad=""
   while IFS=: read -r file line sha; do
     git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null || bad+="${file}:${line} ${sha}"$'\n'
   done < <(grep -rnoE 'anthony-spruyt/repo-operator/[^"@ ]*@[0-9a-f]{40}' "$SRC/templates" | sed -E 's/^([^:]+):([0-9]+):.*@([0-9a-f]{40})$/\1:\2:\3/')
-  [ -z "$bad" ] || { echo "pins not reachable from origin/main:"; echo "$bad"; return 1; }
+  [ -z "$bad" ] || {
+    echo "pins not reachable from origin/main:"
+    echo "$bad"
+    return 1
+  }
 }
 
 @test "nothing syncs or calls Rebuild Release (#604)" {

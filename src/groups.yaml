@@ -41,6 +41,15 @@ groups:
         content: "@templates/.hadolint.yaml"
   dockerhub:
     settings:
+      environments:
+        release:
+          deploymentBranchPolicy:
+            custom:
+              - type: branch
+                name: main
+          secrets:
+            DOCKERHUB_TOKEN:
+              env: DOCKERHUB_TOKEN
       secrets:
         DOCKERHUB_TOKEN:
           env: DOCKERHUB_TOKEN
@@ -325,6 +334,17 @@ groups:
   python: {}
   release-please:
     settings:
+      environments:
+        release:
+          deploymentBranchPolicy:
+            custom:
+              - type: branch
+                name: main
+          secrets:
+            RELEASE_PLEASE_APP_CLIENT_ID:
+              env: RELEASE_PLEASE_APP_CLIENT_ID
+            RELEASE_PLEASE_APP_PRIVATE_KEY:
+              env: RELEASE_PLEASE_APP_PRIVATE_KEY
       rulesets:
         tag-rules:
           bypassActors:

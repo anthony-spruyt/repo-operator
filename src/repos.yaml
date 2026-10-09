@@ -498,6 +498,14 @@ repos:
         "renovate/python":
           color: "#ededed"
           description: ""
+      # xfg's publish job runs in npm, and a job takes one environment; no policy, to match the live npm
+      environments:
+        npm:
+          secrets:
+            RELEASE_PLEASE_APP_CLIENT_ID:
+              env: RELEASE_PLEASE_APP_CLIENT_ID
+            RELEASE_PLEASE_APP_PRIVATE_KEY:
+              env: RELEASE_PLEASE_APP_PRIVATE_KEY
       rulesets:
         branch-signatures:
           conditions:
