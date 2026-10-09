@@ -7,6 +7,7 @@ setup() {
   WF="$REPO_ROOT/.github/workflows"
   TEMPLATES="$SRC/templates/.github/workflows"
   MAIN_ONLY='{"custom":[{"type":"branch","name":"main"}]}'
+  XFG_GIT='https://github.com/anthony-spruyt/xfg.git'
 }
 
 release_env() {
@@ -23,7 +24,7 @@ release_env() {
   [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
-@test "only the release-please and dockerhub groups define environments, only release, and only xfg adds one, npm" {
+@test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release" {
   run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings.environments != null) | {(.key): (.value.settings.environments | keys)}]' "$SRC/groups.yaml"
   [ "$output" = '[{"dockerhub":["release"]},{"release-please":["release"]}]' ]
   local f
@@ -35,12 +36,35 @@ release_env() {
   run yq -r '[.conditionalGroups[] | .. | select(tag == "!!map" and has("environments"))] | length' "$SRC/groups.yaml"
   [ "$output" = "0" ]
   run yq -o=json -I0 '[.repos[] | select([.. | select(tag == "!!map" and has("environments"))] | length > 0) | {(.git): (.settings.environments | keys)}]' "$SRC/repos.yaml"
-  [ "$output" = '[{"https://github.com/anthony-spruyt/xfg.git":["npm"]}]' ]
+  [ "$output" = "[{\"$XFG_GIT\":[\"release\"]}]" ]
 }
 
-@test "xfg's npm environment holds the release App secrets and keeps its live any-branch policy" {
-  run yq -o=json -I0 '.repos[] | select(.git == "https://github.com/anthony-spruyt/xfg.git") | .settings.environments.npm' "$SRC/repos.yaml"
-  [ "$(jq -cS . <<<"$output")" = '{"secrets":{"RELEASE_PLEASE_APP_CLIENT_ID":{"env":"RELEASE_PLEASE_APP_CLIENT_ID"},"RELEASE_PLEASE_APP_PRIVATE_KEY":{"env":"RELEASE_PLEASE_APP_PRIVATE_KEY"}}}' ]
+@test "xfg's release environment allows main and v*.*.* tags, inheriting the release App secrets" {
+  run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments.release" "$SRC/repos.yaml"
+  [ "$(jq -cS . <<<"$output")" = '{"deploymentBranchPolicy":{"custom":[{"name":"main","type":"branch"},{"name":"v*.*.*","type":"tag"}]}}' ]
+}
+
+@test "every other repo's release environment is main only" {
+  local repo
+  while IFS= read -r repo; do
+    run yq -o=json -I0 ".repos[] | select(.git == \"$repo\") | .settings.environments.release.deploymentBranchPolicy" "$SRC/repos.yaml"
+    echo "$repo: $output"
+    [ "$output" = "null" ]
+  done < <(yq -r ".repos[] | select(.groups[] == \"release-please\" or .groups[] == \"dockerhub\") | .git | select(. != \"$XFG_GIT\")" "$SRC/repos.yaml" | sort -u)
+  local g
+  for g in release-please dockerhub; do
+    run release_env "$g"
+    [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$MAIN_ONLY")" ]
+  done
+}
+
+@test "no npm environment remains in config" {
+  local f
+  for f in "$SRC"/*.yaml; do
+    run yq -r '[.. | select(tag == "!!map" and has("environments")) | .environments | select(tag == "!!map") | keys[] | select(test("(?i)^npm$"))] | length' "$f"
+    echo "$f: $output"
+    [ "$output" = "0" ]
+  done
 }
 
 @test "the release-please job and the publish job use the release environment" {
