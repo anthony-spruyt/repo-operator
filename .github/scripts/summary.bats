@@ -79,6 +79,16 @@ two_pages() {
   [ "$status" -eq 1 ]
 }
 
+@test "judges one job list merged from every page, not one list per page" {
+  two_pages 33
+  export JOBS_DUMP="$BATS_TEST_TMPDIR/jobs.json"
+  { echo 'trap '\''printf "%s" "$jobs_json" >"$JOBS_DUMP"'\'' EXIT'; cat "$SCRIPT"; } >"$BATS_TEST_TMPDIR/traced.sh"
+  run bash -e "$BATS_TEST_TMPDIR/traced.sh"
+  [ "$status" -eq 1 ]
+  run jq -c '[length, (map(type) | unique)]' "$JOBS_DUMP"
+  [ "$output" = '[35,["object"]]' ]
+}
+
 @test "fails on a failed job on the first page" {
   page p1.json 1 30 2
   export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"
