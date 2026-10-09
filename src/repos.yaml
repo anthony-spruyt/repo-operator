@@ -207,6 +207,8 @@ repos:
     settings:
       repo:
         description: "Scratch repo for the repo-operator#604 release proof."
+      # Private until Apply makes it public; default setup needs GHAS on private repos
+      codeScanning: false
       rulesets:
         # Agents push unsigned straight to main and create tags through the API
         inherit: false
