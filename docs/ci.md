@@ -7,7 +7,8 @@ The synced callers (`src/templates/.github/workflows/`) carry the comment here, 
 comment, and Renovate bumps them in that repo. A `ci.yaml` that a repo keeps through a `createOnly` override is seeded the same way, without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out),
 or the owning repo's for its own callers.
 
-The image workflows build every release-please package that holds a `Dockerfile`, so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). Each image's tests run in its `workdir`: the package path (the repo root for a single-image repo) unless its `metadata.yaml` sets one, so `go.mod`, `pyproject.toml` or `package.json` sits there. Repos with their own build jobs can call the composite actions instead.
+The image workflows build every release-please package that holds a `Dockerfile`, so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). Each image's tests run in its `workdir`: the package path (the repo root for a single-image repo) unless its `metadata.yaml` sets one, so `go.mod`, `pyproject.toml` or `package.json` sits there. Repos with
+their own build jobs can call the composite actions instead.
 
 A reusable workflow resolves `uses: ./...` against the caller's checkout, not against this repo. That is why these workflows refer to each other, and to the actions, with `$/` (for example `uses: $/.github/actions/build-image`), which resolves to this repo at the same ref as the calling workflow. To test a branch of this repo, point the caller at the branch; the internal references follow it.
 
@@ -58,10 +59,11 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
-In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a file under its
-`build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
+In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
+file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
 
-Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them too:
+Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them
+too:
 
 - the package's `extra-files` (else the top-level ones): string entries and `{ "type", "path" }` objects, relative to the package path unless they start with `/`. Glob entries are not matched
 - `node`, release-please's default: `package.json`, `package-lock.json`, `npm-shrinkwrap.json`, `samples/package.json`, and the root `changelog.json`
@@ -78,10 +80,11 @@ Other release types count only their changelog and `extra-files`, so their relea
 - `version`: `rebuild` mode only, the version without a leading `v`
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
-The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` and `rebuild` mode each entry also holds `version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
+The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` and `rebuild` mode each entry also holds `version`,
+`tag-name` (the git tag) and `tag-prefix` (the docker tag's).
 
-`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` is not an image and is left out. `rebuild` mode derives the git tag the way release-please's `TagName` does: the component (`component`, else `package-name`), then
-`tag-separator` (default `-`), then `v` when `include-v-in-tag` (default `true`), then the version; `include-component-in-tag: false` drops the component and separator. Each setting comes from the package, else the top level. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
+`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` is not an image and is left out. `rebuild` mode derives the git tag the way release-please's `TagName` does: the component (`component`, else `package-name`), then `tag-separator` (default
+`-`), then `v` when `include-v-in-tag` (default `true`), then the version; `include-component-in-tag: false` drops the component and separator. Each setting comes from the package, else the top level. `node`, `rust` and `helm` packages derive the component from their manifest, so set `component` explicitly for them.
 
 The docker tag prefix is `v` only when `include-v-in-tag` is set to `true` on the package or at the top level. Left unset it is empty, even though release-please's git tag then has a `v`, so a `v1.2.3` release keeps its `1.2.3` docker tag.
 
@@ -107,8 +110,8 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
 - `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
-- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts`
-  and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release`; only that job needs the publishing permissions.
+- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
+  `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` stays a draft.
 - `_rebuild-release.yaml`: rebuild and publish one release whose image job failed. Needs the publishing permissions.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
@@ -127,6 +130,11 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
 
+The `release-please` group also creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads them. No job on the pull request path (`_images.yaml`, the
+`build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
+
+xfg publishes from its own `release.yaml`, whose `Publish` job already runs in the `npm` environment, and a job can use only one environment. xfg's entry in `src/repos.yaml` therefore syncs both release App secrets into `npm` as well. It sets no deployment branch policy, matching the live `npm` environment (any branch), so the sync adds only the secrets.
+
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 `_lint.yaml` runs three jobs. Callers grant `actions: read`, `contents: read` and `security-events: write`:
@@ -139,8 +147,8 @@ The `megalinter` allowlist comes from egress logged across all repos: GitHub, GH
 
 ### Images
 
-The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. It runs when `lint` succeeded and `repo` succeeded or was skipped (the seeded `ci-repo.yaml` has no job that runs, so `repo` is skipped); a failed `lint` or `repo`, or a cancelled run, skips it. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image,
-or only the one in the caller's `image` dispatch input. Each image's jobs show up as `image / <name> / ...`.
+The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. It runs when `lint` succeeded and `repo` succeeded or was skipped (the seeded `ci-repo.yaml` has no job that runs, so `repo` is skipped); a failed `lint` or `repo`, or a cancelled run, skips it. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose
+files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image, or only the one in the caller's `image` dispatch input. Each image's jobs show up as `image / <name> / ...`.
 
 Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-images`](#detect-images)), so a new image needs no change here. The `with:` inputs on the `image` job apply to every image.
 
@@ -209,9 +217,8 @@ from.
 
 A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft and the run fails with the rebuild command.
 
-If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag**, once per failed image (`gh workflow run rebuild-release.yaml --ref <tag> -f image=<image> -f version=X.Y.Z`; `image` may be left out in a repo with one image).
-It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version of that image is already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild
-if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
+If step 2 fails, fix the cause and run `rebuild-release.yaml` **from the tag**, once per failed image (`gh workflow run rebuild-release.yaml --ref <tag> -f image=<image> -f version=X.Y.Z`; `image` may be left out in a repo with one image). It refuses to run when it was not started from the tag, when the tag is missing, when the release is already published, or when a newer version of that image is
+already published (that would move `latest` and `major.minor` backwards). A draft also needs a rebuild if a run dies between creating the release and relabelling the release PR: the next run fails on the duplicate release and starts no image job.
 
 `publish-release` leaves a release that is already published unchanged, so a rebuild that overlaps the release run's image job doesn't append a second image section.
 
@@ -245,20 +252,20 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
 
 A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruyt/repo-operator/issues/610)):
 
-| File                             | Owner                                                         | Contents                                                                                                                                                                                                         |
-| -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| File                             | Owner                                                         | Contents                                                                                                                                                                                                                                                    |
+| -------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `.github/workflows/ci.yaml`      | repo-operator, written on every sync by the `github-ci` group | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `image` (`needs: [lint, repo]`, runs when `repo` succeeded or was skipped, calls `_images.yaml`), then `summary` (`needs: [lint, repo, image]`) |
-| `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it                                                             |
+| `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it                                                                                                        |
 
-The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own
-`.github/workflows/`. They check the actionlint tarball against a sha256 pinned beside its version, not the release's own `checksums.txt`. The `digest=sha256` Renovate annotation puts the pair on the `github-release-attachments` datasource, so one Renovate PR bumps both.
+The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own `.github/workflows/`. They
+check the actionlint tarball against a sha256 pinned beside its version, not the release's own `checksums.txt`. The `digest=sha256` Renovate annotation puts the pair on the `github-release-attachments` datasource, so one Renovate PR bumps both.
 
 `summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
 runs ungated.
 
-`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. spruyt-labs' overlay gives `repo` `actions: read` and `pull-requests: read` as well, for its paths filter.
-xfg's overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and
-`summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An environment's secrets reach a called job that declares `environment:` itself.
+`repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. spruyt-labs' overlay gives `repo` `actions: read` and `pull-requests: read` as well, for its paths filter. xfg's
+overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An
+environment's secrets reach a called job that declares `environment:` itself.
 
 Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
 `ci-repo.yaml` makes the whole run invalid.
@@ -330,7 +337,8 @@ The base is not named `ruff.toml` or `.ruff.toml`: ruff prefers those over `pypr
 
 ### Per-repo values
 
-The group sets `language`: with xfg `vars` in `release-please.yaml` and `rebuild-release.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`, whose `language` overrides the group's. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the three files can't drift apart:
+The group sets `language`: with xfg `vars` in `release-please.yaml` and `rebuild-release.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`, whose `language` overrides the group's. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so
+the three files can't drift apart:
 
 ```yaml
 files:
@@ -352,8 +360,7 @@ files:
           with: *my-repo-with
 ```
 
-The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that all three called workflows accept; put any other input (such as `version`) in that file's own overlay, or GitHub rejects the callers
-that don't declare it.
+The job is `image` in `ci.yaml`, `release` in `release-please.yaml` and `rebuild` in `rebuild-release.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that all three called workflows accept; put any other input (such as `version`) in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
 `container-retention.yaml` cleans the lowercased repository name. A repo whose package has another name sets it with the `retentionPackages` var (comma-separated):
 
