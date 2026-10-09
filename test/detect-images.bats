@@ -10,8 +10,8 @@
 bats_require_minimum_version 1.5.0
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/../detect.sh"
-  FX="${BATS_TEST_DIRNAME}/fixtures"
+  SCRIPT="${BATS_TEST_DIRNAME}/../.github/actions/detect-images/detect.sh"
+  FX="${BATS_TEST_DIRNAME}/fixtures/detect-images"
   REPO="${BATS_TEST_TMPDIR}/repo"
   export GITHUB_OUTPUT="${BATS_TEST_TMPDIR}/output"
   : >"$GITHUB_OUTPUT"
@@ -937,7 +937,7 @@ released() {
 }
 
 @test "action.yaml passes its inputs to detect.sh through env" {
-  ACTION="${BATS_TEST_DIRNAME}/../action.yaml"
+  ACTION="${BATS_TEST_DIRNAME}/../.github/actions/detect-images/action.yaml"
   run yq -r '.runs.steps[0].run' "$ACTION"
   [ "$output" = '"$DETECT_SCRIPT"' ]
   run yq -o=json -I0 '.runs.steps[0].env' "$ACTION"

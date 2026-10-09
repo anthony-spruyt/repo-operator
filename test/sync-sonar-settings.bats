@@ -2,8 +2,8 @@
 # shellcheck disable=SC2016
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/sync-sonar-settings.sh"
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+  SCRIPT="${BATS_TEST_DIRNAME}/../.github/scripts/sync-sonar-settings.sh"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
   WORK="${BATS_TEST_TMPDIR}"
   export STATE="$WORK/state" CURL_LOG="$WORK/curl.log"
   mkdir -p "$STATE" "$WORK/bin"

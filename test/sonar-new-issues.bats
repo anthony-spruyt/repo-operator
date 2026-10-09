@@ -5,11 +5,11 @@
 bats_require_minimum_version 1.5.0
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/../check.sh"
-  FX="${BATS_TEST_DIRNAME}/fixtures"
+  SCRIPT="${BATS_TEST_DIRNAME}/../.github/actions/sonar-new-issues/check.sh"
+  FX="${BATS_TEST_DIRNAME}/fixtures/sonar-new-issues"
 
   mkdir -p "${BATS_TEST_TMPDIR}/bin"
-  cp "${BATS_TEST_DIRNAME}/fake-curl.sh" "${BATS_TEST_TMPDIR}/bin/curl"
+  cp "${FX}/fake-curl.sh" "${BATS_TEST_TMPDIR}/bin/curl"
   chmod +x "${BATS_TEST_TMPDIR}/bin/curl"
   export PATH="${BATS_TEST_TMPDIR}/bin:$PATH"
   export FAKE_CALLS="${BATS_TEST_TMPDIR}/calls"

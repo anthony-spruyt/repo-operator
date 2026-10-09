@@ -203,7 +203,7 @@ repos:
         createOnly: true
       .mergify.yml:
         vars:
-          gateFilesExtra: "src/|"
+          gateFilesExtra: "src/|test/ci/|"
 
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
