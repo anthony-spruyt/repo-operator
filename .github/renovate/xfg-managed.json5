@@ -375,6 +375,31 @@
     {
       "description": "xfg overwrites these files on every sync; repo-operator bumps them in src/ instead",
       "matchRepositories": [
+        "anthony-spruyt/release-matrix-scratch"
+      ],
+      "matchFileNames": [
+        ".devcontainer/.gitignore",
+        ".devcontainer/Dockerfile",
+        ".devcontainer/README.md",
+        ".devcontainer/devcontainer.json",
+        ".devcontainer/initialize.sh",
+        ".devcontainer/podman-seccomp.json",
+        ".devcontainer/post-start.sh",
+        ".editorconfig",
+        ".markdownlint.json",
+        ".mdformat.toml",
+        ".pre-commit-config.yaml",
+        ".prettierignore",
+        ".prettierrc.yaml",
+        ".vscode/settings.json",
+        ".yamllint.yml",
+        "renovate.json"
+      ],
+      "enabled": false
+    },
+    {
+      "description": "xfg overwrites these files on every sync; repo-operator bumps them in src/ instead",
+      "matchRepositories": [
         "anthony-spruyt/spruyt-labs"
       ],
       "matchFileNames": [

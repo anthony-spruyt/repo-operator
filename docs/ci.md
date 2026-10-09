@@ -248,7 +248,7 @@ A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruy
 | `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it                                                             |
 
 The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own
-`.github/workflows/`.
+`.github/workflows/`. They check the actionlint tarball against a sha256 pinned beside its version, not the release's own `checksums.txt`. The `digest=sha256` Renovate annotation puts the pair on the `github-release-attachments` datasource, so one Renovate PR bumps both.
 
 `summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
 runs ungated.
