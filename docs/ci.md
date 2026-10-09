@@ -136,7 +136,7 @@ The `megalinter` allowlist comes from egress logged across all repos: GitHub, GH
 
 ### Images
 
-The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image,
+The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. It runs when `lint` succeeded and `repo` succeeded or was skipped (the seeded `ci-repo.yaml` has no job that runs, so `repo` is skipped); a failed `lint` or `repo`, or a cancelled run, skips it. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose files changed: build and test, no push. A repo without images, or a change that touches none, skips the matrix and runs only `Detect`. A `workflow_dispatch` run builds every image,
 or only the one in the caller's `image` dispatch input. Each image's jobs show up as `image / <name> / ...`.
 
 Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-images`](#detect-images)), so a new image needs no change here. The `with:` inputs on the `image` job apply to every image.
@@ -244,7 +244,7 @@ A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruy
 
 | File                             | Owner                                                         | Contents                                                                                                                                                                                                         |
 | -------------------------------- | ------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `.github/workflows/ci.yaml`      | repo-operator, written on every sync by the `github-ci` group | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `image` (`needs: [lint, repo]`, calls `_images.yaml`), then `summary` (`needs: [lint, repo, image]`) |
+| `.github/workflows/ci.yaml`      | repo-operator, written on every sync by the `github-ci` group | `lint`, then `repo` (`needs: lint`, calls `./.github/workflows/ci-repo.yaml` with `secrets: inherit`), then `image` (`needs: [lint, repo]`, runs when `repo` succeeded or was skipped, calls `_images.yaml`), then `summary` (`needs: [lint, repo, image]`) |
 | `.github/workflows/ci-repo.yaml` | the repo, seeded once by the `github-ci` group (`createOnly`) | `on: workflow_call` and the repo-only jobs. The seed holds one job that never runs, because a workflow needs at least one job and `ci.yaml` calls it                                                             |
 
 The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own
@@ -384,6 +384,7 @@ jobs:
     secrets: inherit
   image:
     needs: [lint, repo]
+    if: "!cancelled() && needs.lint.result == 'success' && (needs.repo.result == 'success' || needs.repo.result == 'skipped')"
     permissions:
       contents: read
     uses: anthony-spruyt/repo-operator/.github/workflows/_images.yaml@<sha> # main
