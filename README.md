@@ -86,7 +86,7 @@ Every repo's `ci.yaml` has an `image` job that builds each release-please packag
 
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
-Image repos join `go-image` or `python-image`. Those groups sync the CI and release callers, the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`) as managed files. See [Managed image repos](docs/ci.md#managed-image-repos).
+Image repos join `go-image` or `python-image`, or `image` when their images use more than one language. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`). See [Managed image repos](docs/ci.md#managed-image-repos).
 
 ## Renovate Configuration
 

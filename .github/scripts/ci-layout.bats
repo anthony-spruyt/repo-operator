@@ -51,9 +51,21 @@ repo_job_is_standard() {
   [ "$output" = '[false,"@templates/.github/workflows/ci.yaml"]' ]
 }
 
-@test "only container-images, repo-operator and spruyt-labs keep their own ci.yaml" {
+@test "only container-images and repo-operator keep their own ci.yaml" {
   run yq -r '[.repos[] | select(.files[".github/workflows/ci.yaml"].createOnly == true) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "container-images repo-operator spruyt-labs" ]
+  [ "$output" = "container-images repo-operator" ]
+}
+
+@test "spruyt-labs joins image with no language group, so each image's metadata.yaml sets its language" {
+  repo='.repos[] | select(.git == "https://github.com/anthony-spruyt/spruyt-labs.git")'
+  run yq -o=json -I0 "$repo | .groups | [any_c(. == \"image\"), any_c(. == \"go-image\" or . == \"python-image\")]" "$SRC/repos.yaml"
+  [ "$output" = '[true,false]' ]
+  run yq -o=json -I0 "$repo | .files[\".github/workflows/ci.yaml\"].content.jobs | [(.repo.permissions | to_entries | sort_by(.key) | from_entries), (.image.with.language // null)]" "$SRC/repos.yaml"
+  [ "$output" = '[{"actions":"read","contents":"read","pull-requests":"read"},null]' ]
+  run yq -o=json -I0 "$repo | .files | [.[\".github/workflows/release-please.yaml\"].vars.language, .[\".github/workflows/rebuild-release.yaml\"].vars.language]" "$SRC/repos.yaml"
+  [ "$output" = '["none","none"]' ]
+  run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
+  [ "$output" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
 }
 
 @test "xfg's ci.yaml overlay adds the labeled trigger and guards every template job with it" {
