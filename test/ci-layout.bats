@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
   SRC="$REPO_ROOT/src"
   WORKFLOWS="$SRC/templates/.github/workflows"
   REPO_JOB='{"needs":["lint"],"uses":"./.github/workflows/ci-repo.yaml","permissions":{"contents":"read"},"secrets":"inherit"}'
@@ -123,7 +123,7 @@ repo_job_is_standard() {
   run yq -o=json -I0 '[(.on | keys), .permissions]' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [ "$output" = '[["workflow_call"],{}]' ]
   run yq -r '.jobs["guard-test"].steps[].run | select(. != null)' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
-  [[ "$output" == *"bats .github/scripts/ .github/actions/sonar-new-issues/test/ .github/actions/detect-images/test/"* ]]
+  [[ "$output" == *"bats -r test/"* ]]
   run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
 }

@@ -2,7 +2,7 @@
 # shellcheck disable=SC2016
 
 setup() {
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
   SRC="$REPO_ROOT/src"
   TEMPLATE="$SRC/templates/.mergify.yml"
   PURE_RENOVATE='[

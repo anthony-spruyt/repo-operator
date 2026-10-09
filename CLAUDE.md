@@ -117,8 +117,8 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs the bats tests in `.github/scripts/` (`check-xfg-config.sh`, `sync-sonar-settings.sh`, `gen-xfg-managed-renovate.sh`, the rendered `lint.sh`, the merge gate in `merge-gate.bats`, the CI layout and actionlint on
-   the `ci.yaml` templates and seed in `ci-layout.bats`, `_summary.yaml`'s job check in `summary.bats`). See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`: one `test/<name>.bats` per script in `.github/scripts/` (`check-xfg-config`, `sync-sonar-settings`, `gen-xfg-managed-renovate`) and per action (`detect-images`, `sonar-new-issues`), plus the rendered `lint.sh`, the merge gate
+   in `merge-gate.bats`, the CI layout and actionlint on the `ci.yaml` templates and seed in `ci-layout.bats`, and `_summary.yaml`'s job check in `summary.bats`. Fixtures and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply), because a pure Renovate PR can merge a `src/` pin bump without the owner's review. This is the plan to read before
    approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo variable).
@@ -132,6 +132,6 @@ The xfg-apply job pushes the updated configuration directly to target repos (`pr
 
 `sonar-settings.yaml` owns SonarQube Cloud project settings for the `sonar` group, from `.github/sonar-settings.yaml`. It plans on PRs that touch its paths (public GET, no token) and applies on `main` push, weekly and dispatch with `SONAR_TOKEN` from the `sonar` environment. It is not a required check, because its paths filter would leave it pending on other PRs. See the README.
 
-`sonar-new-issues.yaml` (`SonarCloud / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit and uses no token. guard-test also runs its bats tests in `.github/actions/sonar-new-issues/test/`. See `docs/ci.md`.
+`sonar-new-issues.yaml` (`SonarCloud / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit and uses no token. guard-test also runs its bats tests in `test/sonar-new-issues.bats`. See `docs/ci.md`.
 
 Additional workflows distributed to target repos include Trivy vulnerability scanning.

@@ -2,8 +2,8 @@
 # shellcheck disable=SC2016
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/check-xfg-config.sh"
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+  SCRIPT="${BATS_TEST_DIRNAME}/../.github/scripts/check-xfg-config.sh"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
   CFG="${BATS_TEST_TMPDIR}/src"
   mkdir -p "$CFG"
   printf 'id: test\n' >"$CFG/base.yaml"

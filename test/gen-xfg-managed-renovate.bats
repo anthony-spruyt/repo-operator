@@ -1,8 +1,8 @@
 #!/usr/bin/env bats
 
 setup() {
-  SCRIPT="${BATS_TEST_DIRNAME}/gen-xfg-managed-renovate.sh"
-  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
+  SCRIPT="${BATS_TEST_DIRNAME}/../.github/scripts/gen-xfg-managed-renovate.sh"
+  REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
   CFG="${BATS_TEST_TMPDIR}/src"
   mkdir -p "$CFG"
   printf 'id: test\n' >"$CFG/base.yaml"
