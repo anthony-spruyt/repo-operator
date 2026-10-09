@@ -6,12 +6,12 @@ on:
   workflow_call:
     inputs:
       language:
-        description: Test suite to run before the build (go, python or none)
+        description: Test suite to run before the build (go, python, node or none)
         required: false
         type: string
         default: none
       workdir:
-        description: Project root for tests (go.mod or pyproject.toml lives here)
+        description: Project root for tests (go.mod, pyproject.toml or package.json lives here)
         required: false
         type: string
         default: "."
@@ -83,6 +83,11 @@ on:
         required: false
         type: string
         default: ""
+      node-version:
+        description: Node.js version for the node tests
+        required: false
+        type: string
+        default: "24"
       python-version:
         description: Passed to _python-uv-test.yaml as python-version
         required: false
@@ -140,16 +145,60 @@ jobs:
       test-paths: ${{ inputs.python-test-paths }}
       extra-commands: ${{ inputs.python-extra-commands }}
 
+  test-node:
+    name: Test
+    if: inputs.language == 'node'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@949feb2413d6458794dcd2491c4babbbce0c15c1 # v7.1.0
+        with:
+          node-version: ${{ inputs.node-version }}
+
+      - name: Install dependencies
+        working-directory: ${{ inputs.workdir }}
+        run: npm ci --ignore-scripts
+
+      - name: Type check
+        working-directory: ${{ inputs.workdir }}
+        run: ./node_modules/.bin/tsc --noEmit
+
+      - name: Run tests
+        working-directory: ${{ inputs.workdir }}
+        env:
+          WORKDIR: ${{ inputs.workdir }}
+        run: |
+          if node -e 'process.exit(require("./package.json").scripts?.test ? 0 : 1)'; then
+            npm test
+          else
+            echo "::notice::No test script in ${WORKDIR}/package.json, skipping tests"
+          fi
+
   build:
     name: Build
     needs:
       - test-go
       - test-python
+      - test-node
     # At most one test job runs; a skipped need makes the implicit success() false.
     if: >-
       !cancelled() && !inputs.push
       && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
+      && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     permissions:
@@ -165,8 +214,8 @@ jobs:
           LANGUAGE: ${{ inputs.language }}
         run: |
           case "$LANGUAGE" in
-            go | python | none) ;;
-            *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
+            go | python | node | none) ;;
+            *) echo "::error::language must be go, python, node or none, got '$LANGUAGE'"; exit 1 ;;
           esac
 
       - name: Checkout
@@ -206,10 +255,12 @@ jobs:
     needs:
       - test-go
       - test-python
+      - test-node
     if: >-
       !cancelled() && inputs.push
       && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
+      && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
     runs-on: ubuntu-latest
     timeout-minutes: 30
     # No permissions block on purpose: requesting write here fails read-only PR callers at startup, even though the job is skipped.
@@ -237,8 +288,8 @@ jobs:
           IMAGE: ${{ inputs.image || github.event.repository.name }}
         run: |
           case "$LANGUAGE" in
-            go | python | none) ;;
-            *) echo "::error::language must be go, python or none, got '$LANGUAGE'"; exit 1 ;;
+            go | python | node | none) ;;
+            *) echo "::error::language must be go, python, node or none, got '$LANGUAGE'"; exit 1 ;;
           esac
           if [ -z "$TAG_NAME" ] || [ -z "$VERSION" ]; then
             echo "::error::tag-name and version are required when push is true"

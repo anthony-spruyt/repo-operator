@@ -18,15 +18,10 @@ on:
         type: string
         default: ""
       language:
-        description: Passed to _build-image.yaml
+        description: Passed to _build-image.yaml when the image's metadata.yaml sets no language
         required: false
         type: string
         default: none
-      workdir:
-        description: Passed to _build-image.yaml
-        required: false
-        type: string
-        default: "."
       dockerhub-namespace:
         description: Passed to _build-image.yaml
         required: false
@@ -155,8 +150,8 @@ jobs:
       matrix: ${{ fromJSON(needs.resolve.outputs.matrix) }}
     uses: $/.github/workflows/_build-image.yaml
     with:
-      language: ${{ inputs.language }}
-      workdir: ${{ inputs.workdir }}
+      language: ${{ matrix.language || inputs.language }}
+      workdir: ${{ matrix.workdir }}
       image: ${{ matrix.name }}
       context: ${{ matrix.context }}
       dockerfile: ${{ matrix.dockerfile }}
