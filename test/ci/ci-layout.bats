@@ -79,10 +79,10 @@ repo_job_is_standard() {
   [ "$output" = "SunGather container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
 }
 
-@test "the image group defaults the release callers' language to none, and no repo repeats it" {
-  run yq -o=json -I0 '.groups.image.files | [.[".github/workflows/release-please.yaml"].vars.language, .[".github/workflows/rebuild-release.yaml"].vars.language]' "$SRC/groups.yaml"
-  [ "$output" = '["none","none"]' ]
-  run yq -o=json -I0 '[.repos[] | select(.files[".github/workflows/release-please.yaml"].vars.language == "none" or .files[".github/workflows/rebuild-release.yaml"].vars.language == "none") | .git]' "$SRC/repos.yaml"
+@test "the image group defaults the release caller's language to none, and no repo repeats it" {
+  run yq -o=json -I0 '.groups.image.files | [.[".github/workflows/release-please.yaml"].vars.language]' "$SRC/groups.yaml"
+  [ "$output" = '["none"]' ]
+  run yq -o=json -I0 '[.repos[] | select(.files[".github/workflows/release-please.yaml"].vars.language == "none") | .git]' "$SRC/repos.yaml"
   [ "$output" = '[]' ]
 }
 
@@ -95,20 +95,11 @@ repo_job_is_standard() {
   [ "$output" = '[]' ]
 }
 
-@test "the image release callers publish to Docker Hub as aspruyt with the DOCKERHUB_TOKEN secret" {
-  local file job
-  for file in image-release-please.yaml:release image-rebuild-release.yaml:rebuild; do
-    job="${file#*:}"
-    file="${file%%:*}"
-    run yq -o=json -I0 ".jobs.$job | [.with[\"dockerhub-namespace\"], .secrets.DOCKERHUB_TOKEN]" "$WORKFLOWS/$file"
-    echo "$file: $output"
-    [ "$output" = '["aspruyt","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
-  done
-  for file in _release-please.yaml _rebuild-release.yaml; do
-    run yq -o=json -I0 '[(.on.workflow_call.inputs["dockerhub-namespace"].type), (.on.workflow_call.secrets | has("DOCKERHUB_TOKEN")), .jobs.build.with["dockerhub-namespace"], .jobs.build.secrets.DOCKERHUB_TOKEN]' "$REPO_ROOT/.github/workflows/$file"
-    echo "$file: $output"
-    [ "$output" = '["string",true,"${{ inputs.dockerhub-namespace }}","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
-  done
+@test "the image release caller publishes to Docker Hub as aspruyt with the DOCKERHUB_TOKEN secret" {
+  run yq -o=json -I0 '.jobs.release | [.with["dockerhub-namespace"], .secrets.DOCKERHUB_TOKEN]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '["aspruyt","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
+  run yq -o=json -I0 '[(.on.workflow_call.inputs["dockerhub-namespace"].type), (.on.workflow_call.secrets | has("DOCKERHUB_TOKEN")), .jobs.build.with["dockerhub-namespace"], .jobs.build.secrets.DOCKERHUB_TOKEN]' "$REPO_ROOT/.github/workflows/_release-please.yaml"
+  [ "$output" = '["string",true,"${{ inputs.dockerhub-namespace }}","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
 }
 
 @test "xfg's ci.yaml overlay adds the labeled trigger and guards every template job with it" {
@@ -185,4 +176,10 @@ repo_job_is_standard() {
     echo "$bad"
     return 1
   }
+}
+
+@test "nothing syncs or calls Rebuild Release (#604)" {
+  run grep -rIl -e 'rebuild-release' -e 'Rebuild Release' "$SRC" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/.github/actions"
+  echo "$output"
+  [ "$status" -eq 1 ]
 }

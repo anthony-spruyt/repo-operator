@@ -75,21 +75,17 @@ setup() {
   [ "$output" = "\${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}" ]
 }
 
-@test "the release workflows publish each package with its own language and workdir" {
-  local wf
-  for wf in _release-please.yaml _rebuild-release.yaml; do
-    run yq -o=json -I0 '.jobs.build.with | [.language, .workdir]' "$WF/$wf"
-    echo "$wf: $output"
-    [ "$output" = '["${{ matrix.language || inputs.language }}","${{ matrix.workdir }}"]' ]
-    run yq -r '.on.workflow_call.inputs | has("workdir")' "$WF/$wf"
-    [ "$output" = "false" ]
-  done
+@test "_release-please.yaml publishes each package with its own language and workdir" {
+  run yq -o=json -I0 '.jobs.build.with | [.language, .workdir]' "$WF/_release-please.yaml"
+  [ "$output" = '["${{ matrix.language || inputs.language }}","${{ matrix.workdir }}"]' ]
+  run yq -r '.on.workflow_call.inputs | has("workdir")' "$WF/_release-please.yaml"
+  [ "$output" = "false" ]
 }
 
 @test "the image workflows pass actionlint with this repo's config" {
   cd "$REPO_ROOT"
   run actionlint -no-color .github/workflows/_images.yaml .github/workflows/_build-image.yaml \
-    .github/workflows/_release-please.yaml .github/workflows/_rebuild-release.yaml
+    .github/workflows/_release-please.yaml
   echo "$output"
   [ "$status" -eq 0 ]
 }

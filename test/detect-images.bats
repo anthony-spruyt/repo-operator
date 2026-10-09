@@ -5,7 +5,7 @@
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
 # releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
 # the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
-# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout.
+# toJSON(steps.release.outputs). scratch/ is release-matrix-scratch's layout. top-level-v/ and its release are synthetic.
 
 bats_require_minimum_version 1.5.0
 
@@ -19,7 +19,7 @@ setup() {
   export GIT_COMMITTER_NAME=test GIT_COMMITTER_EMAIL=test@example.com
   export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
   export MODE=changed
-  unset IMAGE BASE_SHA REPO_NAME GITHUB_STEP_SUMMARY RELEASES VERSION
+  unset IMAGE BASE_SHA REPO_NAME GITHUB_STEP_SUMMARY RELEASES
   export GITHUB_REPOSITORY=anthony-spruyt/fixture
 }
 
@@ -618,7 +618,15 @@ released() {
   use_layout spruyt-labs
   MODE=everything detect
   [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::mode must be changed, all, released or rebuild"* ]]
+  [[ "$stderr" == *"::error::mode must be changed, all or released, got: everything"* ]]
+}
+
+@test "rebuild mode is refused" {
+  use_layout scratch
+  IMAGE=dot VERSION=1.0.0 MODE=rebuild detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::mode must be changed, all or released, got: rebuild"* ]]
+  [ ! -s "$GITHUB_OUTPUT" ]
 }
 
 @test "an invalid base SHA fails" {
@@ -777,6 +785,15 @@ released() {
   [ "$(release_of slash)" = '["0.2.0","slash/v0.2.0","v"]' ]
 }
 
+@test "released: a top-level include-v-in-tag gives a package that sets none a v docker tag, and a package's own false wins" {
+  use_layout top-level-v
+  released top-level-v-release
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "app,plain" ]
+  [ "$(release_of app)" = '["1.2.0","app-v1.2.0","v"]' ]
+  [ "$(release_of plain)" = '["1.0.0","plain-1.0.0",""]' ]
+}
+
 @test "released: a run that created no release publishes nothing" {
   use_layout spruyt-labs
   RELEASES='{"releases_created":"false","paths_released":"[]","prs_created":"true"}' MODE=released detect
@@ -828,118 +845,10 @@ released() {
   [[ "$stderr" == *"::error::image does not apply to released mode"* ]]
 }
 
-@test "rebuild: derives the tag release-please created, for every image release in the fixtures" {
-  local spec fixture layout repo all path tag version name checked=0
-  for spec in spruyt-labs-3183-release-both:spruyt-labs:spruyt-labs \
-    container-images-2088-release:container-images:container-images \
-    sungather-v3.0.0:sungather:SunGather; do
-    IFS=: read -r fixture layout repo <<<"$spec"
-    rm -rf "$REPO"
-    use_layout "$layout"
-    export GITHUB_REPOSITORY="anthony-spruyt/$repo"
-    : >"$GITHUB_OUTPUT"
-    MODE=all detect
-    all=$(output_value matrix)
-    while IFS=$'\t' read -r -u 9 path tag version; do
-      name=$(jq -r --arg p "$path" '.include[] | select(.path == $p) | .name' <<<"$all")
-      [ -n "$name" ] || continue
-      : >"$GITHUB_OUTPUT"
-      IMAGE=$name VERSION=$version MODE=rebuild detect
-      echo "$fixture $name: $(release_of "$name") want $tag"
-      [ "$status" -eq 0 ]
-      [ "$(image_entry "$name" | jq -r '."tag-name"')" = "$tag" ]
-      checked=$((checked + 1))
-    done 9< <(jq -r '(.paths_released | fromjson)[] as $p
-      | (if $p == "." then "" else "\($p)--" end) as $k
-      | [$p, .["\($k)tag_name"], .["\($k)version"]] | @tsv' "$FX/releases/$fixture.json")
-  done
-  [ "$checked" -eq 9 ]
-}
-
-@test "rebuild: the '.', '-' and '/' separators with and without include-v-in-tag" {
-  use_layout scratch
-  IMAGE=dot VERSION=1.2.3 MODE=rebuild detect
-  [ "$status" -eq 0 ]
-  [ "$(release_of dot)" = '["1.2.3","dot.1.2.3",""]' ]
-  : >"$GITHUB_OUTPUT"
-  IMAGE=dash VERSION=1.2.3 MODE=rebuild detect
-  [ "$(release_of dash)" = '["1.2.3","dash-1.2.3",""]' ]
-  : >"$GITHUB_OUTPUT"
-  IMAGE=slash VERSION=1.2.3-rc.1 MODE=rebuild detect
-  [ "$(release_of slash)" = '["1.2.3-rc.1","slash/v1.2.3-rc.1","v"]' ]
-  [ "$(image_entry slash | jq -r .path)" = "nested/slash" ]
-}
-
-@test "rebuild: release-please defaults put the component, '-' and v in the tag but no v in the docker tag" {
-  use_layout scratch
-  jq '.packages = {"svc": {"release-type": "simple"}, "named": {"release-type": "simple", "package-name": "pkg"}}' \
-    "$REPO/release-please-config.json" >"$REPO/c.json"
-  mv "$REPO/c.json" "$REPO/release-please-config.json"
-  mkdir -p "$REPO/svc" "$REPO/named"
-  : >"$REPO/svc/Dockerfile"
-  : >"$REPO/named/Dockerfile"
-  IMAGE=svc VERSION=2.0.0 MODE=rebuild detect
-  [ "$status" -eq 0 ]
-  [ "$(release_of svc)" = '["2.0.0","v2.0.0",""]' ]
-  : >"$GITHUB_OUTPUT"
-  IMAGE=named VERSION=2.0.0 MODE=rebuild detect
-  [ "$(release_of named)" = '["2.0.0","pkg-v2.0.0",""]' ]
-}
-
-@test "rebuild: top-level tag settings apply when the package sets none" {
-  use_layout scratch
-  jq '. + {"tag-separator": "@", "include-v-in-tag": true, "include-component-in-tag": true} | .packages.dash = {"release-type": "simple", "component": "dash"}' \
-    "$REPO/release-please-config.json" >"$REPO/c.json"
-  mv "$REPO/c.json" "$REPO/release-please-config.json"
-  IMAGE=dash VERSION=1.0.0 MODE=rebuild detect
-  [ "$status" -eq 0 ]
-  [ "$(release_of dash)" = '["1.0.0","dash@v1.0.0","v"]' ]
-}
-
-@test "rebuild: without image, a repo with one image rebuilds it" {
-  use_layout sungather
-  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
-  VERSION=3.0.0 MODE=rebuild detect
-  [ "$status" -eq 0 ]
-  [ "$(images)" = "sungather" ]
-  [ "$(release_of sungather)" = '["3.0.0","v3.0.0",""]' ]
-}
-
-@test "rebuild: without image, a repo with several images fails and lists them" {
-  use_layout scratch
-  VERSION=1.0.0 MODE=rebuild detect
-  [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::This repo has several images; set image to one of: dot, dash, slash"* ]]
-}
-
-@test "rebuild: an unknown image fails and lists the images" {
-  use_layout scratch
-  IMAGE=nope VERSION=1.0.0 MODE=rebuild detect
-  [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::Unknown image: nope. Images: dot, dash, slash"* ]]
-}
-
-@test "rebuild: a version with a leading v or junk fails" {
-  use_layout scratch
-  IMAGE=dot VERSION=v1.0.0 MODE=rebuild detect
-  [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::Invalid version: v1.0.0 (no leading v)"* ]]
-  IMAGE=dot VERSION='1.0.0; rm -rf /' MODE=rebuild detect
-  [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::Invalid version"* ]]
-}
-
-@test "rebuild: needs a version" {
-  use_layout scratch
-  IMAGE=dot MODE=rebuild detect
-  [ "$status" -eq 1 ]
-  [[ "$stderr" == *"::error::version is required in rebuild mode"* ]]
-}
-
 @test "action.yaml passes its inputs to detect.sh through env" {
   ACTION="${BATS_TEST_DIRNAME}/../.github/actions/detect-images/action.yaml"
   run yq -r '.runs.steps[0].run' "$ACTION"
   [ "$output" = '"$DETECT_SCRIPT"' ]
   run yq -o=json -I0 '.runs.steps[0].env' "$ACTION"
-  [ "$output" = '{"MODE":"${{ inputs.mode }}","IMAGE":"${{ inputs.image }}","BASE_SHA":"${{ inputs.base-sha }}","RELEASES":"${{ inputs.releases }}","VERSION":"${{ inputs.version }}","REPO_NAME":"${{ inputs.root-name }}","DETECT_SCRIPT":"${{ github.action_path }}/detect.sh"}' ]
+  [ "$output" = '{"MODE":"${{ inputs.mode }}","IMAGE":"${{ inputs.image }}","BASE_SHA":"${{ inputs.base-sha }}","RELEASES":"${{ inputs.releases }}","REPO_NAME":"${{ inputs.root-name }}","DETECT_SCRIPT":"${{ github.action_path }}/detect.sh"}' ]
 }

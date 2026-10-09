@@ -17,7 +17,6 @@ mode="${MODE:-changed}"
 image="${IMAGE:-}"
 base="${BASE_SHA:-}"
 releases="${RELEASES:-}"
-version="${VERSION:-}"
 repo_name="${REPO_NAME:-${GITHUB_REPOSITORY#*/}}"
 
 die() {
@@ -46,16 +45,12 @@ norm_path() {
 }
 
 validate() {
-  [[ "$mode" =~ ^(changed|all|released|rebuild)$ ]] || die "mode must be changed, all, released or rebuild, got: $mode"
+  [[ "$mode" =~ ^(changed|all|released)$ ]] || die "mode must be changed, all or released, got: $mode"
   [[ -z "$base" || "$base" =~ $SHA_RE ]] || die "Invalid base SHA"
   [[ -z "$image" || "$image" =~ ^[A-Za-z0-9._-]{1,128}$ ]] || die "Invalid image name"
   if [[ "$mode" == "released" ]]; then
     [[ -z "$image" ]] || die "image does not apply to released mode"
     jq -e 'type == "object"' <<<"$releases" >/dev/null 2>&1 || die "releases must be the release-please outputs as JSON"
-  fi
-  if [[ "$mode" == "rebuild" ]]; then
-    [[ -n "$version" ]] || die "version is required in rebuild mode"
-    [[ "$version" =~ $VERSION_RE ]] || die "Invalid version: $version (no leading v)"
   fi
   return 0
 }
@@ -117,7 +112,7 @@ image_entry() {
 }
 
 # Version files mirror release-please's src/strategies/*.ts; other release types fall back to building.
-# The git tag prefix mirrors release-please's TagName; the docker tag gets a v only when include-v-in-tag is set true.
+# The docker tag gets a v only when include-v-in-tag is set true.
 readonly PACKAGES_JQ='
 def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def list: if type == "array" then .[] | strings else empty end;
@@ -132,14 +127,8 @@ def str_or($d): if type == "string" and . != "" then . else $d end;
       def add_path: (if $p == "." or startswith("/") then sub("^/+"; "") else "\($p)/\(.)" end) | sub("/+$"; "");
     (opt("release-type") | str_or("node")) as $type
     | (opt("version-file") | str_or("")) as $vf
-    | ($v.component // $v["package-name"] // $c.component // $c["package-name"] // "" | tostring) as $tag_component
     | {
         path: $p,
-        tag_prefix: (
-          (if $tag_component != "" and flag("include-component-in-tag"; true)
-            then $tag_component + (opt("tag-separator") | str_or("-")) else "" end)
-          + (if flag("include-v-in-tag"; true) then "v" else "" end)
-        ),
         docker_prefix: (if flag("include-v-in-tag"; false) then "v" else "" end),
         component: ($v.component // "" | tostring),
         exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
@@ -269,32 +258,10 @@ released_images() {
   return 0
 }
 
-rebuild_image() {
-  local listing="$1" out="$2" names count tag
-  names=$(jq -r ".images | $NAMES_JQ" <<<"$listing")
-  count=$(jq '.images | length' <<<"$listing")
-  if [[ -z "$image" ]]; then
-    [[ "$count" != "0" ]] || die "This repo has no images"
-    [[ "$count" == "1" ]] || die "This repo has several images; set image to one of: $names"
-    image=$(jq -r '.images[0].name' <<<"$listing")
-  fi
-  jq -c --arg n "$image" --arg v "$version" '
-    .packages as $pkgs
-    | .images | map(select(.name == $n) | . as $img
-      | first($pkgs[] | select(.path == $img.path)) as $pk
-      | . + {version: $v, "tag-name": ($pk.tag_prefix + $v), "tag-prefix": $pk.docker_prefix})' <<<"$listing" >"$out"
-  [[ "$(jq 'length' "$out")" != "0" ]] || die "Unknown image: $image. Images: $names"
-  tag=$(jq -r '.[0]."tag-name"' "$out")
-  [[ "$tag" =~ $TAG_RE ]] || die "$CONFIG: invalid tag for $image: $tag"
-  return 0
-}
-
 select_images() {
   local listing="$1" out="$2" names diff
   if [[ "$mode" == "released" ]]; then
     released_images "$listing" "$out"
-  elif [[ "$mode" == "rebuild" ]]; then
-    rebuild_image "$listing" "$out"
   elif [[ -n "$image" ]]; then
     jq -c --arg n "$image" '.images | map(select(.name == $n))' <<<"$listing" >"$out"
     if [[ "$(jq 'length' "$out")" == "0" ]]; then
