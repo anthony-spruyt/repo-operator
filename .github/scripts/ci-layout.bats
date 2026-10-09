@@ -12,16 +12,23 @@ repo_job_is_standard() {
   [ "$(yq -o=json '.jobs.repo' "$1" | jq -cS .)" = "$(jq -cS . <<<"$REPO_JOB")" ]
 }
 
-@test "the ci.yaml template calls ci-repo.yaml after lint and summary judges it" {
+@test "the ci.yaml template calls ci-repo.yaml after lint, then image, and summary judges all three" {
   repo_job_is_standard "$WORKFLOWS/ci.yaml"
   run yq -o=json -I0 '[(.jobs | keys), .jobs.summary.needs]' "$WORKFLOWS/ci.yaml"
-  [ "$output" = '[["lint","repo","summary"],["lint","repo"]]' ]
+  [ "$output" = '[["lint","repo","image","summary"],["lint","repo","image"]]' ]
 }
 
-@test "the image-ci.yaml template calls ci-repo.yaml after lint and summary judges it" {
-  repo_job_is_standard "$WORKFLOWS/image-ci.yaml"
-  run yq -o=json -I0 '[(.jobs | keys), .jobs.summary.needs]' "$WORKFLOWS/image-ci.yaml"
-  [ "$output" = '[["lint","image","repo","summary"],["lint","image","repo"]]' ]
+@test "the ci.yaml template's image job calls _images.yaml after lint and repo, read-only" {
+  run yq -o=json -I0 '.jobs.image | [.needs, .permissions, (.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), has("with")]' "$WORKFLOWS/ci.yaml"
+  [ "$output" = '[["lint","repo"],{"contents":"read"},"anthony-spruyt/repo-operator/.github/workflows/_images.yaml@<sha>",false]' ]
+}
+
+@test "image-ci.yaml is retired: no group overrides ci.yaml, and the image groups only set its language" {
+  [ ! -e "$WORKFLOWS/image-ci.yaml" ]
+  run grep -rn 'image-ci' "$SRC"
+  [ "$status" -eq 1 ]
+  run yq -o=json -I0 '.groups | to_entries | map(select(.key != "github-ci" and .value.files[".github/workflows/ci.yaml"] != null) | [.key, .value.files[".github/workflows/ci.yaml"]])' "$SRC/groups.yaml"
+  [ "$output" = '[["go-image",{"content":{"jobs":{"image":{"with":{"language":"go"}}}}}],["python-image",{"content":{"jobs":{"image":{"with":{"language":"python"}}}}}]]' ]
 }
 
 @test "the ci.yaml template holds no commented-out code" {
@@ -50,9 +57,9 @@ repo_job_is_standard() {
   run yq -o=json -I0 "$overlay | .on.pull_request.types" "$SRC/repos.yaml"
   [ "$output" = '["opened","synchronize","reopened","labeled"]' ]
   run yq -o=json -I0 "$overlay | [(.jobs | keys), (.jobs | to_entries | map(.value.if))]" "$SRC/repos.yaml"
-  [ "$output" = "$(jq -cn --arg g "$guard" '[["lint","repo","summary"],[$g,$g,"always() && (\($g))"]]')" ]
+  [ "$output" = "$(jq -cn --arg g "$guard" '[["lint","repo","image","summary"],[$g,$g,$g,"always() && (\($g))"]]')" ]
   run yq -o=json -I0 '.jobs | keys' "$WORKFLOWS/ci.yaml"
-  [ "$output" = '["lint","repo","summary"]' ]
+  [ "$output" = '["lint","repo","image","summary"]' ]
 }
 
 @test "every group that syncs a ci.yaml calling ci-repo.yaml also gets the seed" {
@@ -73,12 +80,11 @@ repo_job_is_standard() {
   [ "$output" = "0" ]
 }
 
-@test "the rendered ci.yaml, image-ci.yaml and seed pass actionlint with the synced config" {
+@test "the rendered ci.yaml and seed pass actionlint with the synced config" {
   target="$BATS_TEST_TMPDIR/target"
   mkdir -p "$target/.github/workflows"
   cp "$SRC/templates/.github/actionlint.yaml" "$target/.github/actionlint.yaml"
   cp "$WORKFLOWS/ci-repo.yaml" "$WORKFLOWS/ci.yaml" "$target/.github/workflows/"
-  sed 's/\${xfg:language}/go/' "$WORKFLOWS/image-ci.yaml" >"$target/.github/workflows/image-ci.yaml"
   run grep -rn 'xfg:' "$target/.github/workflows/"
   [ "$status" -eq 1 ]
   git init -q "$target"

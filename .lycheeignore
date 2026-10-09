@@ -4,6 +4,7 @@ https://raw.githubusercontent.com/.*
 
 # GitHub API URLs require authentication and can't be validated
 https://api.github.com/.*
+https://uploads.github.com/.*
 
 # VS Code site returns 403 to automated link checkers
 https://code.visualstudio.com/.*

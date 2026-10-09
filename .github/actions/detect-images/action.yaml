@@ -8,20 +8,39 @@ description: >-
   base-sha on a pull request, else against HEAD~1.
 inputs:
   mode:
-    description: changed (images whose files changed) or all (every image, without diffing)
+    description: >-
+      changed (images whose files changed), all (every image, without diffing),
+      released (images release-please just released, with their tags) or
+      rebuild (one image at version, with the tag release-please gave it)
     required: false
     default: changed
   image:
-    description: Build exactly this image, whatever the mode. Fails when the repo has no such image
+    description: >-
+      Select exactly this image. Fails when the repo has no such image. In rebuild
+      mode it may be empty only when the repo has one image; released mode refuses it
     required: false
     default: ""
   base-sha:
     description: Base commit to diff against through the merge base. Empty diffs HEAD~1
     required: false
     default: ${{ github.event.pull_request.base.sha }}
+  releases:
+    description: released mode only, the release-please-action outputs as JSON (toJSON(steps.<id>.outputs))
+    required: false
+    default: ""
+  version:
+    description: rebuild mode only, the version to rebuild, without a leading v
+    required: false
+    default: ""
+  root-name:
+    description: Image name for a package at the repo root. Empty uses the lowercased repo name
+    required: false
+    default: ""
 outputs:
   matrix:
-    description: 'JSON matrix, {"include":[...]}, one entry per image'
+    description: >-
+      JSON matrix, {"include":[...]}, one entry per image. In released and rebuild
+      mode each entry also has version, tag-name (the git tag) and tag-prefix (the docker tag's)
     value: ${{ steps.detect.outputs.matrix }}
   has-images:
     description: '"true" when the matrix holds at least one image, else "false"'
@@ -36,5 +55,8 @@ runs:
         MODE: ${{ inputs.mode }}
         IMAGE: ${{ inputs.image }}
         BASE_SHA: ${{ inputs.base-sha }}
+        RELEASES: ${{ inputs.releases }}
+        VERSION: ${{ inputs.version }}
+        REPO_NAME: ${{ inputs.root-name }}
         DETECT_SCRIPT: ${{ github.action_path }}/detect.sh
       run: '"$DETECT_SCRIPT"'

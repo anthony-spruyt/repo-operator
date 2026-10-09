@@ -91,12 +91,6 @@ groups:
       - github-ci
       - release-please
     files:
-      .github/workflows/ci.yaml:
-        createOnly: false
-        override: true
-        template: true
-        header: This file is automatically updated - do not modify directly
-        content: "@templates/.github/workflows/image-ci.yaml"
       .github/workflows/release-please.yaml:
         template: true
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
@@ -121,8 +115,11 @@ groups:
       - megalinter-flavor
     files:
       .github/workflows/ci.yaml:
-        vars:
-          language: go
+        content:
+          jobs:
+            image:
+              with:
+                language: "go"
       .github/workflows/release-please.yaml:
         vars:
           language: go
@@ -136,8 +133,11 @@ groups:
       - megalinter-flavor
     files:
       .github/workflows/ci.yaml:
-        vars:
-          language: python
+        content:
+          jobs:
+            image:
+              with:
+                language: "python"
       .github/workflows/release-please.yaml:
         vars:
           language: python
