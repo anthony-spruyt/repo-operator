@@ -63,7 +63,8 @@ repos:
                   - "some.extension"
 ```
 
-CI lives in two files. `.github/workflows/ci.yaml` is the standard workflow (`lint`, then a `repo` job that calls `ci-repo.yaml`, then `image`, then `summary`), the same in every repo apart from per-repo xfg overlays. `.github/workflows/ci-repo.yaml` belongs to the repo and holds its own jobs. `github-ci` writes `ci.yaml` on every sync, so don't edit it in the repo; change the template or a per-repo overlay in repo-operator. It seeds only `ci-repo.yaml`, once and without comments. Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` in `ci-repo.yaml` when you add jobs, so Renovate keeps the pins current. Only repo-operator keeps its own `ci.yaml`, through a `createOnly` override (see [Standard ci.yaml and ci-repo.yaml](docs/ci.md#standard-ciyaml-and-ci-repoyaml)).
+CI lives in two files. `.github/workflows/ci.yaml` is the standard workflow (`lint`, then a `repo` job that calls `ci-repo.yaml`, then `image`, then `summary`), the same in every repo apart from per-repo xfg overlays. `.github/workflows/ci-repo.yaml` belongs to the repo and holds its own jobs. `github-ci` writes `ci.yaml` on every sync, so don't edit it in the repo; change the template or a
+per-repo overlay in repo-operator. It seeds only `ci-repo.yaml`, once and without comments. Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` in `ci-repo.yaml` when you add jobs, so Renovate keeps the pins current. Only repo-operator keeps its own `ci.yaml`, through a `createOnly` override (see [Standard ci.yaml and ci-repo.yaml](docs/ci.md#standard-ciyaml-and-ci-repoyaml)).
 
 ## Local Development
 
@@ -86,8 +87,8 @@ Every repo's `ci.yaml` has an `image` job that builds each release-please packag
 
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
-Image repos join `go-image` or `python-image`, or `image` when their images use more than one language. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`).
-Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, with the `DOCKERHUB_TOKEN` secret that `image` syncs. See [Managed image repos](docs/ci.md#managed-image-repos).
+Image repos join `go-image` or `python-image`, or `image` when their images use more than one language. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`). Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, with the `DOCKERHUB_TOKEN` secret that
+`image` syncs. See [Managed image repos](docs/ci.md#managed-image-repos).
 
 ## Renovate Configuration
 
@@ -143,13 +144,13 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### GitHub Apps and bots
 
-| Actor                            | ID      | Credential                                                                                         | Can do                                           | Bypass                                                      |
-| -------------------------------- | ------- | -------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ----------------------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                     | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)                      |
-| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                   | Read-only metadata for `xfg` dry-runs            | none                                                        |
-| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos              |
-| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only; no synced workflow uses it                                       | Deletes old releases and tags                    | `tag-rules` `always` on container-images                    |
-| `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                     | Merges PRs, queue branches                       | `pr-rules` `exempt`                                         |
+| Actor                            | ID      | Credential                                                                                                                                            | Can do                                           | Bypass                                         |
+| -------------------------------- | ------- | ----------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                                                                        | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)         |
+| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                                                                      | Read-only metadata for `xfg` dry-runs            | none                                           |
+| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group, also into its `release` environment (`main` only) | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos |
+| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only; no synced workflow uses it                                                                                          | Deletes old releases and tags                    | `tag-rules` `always` on container-images       |
+| `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                                                                        | Merges PRs, queue branches                       | `pr-rules` `exempt`                            |
 
 `tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag) and garbo on container-images. Repos outside `release-please` take no tags.
 
@@ -157,19 +158,19 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### Tokens
 
-| Token              | Type                                                           | Where                                           | Can do                                                 |
-| ------------------ | -------------------------------------------------------------- | ----------------------------------------------- | ------------------------------------------------------ |
-| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy`                        | Read every package; the list API rejects app tokens    |
-| `DOCKERHUB_TOKEN`  | Docker Hub access token for `aspruyt`                          | Synced to `dockerhub`, which `image` extends    | Push images to Docker Hub in the release jobs          |
-| `SONAR_TOKEN`      | SonarQube Cloud token                                          | repo-operator `sonar` environment (`main` only) | Set project settings (`sonar-settings.yaml`)           |
-| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common`                        | `gh` and local dry-runs; no secrets or packages access |
-| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                                        | Integration tests against test orgs                    |
+| Token              | Type                                                           | Where                                                             | Can do                                                 |
+| ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
+| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy`                                          | Read every package; the list API rejects app tokens    |
+| `DOCKERHUB_TOKEN`  | Docker Hub access token for `aspruyt`                          | Synced to `dockerhub`, which `image` extends, also into `release` | Push images to Docker Hub in the release jobs          |
+| `SONAR_TOKEN`      | SonarQube Cloud token                                          | repo-operator `sonar` environment (`main` only)                   | Set project settings (`sonar-settings.yaml`)           |
+| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common`                                          | `gh` and local dry-runs; no secrets or packages access |
+| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                                                          | Integration tests against test orgs                    |
 
 The local PAT stays on purpose: `gh` needs a user identity.
 
 ### Rotating a synced secret
 
-Secrets in `settings.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
+Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
 
 ## Related Projects
 
