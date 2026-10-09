@@ -41,4 +41,4 @@ jobs:
           sudo tar -xzf "$tarball" -C /usr/local/bin actionlint
 
       - name: "Run bats tests"
-        run: "bats .github/scripts/ .github/actions/sonar-new-issues/test/ .github/actions/detect-images/test/"
+        run: "bats -r test/"
