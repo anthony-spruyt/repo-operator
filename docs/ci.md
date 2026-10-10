@@ -7,8 +7,8 @@ The synced callers (`src/templates/.github/workflows/`) carry the comment here, 
 comment, and Renovate bumps them in that repo. A `ci.yaml` that a repo keeps through a `createOnly` override is seeded the same way, without the comment, so add `# main` to its `uses:` lines by hand after the first sync, or it stays on that SHA. To ship a fix before the monthly window, tick the group on a Renovate dashboard: repo-operator's for the synced callers (the next Apply carries it out),
 or the owning repo's for its own callers.
 
-The image workflows build every release-please package that holds a `Dockerfile`, so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). Each image's tests run in its `workdir`: the package path (the repo root for a single-image repo) unless its `metadata.yaml` sets one, so `go.mod`, `pyproject.toml` or `package.json` sits there. Repos with
-their own build jobs can call the composite actions instead.
+The image workflows build every release-please package that holds a `Dockerfile` or `flavor.yaml` (a MegaLinter flavor, whose Dockerfile is generated), so a repo with one image at the root and a monorepo with several use the same callers (see [Images](#images)). Each image's tests run in its `workdir`: the package path (the repo root for a single-image repo) unless its `metadata.yaml` sets one, so
+`go.mod`, `pyproject.toml` or `package.json` sits there. Repos with their own build jobs can call the composite actions instead.
 
 A reusable workflow resolves `uses: ./...` against the caller's checkout, not against this repo. That is why these workflows refer to each other, and to the actions, with `$/` (for example `uses: $/.github/actions/build-image`), which resolves to this repo at the same ref as the calling workflow. To test a branch of this repo, point the caller at the branch; the internal references follow it.
 
@@ -55,12 +55,17 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `prepare-command`: shell command the build runs before building, such as generating a Dockerfile
 - `free-disk` (default `false`): free runner disk space before building
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
-- `test-command`: shell command run against the built image (`$IMAGE_REF`)
+- `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
+`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
+
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
+
+On a pull request, images are selected twice: once with the PR's `release-please-config.json` and once with the config at `base-sha`. An image that either selects builds. The base branch's config also selects images, so a PR's config can only add builds, and a package the PR adds still builds. A push uses the pushed commit's config
+only.
 
 Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them
 too:
@@ -75,14 +80,14 @@ Other release types count only their changelog and `extra-files`, so their relea
 
 - `mode` (default `changed`): `changed`; `all` for every image without diffing; `released` for the images release-please just released
 - `image`: select exactly this image; fails when the repo has no such image. `released` mode refuses it
-- `base-sha` (default: the pull request's base commit): diff against the merge base with this commit; empty diffs `HEAD~1`
+- `base-sha` (default: the pull request's base commit): diff against the merge base with this commit, and select images with its config as well; empty diffs `HEAD~1`
 - `releases`: `released` mode only, the release-please-action outputs as JSON (`toJSON(steps.<id>.outputs)`)
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
 The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` mode each entry also holds `version`, `tag-name` (the git
 tag) and `tag-prefix` (the docker tag's).
 
-`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` is not an image and is left out.
+`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` or `flavor.yaml` is not an image and is left out.
 
 The docker tag prefix is `v` only when `include-v-in-tag` is set to `true` on the package or at the top level. Left unset it is empty, even though release-please's git tag then has a `v`, so a `v1.2.3` release keeps its `1.2.3` docker tag.
 
@@ -110,7 +115,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
   `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
-- `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` stays a draft.
+- `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
@@ -234,14 +239,15 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
 
 `--repo` is the source repo that the attestation names. Without `--signer-repo` the check fails, because by default `gh` expects the signer to be a workflow in the source repo.
 
-Tags released before container-images or spruyt-labs joined the `image` group are signed by that repo's own `_build-image.yaml`, which called the `build-image` action rather than the shared workflow. Pin the signer workflow for those:
+Tags released before container-images or spruyt-labs joined the `image` group are signed by that repo's own `_build-image.yaml`, which called the `build-image` action rather than the shared workflow. That covers every image of both repos, all three of spruyt-labs' (shutdown-orchestrator, agent-queue-worker and bull-board) included. Pin the signer workflow for
+those:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/llm-guard:<tag> \
   --repo anthony-spruyt/container-images \
   --signer-workflow anthony-spruyt/container-images/.github/workflows/_build-image.yaml
 
-gh attestation verify oci://ghcr.io/anthony-spruyt/bull-board:<tag> \
+gh attestation verify oci://ghcr.io/anthony-spruyt/<spruyt-labs-image>:<tag> \
   --repo anthony-spruyt/spruyt-labs \
   --signer-workflow anthony-spruyt/spruyt-labs/.github/workflows/_build-image.yaml
 ```
@@ -268,6 +274,9 @@ environment's secrets reach a called job that declares `environment:` itself.
 Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
 `ci-repo.yaml` makes the whole run invalid.
 
+A new push to a pull request cancels that PR's older `CI` run. Every other run (a push to `main`, a `labeled` event from xfg's overlay) gets its own concurrency group, so it never waits for or cancels another run: GitHub keeps one pending run per group and cancels the older pending one even with `cancel-in-progress: false`, and on
+`main` the summary and the release that follows must finish.
+
 Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
@@ -283,7 +292,8 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 | `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                            |
 | `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
 
-A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` sets its `language`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml` when it has more than one image or its image name isn't the lowercased repo name.
+A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml`
+when it has more than one image or its image name isn't the lowercased repo name.
 
 Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
