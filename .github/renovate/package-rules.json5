@@ -194,6 +194,7 @@
     {
       description: "Dependency bumps in image repos release a patch: release-please hides chore commits there. The dev container never reaches the image, so it stays chore",
       matchRepositories: [
+        "anthony-spruyt/agent-platform",
         "anthony-spruyt/kata-tap-qdisc-fix",
         "anthony-spruyt/litellm-middleware",
         "anthony-spruyt/mcp-header-proxy",
@@ -210,6 +211,22 @@
       matchRepositories: ["anthony-spruyt/litellm-middleware", "anthony-spruyt/SunGather"],
       matchManagers: ["pep621"],
       matchDepTypes: ["project.dependencies", "project.optional-dependencies"],
+      semanticCommitType: "fix",
+      semanticCommitScope: "deps"
+    },
+    {
+      description: "Runtime NuGet dependency bumps in agent-platform release a patch; test-only packages never reach the image, so they stay chore",
+      matchRepositories: ["anthony-spruyt/agent-platform"],
+      matchManagers: ["nuget"],
+      matchFileNames: ["Directory.Packages.props"],
+      matchPackageNames: [
+        "!xunit.v3*",
+        "!xunit.runner.*",
+        "!Microsoft.AspNetCore.Mvc.Testing",
+        "!Microsoft.Testing.*",
+        "!Microsoft.NET.Test.Sdk",
+        "!coverlet.*"
+      ],
       semanticCommitType: "fix",
       semanticCommitScope: "deps"
     },
