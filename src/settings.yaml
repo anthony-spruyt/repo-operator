@@ -103,7 +103,7 @@ settings:
     privateVulnerabilityReporting: true
     secretScanning: true
     secretScanningPushProtection: true
-    squashMergeCommitMessage: PR_BODY
+    squashMergeCommitMessage: BLANK
     squashMergeCommitTitle: PR_TITLE
     visibility: public
     vulnerabilityAlerts: true
