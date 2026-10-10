@@ -79,8 +79,8 @@ Other release types count only their changelog and `extra-files`, so their relea
 - `releases`: `released` mode only, the release-please-action outputs as JSON (`toJSON(steps.<id>.outputs)`)
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
-The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` mode each entry also holds `version`,
-`tag-name` (the git tag) and `tag-prefix` (the docker tag's).
+The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none) and `workdir`, with the defaults filled in. In `released` mode each entry also holds `version`, `tag-name` (the git
+tag) and `tag-prefix` (the docker tag's).
 
 `released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` is not an image and is left out.
 
@@ -125,12 +125,13 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 `_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`.
 
-Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, which the `release-please` group syncs.
+Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`.
 
-The `release-please` group also creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads them. No job on the pull request path (`_images.yaml`, the
-`build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
+The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
+them. No job on the pull request path (`_images.yaml`, the `build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
-xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*.*.*`. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.
+xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag, and `docs.yaml` deploys on a push of the floating `vN` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*`, which covers both. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from
+the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.
 
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
@@ -334,8 +335,8 @@ The base is not named `ruff.toml` or `.ruff.toml`: ruff prefers those over `pypr
 
 ### Per-repo values
 
-The group sets `language`: with xfg `vars` in `release-please.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`, whose `language` overrides the group's. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the two
-files can't drift apart:
+The group sets `language`: with xfg `vars` in `release-please.yaml`, and with a content overlay on `ci.yaml`. Settings for one image go in its `metadata.yaml`, whose `language` overrides the group's. Other `with:` inputs, which apply to every image, are added per repo as a content overlay in `repos.yaml`, one per workflow file. A YAML anchor writes the inputs once, so the two files can't drift
+apart:
 
 ```yaml
 files:

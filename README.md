@@ -88,7 +88,7 @@ Every repo's `ci.yaml` has an `image` job that builds each release-please packag
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
 Image repos join `go-image` or `python-image`, or `image` when their images use more than one language. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`). Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, with the `DOCKERHUB_TOKEN` secret that
-`image` syncs. See [Managed image repos](docs/ci.md#managed-image-repos).
+`image` syncs into the `release` environment. See [Managed image repos](docs/ci.md#managed-image-repos).
 
 ## Renovate Configuration
 
@@ -144,15 +144,15 @@ Every credential that can act on the managed repos. Keep this current when addin
 
 ### GitHub Apps and bots
 
-| Actor                            | ID      | Credential                                                                                                                                                                        | Can do                                           | Bypass                                         |
-| -------------------------------- | ------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                                                                                                    | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)         |
-| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                                                                                                  | Read-only metadata for `xfg` dry-runs            | none                                           |
-| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group, also into its `release` environment (`main` only; xfg's also `v*.*.*` tags)   | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos |
-| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only; no synced workflow uses it                                                                                                                      | Deletes old releases and tags                    | `tag-rules` `always` on container-images       |
-| `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                                                                                                    | Merges PRs, queue branches                       | `pr-rules` `exempt`                            |
+| Actor                            | ID      | Credential                                                                                                                                                                 | Can do                                           | Bypass                                         |
+| -------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
+| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                                                                                             | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)         |
+| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                                                                                           | Read-only metadata for `xfg` dry-runs            | none                                           |
+| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group into its `release` environment only (`main` only; xfg's also `v*` tags) | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos |
+| `container-images-garbo[bot]`    | 3215096 | `GARBO_*`, container-images only; no workflow uses it                                                                                                                      | Deletes old releases; can't touch tags           | none                                           |
+| `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                                                                                             | Merges PRs, queue branches                       | `pr-rules` `exempt`                            |
 
-`tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag) and garbo on container-images. Repos outside `release-please` take no tags.
+`tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag). Repos outside `release-please` take no tags.
 
 `pr-rules` only exists on `protected-main-branch` repos. Mergify never approves a PR; release PRs are ordinary PRs that merge once a collaborator approves them.
 
@@ -161,7 +161,7 @@ Every credential that can act on the managed repos. Keep this current when addin
 | Token              | Type                                                           | Where                                                             | Can do                                                 |
 | ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
 | `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy`                                          | Read every package; the list API rejects app tokens    |
-| `DOCKERHUB_TOKEN`  | Docker Hub access token for `aspruyt`                          | Synced to `dockerhub`, which `image` extends, also into `release` | Push images to Docker Hub in the release jobs          |
+| `DOCKERHUB_TOKEN`  | Docker Hub access token for `aspruyt`                          | Synced by `dockerhub`, which `image` extends, into `release` only | Push images to Docker Hub in the release jobs          |
 | `SONAR_TOKEN`      | SonarQube Cloud token                                          | repo-operator `sonar` environment (`main` only)                   | Set project settings (`sonar-settings.yaml`)           |
 | `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common`                                          | `gh` and local dry-runs; no secrets or packages access |
 | xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                                                          | Integration tests against test orgs                    |

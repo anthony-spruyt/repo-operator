@@ -50,9 +50,6 @@ groups:
           secrets:
             DOCKERHUB_TOKEN:
               env: DOCKERHUB_TOKEN
-      secrets:
-        DOCKERHUB_TOKEN:
-          env: DOCKERHUB_TOKEN
   github:
     files:
       .github/actionlint.yaml:
@@ -353,11 +350,6 @@ groups:
               - actorId: 4745999 # repo-operator-release-bot: creates release tags and moves xfg's floating vN tag
                 actorType: Integration
                 bypassMode: always
-      secrets:
-        RELEASE_PLEASE_APP_CLIENT_ID:
-          env: RELEASE_PLEASE_APP_CLIENT_ID
-        RELEASE_PLEASE_APP_PRIVATE_KEY:
-          env: RELEASE_PLEASE_APP_PRIVATE_KEY
   renovate:
     files:
       .devcontainer/devcontainer.json:
