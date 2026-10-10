@@ -268,16 +268,17 @@ check the actionlint tarball against a sha256 pinned beside its version, not the
 runs ungated.
 
 `repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. spruyt-labs' overlay gives `repo` `actions: read` and `pull-requests: read` as well, for its paths filter. xfg's
-overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image` and `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them. An
-environment's secrets reach a called job that declares `environment:` itself.
+overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image`, `sonar` and `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them.
+An environment's secrets reach a called job that declares `environment:` itself.
 
-Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing
-`ci-repo.yaml` makes the whole run invalid.
+Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (see [Images](#images)); `image` waits for `repo`, so repo tests gate the builds. The `go-image` and `python-image` groups add only `language` to the `image` job. The `sonar` group adds a `sonar` job that calls `_sonar-new-issues.yaml` with no permissions and no `needs`, and appends it to `summary.needs` with
+`$arrayMerge: append`, so `summary` judges [`sonar-new-issues`](#sonar-new-issues) as `sonar / New Issues`. Its skip outside pull requests and on Mergify merge-queue PRs counts as a pass, because `summary` fails only on a failed or cancelled job. A `sonar` repo lists `github-ci` before `sonar`, so the job merges onto the synced `ci.yaml`. The group pins the call in `src/groups.yaml` to the
+template's `main` commit, and repo-operator's Renovate reads that file with its `github-actions` manager, so the monthly `repo-operator shared CI` PR bumps it with the template pins. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing `ci-repo.yaml` makes the whole run invalid.
 
 A new push to a pull request cancels that PR's older `CI` run. Every other run (a push to `main`, a `labeled` event from xfg's overlay) gets its own concurrency group, so it never waits for or cancels another run: GitHub keeps one pending run per group and cancels the older pending one even with `cancel-in-progress: false`, and on
 `main` the summary and the release that follows must finish.
 
-Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply.
+Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply. It carries the same `sonar` job by hand, calling `./.github/workflows/_sonar-new-issues.yaml` so a PR checks its own branch of the workflow, and Guard Tests keep it in `summary.needs`.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
 

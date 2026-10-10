@@ -32,6 +32,10 @@ jobs:
     uses: "./.github/workflows/ci-repo.yaml"
     secrets: "inherit"
 
+  sonar:
+    permissions: {}
+    uses: "./.github/workflows/_sonar-new-issues.yaml"
+
   # PR code is untrusted, so it plans with the read-only Plan App. GitHub hides merge settings
   # and ruleset bypass_actors from read-only tokens, so this plan is a partial preview.
   xfg-preview:
@@ -276,6 +280,7 @@ jobs:
       - "xfg-preview"
       - "xfg-plan"
       - "xfg-apply"
+      - "sonar"
     if: "always()"
     permissions:
       actions: "read"

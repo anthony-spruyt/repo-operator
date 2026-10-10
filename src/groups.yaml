@@ -405,6 +405,17 @@ groups:
           description: ""
   sonar:
     files:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            sonar:
+              permissions: {}
+              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@cb40ddc2ff6cd9f0441cd59406c849c68f6bd464" # main
+            summary:
+              needs:
+                $arrayMerge: append
+                $values:
+                  - "sonar"
       .sonarcloud.properties:
         createOnly: true
         content: "@templates/.sonarcloud.properties"
