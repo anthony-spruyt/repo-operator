@@ -70,13 +70,6 @@ repos:
           color: "#ededed"
           description: ""
       rulesets:
-        tag-rules:
-          bypassActors:
-            $arrayMerge: append
-            $values:
-              - actorId: 3215096 # container-images-garbo: deletes old release git tags (deletion rule)
-                actorType: Integration
-                bypassMode: always
         pr-rules:
           rules:
             $arrayMerge: merge
@@ -498,7 +491,7 @@ repos:
         "renovate/python":
           color: "#ededed"
           description: ""
-      # Publish runs on v*.*.* tag pushes; a repo-level policy replaces the group's, so main is restated
+      # Publish runs on v*.*.* tags and docs deploy on vN tags; a repo-level policy replaces the group's, so main is restated
       environments:
         release:
           deploymentBranchPolicy:
@@ -506,7 +499,7 @@ repos:
               - type: branch
                 name: main
               - type: tag
-                name: "v*.*.*"
+                name: "v*"
       rulesets:
         branch-signatures:
           conditions:
