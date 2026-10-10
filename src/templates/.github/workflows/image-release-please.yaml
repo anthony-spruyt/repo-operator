@@ -16,7 +16,7 @@ permissions:
 
 jobs:
   release:
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@50007523d17053af1ed7d7128f78a7fc5890f8e4" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@03ce087ec3006c13aa278b3d1b42e8f409cd6c43" # main
     with:
       language: "${xfg:language}"
       dockerhub-namespace: "aspruyt"

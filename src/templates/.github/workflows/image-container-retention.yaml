@@ -18,7 +18,7 @@ jobs:
   cleanup:
     permissions:
       packages: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@50007523d17053af1ed7d7128f78a7fc5890f8e4" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@03ce087ec3006c13aa278b3d1b42e8f409cd6c43" # main
     with:
       packages: "${xfg:retentionPackages}"
       # Scheduled runs get no inputs, so only a dispatch can dry-run
