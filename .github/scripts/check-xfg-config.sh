@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Fails closed on xfg config that could send the repo-operator App's credentials somewhere other
-# than GitHub. Runs before every xfg step that holds an App key. Usage: check-xfg-config.sh [dir]
+# Checks that xfg config only targets github.com and holds no env references. Runs before every
+# xfg step that holds an App key. Usage: check-xfg-config.sh [dir]
 set -euo pipefail
 
 config_dir="${1:-src}"
@@ -57,7 +57,7 @@ if [[ ! -d "$config_dir" ]]; then
   exit 1
 fi
 
-# xfg follows symlinks, so one could point a file reference at /proc/self/environ
+# xfg follows symlinks, so config files must be regular files
 while IFS= read -r -d '' link; do
   violations+=("$link: symlinks are not allowed")
 done < <(find "$config_dir" -type l -print0)
@@ -80,8 +80,8 @@ while IFS= read -r -d '' file; do
     --arg ai_base_url "$ALLOWED_AI_BASE_URL" "$JQ_CONFIG")
 done < <(find "$config_dir" -mindepth 1 -name '.*' -prune -o -type f \( -iname '*.yaml' -o -iname '*.yml' \) -print0)
 
-# xfg interpolates ${VAR} from its own environment, which holds the App key, into file content.
-# Any file under the config dir can be referenced as content, so check them all, raw and decoded.
+# xfg interpolates ${VAR} from its environment into file content, so every file under the config
+# dir is checked, raw and decoded.
 while IFS= read -r -d '' file; do
   report < <(perl -0777 -ne 's/\$\$\{(?!xfg:)[^}]+\}//g; print "$ARGV: env var reference not allowed: $1\n" while /(\$\{[A-Za-z_][A-Za-z0-9_.]*(?::[?-][^}]*)?\})/g' "$file")
   decoded=""
@@ -93,7 +93,7 @@ while IFS= read -r -d '' file; do
     decoded="$(jq -c . "$file" 2>/dev/null)" || violations+=("$file: not valid JSON")
     ;;
   *.json5)
-    # No JSON5 decoder here, so reject the escapes that could spell out a reference instead
+    # No JSON5 decoder here, so escapes that can spell a reference are rejected
     if perl -0777 -ne 's/\\\\//g; exit(/\\(?:[\$\{\r\nxuU]|\xe2\x80[\xa8\xa9])/ ? 0 : 1)' "$file"; then
       violations+=("$file: escape sequences for \$, { or line continuations are not allowed in JSON5")
     fi
