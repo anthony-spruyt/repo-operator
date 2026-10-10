@@ -12,6 +12,8 @@ Any task with more than one step, or that may outlive this session. Skip one-sho
 
 The issue body stays the public plan and checklist; the progress file is your working memory.
 
+When orchestrating from `main`, make a local branch in a worktree for your notes; never write `main.md`, and never put working notes on the issue.
+
 ## What
 
 Under 100 lines; the hook loads only the first 9,000 characters. Write for a reader with no memory of this session:
