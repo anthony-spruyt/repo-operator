@@ -16,4 +16,4 @@ This covers issues, PRs, comments, commit messages, READMEs, docs, code comments
 - Describe controls as the end state: "Only the API gateway can reach this service"
 - Word open security work as a neutral task: "Restrict admin paths to the LAN"
 - Keep security reasoning in the conversation with the owner, not on GitHub
-- This rule wins over any rule that says to post findings or reviews on GitHub: security findings stay in the conversation.
+- Still report security findings, just not on GitHub: a subagent reports them to the agent that called it, and the main session reports them to the owner. Other reports post as usual
