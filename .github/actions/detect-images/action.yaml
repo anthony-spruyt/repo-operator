@@ -5,7 +5,8 @@ description: >-
   List the repo's images as a build matrix: release-please packages whose path
   holds a Dockerfile or flavor.yaml, with settings from <path>/metadata.yaml.
   By default only images whose files changed: against the merge base with
-  base-sha on a pull request, else against HEAD~1.
+  base-sha on a pull request, else against HEAD~1. On a pull request the
+  config at base-sha selects images too, so a PR can't drop its own build.
 inputs:
   mode:
     description: >-
@@ -20,7 +21,9 @@ inputs:
     required: false
     default: ""
   base-sha:
-    description: Base commit to diff against through the merge base. Empty diffs HEAD~1
+    description: >-
+      Base commit to diff against through the merge base; its
+      release-please-config.json selects images too. Empty diffs HEAD~1
     required: false
     default: ${{ github.event.pull_request.base.sha }}
   releases:

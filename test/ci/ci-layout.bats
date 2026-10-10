@@ -8,6 +8,14 @@ setup() {
   REPO_JOB='{"needs":["lint"],"uses":"./.github/workflows/ci-repo.yaml","permissions":{"contents":"read"},"secrets":"inherit"}'
 }
 
+# eval_if <expr> <lint result> <repo result> <cancelled> - a job's if, rewritten to jq; any other function or context fails jq
+eval_if() {
+  local jq_expr
+  jq_expr=$(sed -E -e 's/!cancelled\(\)/($cancelled | not)/g' -e 's/needs\.(lint|repo)\.result/$\1/g' \
+    -e 's/&&/and/g' -e 's/\|\|/or/g' -e "s/'/\"/g" <<<"$1")
+  jq -n --arg lint "$2" --arg repo "$3" --argjson cancelled "$4" "$jq_expr"
+}
+
 repo_job_is_standard() {
   [ "$(yq -o=json '.jobs.repo' "$1" | jq -cS .)" = "$(jq -cS . <<<"$REPO_JOB")" ]
 }
@@ -24,8 +32,25 @@ repo_job_is_standard() {
 }
 
 @test "the ci.yaml template's image job runs when repo is skipped, not when lint fails or the run is cancelled" {
-  run yq -r '.jobs.image.if' "$WORKFLOWS/ci.yaml"
-  [ "$output" = "!cancelled() && needs.lint.result == 'success' && (needs.repo.result == 'success' || needs.repo.result == 'skipped')" ]
+  expr=$(yq -r '.jobs.image.if' "$WORKFLOWS/ci.yaml")
+  while read -r lint repo cancelled want; do
+    run eval_if "$expr" "$lint" "$repo" "$cancelled"
+    [ "$output" = "$want" ] || {
+      echo "lint=$lint repo=$repo cancelled=$cancelled: got '$output', want $want"
+      return 1
+    }
+  done <<'EOF'
+success success false true
+success skipped false true
+success failure false false
+success cancelled false false
+failure success false false
+failure skipped false false
+skipped skipped false false
+cancelled skipped false false
+success success true false
+success skipped true false
+EOF
 }
 
 @test "image-ci.yaml is retired: no group overrides ci.yaml, and the image groups only set its language" {
@@ -34,6 +59,12 @@ repo_job_is_standard() {
   [ "$status" -eq 1 ]
   run yq -o=json -I0 '.groups | to_entries | map(select(.key != "github-ci" and .value.files[".github/workflows/ci.yaml"] != null) | [.key, .value.files[".github/workflows/ci.yaml"]])' "$SRC/groups.yaml"
   [ "$output" = '[["go-image",{"content":{"jobs":{"image":{"with":{"language":"go"}}}}}],["python-image",{"content":{"jobs":{"image":{"with":{"language":"python"}}}}}]]' ]
+}
+
+@test "the ci.yaml template cancels a PR's older run, and gives every other run its own group" {
+  pr="github.event_name == 'pull_request' && github.event.action != 'labeled'"
+  run yq -o=json -I0 '.concurrency' "$WORKFLOWS/ci.yaml"
+  [ "$output" = "$(jq -cn --arg pr "$pr" '{group: "${{ github.workflow }}-${{ \($pr) && github.event.pull_request.number || github.run_id }}", "cancel-in-progress": "${{ \($pr) }}"}')" ]
 }
 
 @test "the ci.yaml template holds no commented-out code" {
@@ -162,20 +193,66 @@ repo_job_is_standard() {
   [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
 }
 
-@test "every repo-operator ref pinned in src/templates is an ancestor of origin/main" {
+# check_pins <dir> <min> - fails listing each repo-operator pin under dir that is not on origin/main, or with fewer than min pins
+check_pins() {
+  local dir="$1" min="$2" file line sha count=0 bad=""
   git -C "$REPO_ROOT" rev-parse --verify --quiet origin/main >/dev/null || {
     echo "origin/main is not fetched"
     return 1
   }
-  bad=""
   while IFS=: read -r file line sha; do
-    git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null || bad+="${file}:${line} ${sha}"$'\n'
-  done < <(grep -rnoE 'anthony-spruyt/repo-operator/[^"@ ]*@[0-9a-f]{40}' "$SRC/templates" | sed -E 's/^([^:]+):([0-9]+):.*@([0-9a-f]{40})$/\1:\2:\3/')
+    count=$((count + 1))
+    if [[ ! "$sha" =~ ^[0-9a-f]{40}$ ]]; then
+      bad+="${file}:${line} ${sha} is not a full lowercase SHA"$'\n'
+    elif ! git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null; then
+      bad+="${file}:${line} ${sha} is not on origin/main"$'\n'
+    fi
+  done < <(grep -rnoiE 'anthony-spruyt/repo-operator(/[^"@[:space:]]*)?@[^"#[:space:]]+' "$dir" | sed -E 's/^([^:]+):([0-9]+):.*@/\1:\2:/')
   [ -z "$bad" ] || {
-    echo "pins not reachable from origin/main:"
+    echo "bad repo-operator pins:"
     echo "$bad"
     return 1
   }
+  [ "$count" -ge "$min" ] || {
+    echo "found $count repo-operator pins, expected at least $min"
+    return 1
+  }
+}
+
+@test "every repo-operator ref pinned in src/templates is an ancestor of origin/main" {
+  check_pins "$SRC/templates" 7
+}
+
+@test "the pin guard flags short, pathless and mixed-case repo-operator pins" {
+  main_sha=$(git -C "$REPO_ROOT" rev-parse origin/main)
+  dir="$BATS_TEST_TMPDIR/pins"
+  mkdir -p "$dir"
+  printf 'uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@%s" # main\n' "$main_sha" >"$dir/good.yaml"
+  printf 'uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@%s" # main\n' "${main_sha:0:7}" >"$dir/short.yaml"
+  printf 'uses: anthony-spruyt/repo-operator@0123456789abcdef0123456789abcdef01234567\n' >"$dir/pathless.yaml"
+  printf 'uses: Anthony-Spruyt/Repo-Operator/.github/workflows/_lint.yaml@0123456789abcdef0123456789abcdef01234567\n' >"$dir/owner-case.yaml"
+  printf 'uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@%s\n' "${main_sha^^}" >"$dir/sha-case.yaml"
+  run check_pins "$dir" 1
+  echo "$output"
+  [ "$status" -eq 1 ]
+  for f in short pathless owner-case sha-case; do
+    [[ "$output" == *"$dir/$f.yaml:1 "* ]]
+  done
+  [[ "$output" != *"good.yaml"* ]]
+}
+
+@test "the pin guard fails when it finds fewer pins than the minimum" {
+  main_sha=$(git -C "$REPO_ROOT" rev-parse origin/main)
+  dir="$BATS_TEST_TMPDIR/pins"
+  mkdir -p "$dir"
+  run check_pins "$dir" 1
+  [ "$status" -eq 1 ]
+  printf 'uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@%s" # main\n' "$main_sha" >"$dir/good.yaml"
+  run check_pins "$dir" 2
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"found 1 repo-operator pins, expected at least 2"* ]]
+  run check_pins "$dir" 1
+  [ "$status" -eq 0 ]
 }
 
 @test "nothing syncs or calls Rebuild Release (#604)" {
