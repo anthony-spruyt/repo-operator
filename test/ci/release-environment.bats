@@ -39,9 +39,35 @@ release_env() {
   [ "$output" = "[{\"$XFG_GIT\":[\"release\"]}]" ]
 }
 
-@test "xfg's release environment allows main and v*.*.* tags, inheriting the release App secrets" {
+@test "xfg's release environment allows main and v* tags, inheriting the release App secrets" {
   run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments.release" "$SRC/repos.yaml"
-  [ "$(jq -cS . <<<"$output")" = '{"deploymentBranchPolicy":{"custom":[{"name":"main","type":"branch"},{"name":"v*.*.*","type":"tag"}]}}' ]
+  [ "$(jq -cS . <<<"$output")" = '{"deploymentBranchPolicy":{"custom":[{"name":"main","type":"branch"},{"name":"v*","type":"tag"}]}}' ]
+}
+
+@test "the release secrets live only in the release environment, not at repo level" {
+  run yq -o=json -I0 '[.groups[] | .settings.secrets // {} | keys[] | select(test("^(RELEASE_PLEASE_APP_CLIENT_ID|RELEASE_PLEASE_APP_PRIVATE_KEY|DOCKERHUB_TOKEN)$"))]' "$SRC/groups.yaml"
+  [ "$output" = "[]" ]
+  local f
+  for f in settings.yaml base.yaml repos.yaml; do
+    run yq -r '[.. | select(tag == "!!map" and has("secrets")) | .secrets | select(tag == "!!map") | keys[] | select(test("^(RELEASE_PLEASE_APP_CLIENT_ID|RELEASE_PLEASE_APP_PRIVATE_KEY|DOCKERHUB_TOKEN)$"))] | length' "$SRC/$f"
+    echo "$f: $output"
+    [ "$output" = "0" ]
+  done
+  run yq -r '[.conditionalGroups[] | .. | select(tag == "!!map" and has("secrets")) | .secrets | select(tag == "!!map") | keys[] | select(test("^(RELEASE_PLEASE_APP_CLIENT_ID|RELEASE_PLEASE_APP_PRIVATE_KEY|DOCKERHUB_TOKEN)$"))] | length' "$SRC/groups.yaml"
+  [ "$output" = "0" ]
+  run release_env release-please
+  [ "$(jq -c '.secrets | keys' <<<"$output")" = '["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"]' ]
+  run release_env dockerhub
+  [ "$(jq -c '.secrets | keys' <<<"$output")" = '["DOCKERHUB_TOKEN"]' ]
+}
+
+@test "no tag-rules bypass names the container-images-garbo App" {
+  local f
+  for f in "$SRC"/*.yaml; do
+    run yq -r '[.. | select(tag == "!!map" and has("tag-rules")) | .["tag-rules"].bypassActors | .. | select(tag == "!!map" and has("actorId")) | select(.actorId == 3215096)] | length' "$f"
+    echo "$f: $output"
+    [ "$output" = "0" ]
+  done
 }
 
 @test "every other repo's release environment is main only" {
