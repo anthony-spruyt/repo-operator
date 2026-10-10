@@ -272,7 +272,7 @@ jobs:
           GH_TOKEN: "${{ steps.app-token.outputs.token }}"
         run: gh variable set LAST_XFG_DEPLOY_SHA --body "${{ github.sha }}"
 
-  # The one required check: it judges every job in the run, the repo / ... jobs included
+  # The one required check from CI: it judges every job in the run, the repo / ... jobs included
   summary:
     needs:
       - "lint"
