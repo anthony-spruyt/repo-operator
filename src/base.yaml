@@ -7,7 +7,7 @@ prOptions:
   ai:
     provider: openai
     baseUrl: https://openrouter.ai/api/v1
-    model: openai/gpt-4o-mini
+    model: anthropic/claude-haiku-5.5
     apiKeyEnv: OPENROUTER_API_KEY
     prompt: >-
       These commits sync shared tooling config, never product code, and
