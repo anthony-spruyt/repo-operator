@@ -95,8 +95,6 @@ The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to 
 xfg [lifecycle](https://github.com/anthony-spruyt/xfg/blob/main/docs/configuration/lifecycle.md) creates a missing repo on sync: empty by default, a fork with `upstream`, or a full mirror of another repo with `source`.
 
 - **Splitting a subfolder out with its history is not a lifecycle mode.** Create the repo empty in the GitHub UI (nothing ticked), push the filtered history (`git filter-repo --subdirectory-filter <dir>`), and only then add it to `repos.yaml`. Once synced, rulesets require signed commits and PRs, so rewritten history can no longer be pushed.
-- **CI cannot create repos on this personal account.** A GitHub App installation token cannot create user-owned repos; that needs a user access token (interactive login). CI uses the `repo-operator` app's installation token, so create fails with `403 Rate Limit Exceeded` after long retries ([xfg#1070](https://github.com/anthony-spruyt/xfg/issues/1070)). Org-owned repos do work with an installation
-  token. Create the repo in the GitHub UI first, then let CI manage it. Do not use the local `GH_TOKEN` PAT for this - it belongs to `spruyt-labs-bot`, so the bot would own the repo.
 
 After the repo exists:
 
@@ -133,6 +131,7 @@ The xfg-apply job pushes the updated configuration directly to target repos (`pr
 
 `sonar-settings.yaml` owns SonarQube Cloud project settings for the `sonar` group, from `.github/sonar-settings.yaml`. It plans on PRs that touch its paths (public GET, no token) and applies on `main` push, weekly and dispatch with `SONAR_TOKEN` from the `sonar` environment. It is not a required check, because its paths filter would leave it pending on other PRs. See the README.
 
-The `sonar` job in `ci.yaml` (`sonar / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit, uses no token, and `summary` judges it. The `sonar` group adds the same job to the synced `ci.yaml` and appends it to `summary.needs`. guard-test also runs its bats tests in `test/sonar-new-issues.bats`. See `docs/ci.md`.
+The `sonar` job in `ci.yaml` (`sonar / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit, uses no token, and `summary` judges it. The `sonar` group adds the same job to the synced `ci.yaml` and appends it to `summary.needs`. guard-test also runs its bats tests in
+`test/sonar-new-issues.bats`. See `docs/ci.md`.
 
 Additional workflows distributed to target repos include Trivy vulnerability scanning.

@@ -89,8 +89,8 @@ Every repo's `ci.yaml` has an `image` job that builds each release-please packag
 
 Every `megalinter` repo gets its MegaLinter image pin inside its managed `lint.sh`. The pins live in this repo, so Renovate bumps each one once here instead of in every repo. See [Lint image pin](docs/ci.md#lint-image-pin).
 
-Image repos join `go-image` or `python-image`, or `image` when their images use more than one language. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`). Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, with the `DOCKERHUB_TOKEN` secret that
-`image` syncs into the `release` environment. See [Managed image repos](docs/ci.md#managed-image-repos).
+Image repos join `go-image` or `python-image`, or `image` when their images use more than one language or a language the shared workflows don't test, such as .NET. Those groups sync the CI and release callers as managed files, and `go-image` and `python-image` also sync the language flavor pin and the lint config (`.golangci.yml`, `ruff-base.toml`). Every image publishes to GHCR and to Docker Hub
+as `aspruyt/<image>`, with the `DOCKERHUB_TOKEN` secret that `image` syncs into the `release` environment. See [Managed image repos](docs/ci.md#managed-image-repos).
 
 ## Renovate Configuration
 
@@ -138,7 +138,8 @@ Create the SonarQube Cloud project before adding a repo to the `sonar` group, or
 .github/scripts/sync-sonar-settings.sh
 ```
 
-The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and [Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
+The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and
+[Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
 
 ## Credentials
 

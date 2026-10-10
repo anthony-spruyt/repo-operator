@@ -10,6 +10,7 @@
     "helm-values",
     "kubernetes",
     "npm",
+    "nuget",
     "pep621",
     "pip_requirements",
     "pre-commit",
