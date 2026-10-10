@@ -13,6 +13,11 @@ on:
 
 permissions: {}
 
+# A shared group would cancel a pending main run; labeled runs (xfg) skip every job, so they must not cancel a real run
+concurrency:
+  group: "${{ github.workflow }}-${{ github.event_name == 'pull_request' && github.event.action != 'labeled' && github.event.pull_request.number || github.run_id }}"
+  cancel-in-progress: "${{ github.event_name == 'pull_request' && github.event.action != 'labeled' }}"
+
 jobs:
   lint:
     permissions:
@@ -30,7 +35,7 @@ jobs:
     uses: "./.github/workflows/ci-repo.yaml"
     secrets: "inherit"
 
-  # Builds the release-please packages with a Dockerfile whose files changed; a repo without one builds nothing
+  # Builds the release-please packages with a Dockerfile or flavor.yaml whose files changed; a repo without one builds nothing
   image:
     needs:
       - "lint"

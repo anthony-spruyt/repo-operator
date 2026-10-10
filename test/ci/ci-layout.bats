@@ -61,6 +61,12 @@ EOF
   [ "$output" = '[["go-image",{"content":{"jobs":{"image":{"with":{"language":"go"}}}}}],["python-image",{"content":{"jobs":{"image":{"with":{"language":"python"}}}}}]]' ]
 }
 
+@test "the ci.yaml template cancels a PR's older run, and gives every other run its own group" {
+  pr="github.event_name == 'pull_request' && github.event.action != 'labeled'"
+  run yq -o=json -I0 '.concurrency' "$WORKFLOWS/ci.yaml"
+  [ "$output" = "$(jq -cn --arg pr "$pr" '{group: "${{ github.workflow }}-${{ \($pr) && github.event.pull_request.number || github.run_id }}", "cancel-in-progress": "${{ \($pr) }}"}')" ]
+}
+
 @test "the ci.yaml template holds no commented-out code" {
   run grep -nE '^\s*#\s*(workflow_dispatch|build|runs-on|steps|- uses|- run|uses|permissions|contents):' "$WORKFLOWS/ci.yaml"
   [ -z "$output" ]
