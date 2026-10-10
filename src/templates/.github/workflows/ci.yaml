@@ -46,7 +46,7 @@ jobs:
       contents: "read"
     uses: "anthony-spruyt/repo-operator/.github/workflows/_images.yaml@cb40ddc2ff6cd9f0441cd59406c849c68f6bd464" # main
 
-  # The one required check: it judges every job in the run, the repo / ... jobs included
+  # The one required check from CI: it judges every job in the run, the repo / ... jobs included
   summary:
     needs:
       - "lint"

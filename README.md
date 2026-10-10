@@ -66,6 +66,8 @@ repos:
 CI lives in two files. `.github/workflows/ci.yaml` is the standard workflow (`lint`, then a `repo` job that calls `ci-repo.yaml`, then `image`, then `summary`), the same in every repo apart from per-repo xfg overlays. `.github/workflows/ci-repo.yaml` belongs to the repo and holds its own jobs. `github-ci` writes `ci.yaml` on every sync, so don't edit it in the repo; change the template or a
 per-repo overlay in repo-operator. It seeds only `ci-repo.yaml`, once and without comments. Add `# main` after each `uses: anthony-spruyt/repo-operator/...@<sha>` in `ci-repo.yaml` when you add jobs, so Renovate keeps the pins current. Only repo-operator keeps its own `ci.yaml`, through a `createOnly` override (see [Standard ci.yaml and ci-repo.yaml](docs/ci.md#standard-ciyaml-and-ci-repoyaml)).
 
+`github-ci` also syncs `.github/workflows/pr-title.yaml`, whose `PR Title` check fails a PR whose title doesn't follow Conventional Commits, since the squash commit on `main` takes the PR title. It is a required check wherever the `pr-rules` ruleset applies (see [PR title check](docs/ci.md#pr-title-check)).
+
 ## Local Development
 
 ```bash

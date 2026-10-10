@@ -264,8 +264,8 @@ A repo's CI lives in two workflow files ([#610](https://github.com/anthony-spruy
 The seed's job, `No repo jobs yet`, skips itself with `if: "github.event_name == 'never'"`. actionlint rejects a constant condition such as `if: false`, and target repos lint every workflow, so the seed would fail their `lint`. Guard Tests run actionlint, with the synced `actionlint.yaml`, on the seed and the rendered `ci.yaml`; MegaLinter only lints this repo's own `.github/workflows/`. They
 check the actionlint tarball against a sha256 pinned beside its version, not the release's own `checksums.txt`. The `digest=sha256` Renovate annotation puts the pair on the `github-release-attachments` datasource, so one Renovate PR bumps both.
 
-`summary / Check Results` stays the one required check, in the rulesets and in the Mergify queue. `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into `ci-repo.yaml` in the same PR that adds the `repo` call, so it never
-runs ungated.
+`summary / Check Results` is the one required check from `ci.yaml`, in the rulesets and in the Mergify queue; the rulesets also require [`PR Title`](#pr-title-check). `_summary.yaml` judges every job in the run, reading every page of the jobs API, and the jobs `ci-repo.yaml` runs show up in it as `repo / <job name>`, so a failing repo job fails `summary`. Repo jobs wait for `lint`. Move a job into
+`ci-repo.yaml` in the same PR that adds the `repo` call, so it never runs ungated.
 
 `repo` gets `contents: read`, and permissions only narrow down a call chain, so a repo job can't take more than that. A repo that needs more, and any other repo quirk (an extra trigger, a dispatch input, a concurrency setting), gets an xfg overlay on `ci.yaml` in `src/repos.yaml`. spruyt-labs' overlay gives `repo` `actions: read` and `pull-requests: read` as well, for its paths filter. xfg's
 overlay adds the `labeled` pull request trigger for its `run-integration` label, and guards `lint`, `repo`, `image`, `sonar` and `summary` so that any other label skips the run instead of posting a green `summary` over a failed one. Keep the job ids `lint`, `summary` and `image`: the Mergify queue condition, the code scanning analysis key and the per-repo `jobs.image.with` overlays depend on them.
@@ -281,6 +281,22 @@ A new push to a pull request cancels that PR's older `CI` run. Every other run (
 Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply. It carries the same `sonar` job by hand, calling `./.github/workflows/_sonar-new-issues.yaml` so a PR checks its own branch of the workflow, and Guard Tests keep it in `summary.needs`.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
+
+## PR title check
+
+Repos squash-merge with the PR title, so the title becomes the commit on `main` that release-please reads. The `github-ci` group syncs `.github/workflows/pr-title.yaml` on every sync, and its `PR Title` job checks that the title follows [Conventional Commits](https://www.conventionalcommits.org/):
+
+| Part     | Rule                                                                                           |
+| -------- | ---------------------------------------------------------------------------------------------- |
+| Type     | `feat`, `fix`, `docs`, `style`, `refactor`, `perf`, `test`, `build`, `ci`, `chore` or `revert` |
+| Scope    | Optional, any value: `feat: ...` and `feat(ci): ...` both pass                                 |
+| Breaking | `!` after the type or scope: `feat(api)!: ...`                                                 |
+| Subject  | Must not start with an uppercase letter: `fix: Add x` fails, `fix: add x` passes               |
+
+It runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request), pinned by SHA, on `pull_request` into `main` (`opened`, `edited`, `synchronize`, `reopened`). The job has only `pull-requests: read`, checks out nothing, and runs behind harden-runner with egress blocked except the GitHub API. The action reads the PR's current title through the API, so it works
+the same on fork PRs, whose `GITHUB_TOKEN` is read-only. Renaming a PR re-runs only this workflow, not `CI`. It skips Mergify merge-queue PRs, with the same condition as `_sonar-new-issues.yaml`, and a skipped required check counts as a pass.
+
+`PR Title` is a required check in every `pr-rules` ruleset, next to `summary / Check Results`. Repos without `pr-rules` run it as advisory. repo-operator's own copy in `.github/workflows/` is the synced file, and Guard Tests keep it equal to the template.
 
 ## Managed image repos
 
