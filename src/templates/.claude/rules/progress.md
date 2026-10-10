@@ -1,6 +1,6 @@
 # Progress Notes
 
-Compaction loses detail, so keep the state of multi-step work on disk, as in Anthropic's [long-running agent harness](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents). A session that resumes, compacts or clears gets its notes reloaded; `git log` stays the source of truth.
+Compaction loses detail, so keep the state of multi-step work on disk, as in Anthropic's [long-running agent harness](https://www.anthropic.com/engineering/effective-harnesses-for-long-running-agents). A session that resumes or compacts gets its notes reloaded; `git log` stays the source of truth.
 
 ## When
 
@@ -8,11 +8,11 @@ Any task with more than one step, or that may outlive this session. Skip one-sho
 
 ## Where
 
-`.agent-progress/<session_id>.md` in the main checkout, even when you work in a git worktree. A SessionStart hook prints the exact path at the start of every session, so use that path; sessions sharing a checkout or branch each get their own file. The folder is gitignored and stays on this machine.
+`.agent-progress/<session_id>.md` in the checkout you work in (the worktree root, in a git worktree). A SessionStart hook prints the exact path at the start of every session, so use that path; sessions sharing a checkout or branch each get their own file. The folder is gitignored and stays on this machine.
 
-The hook loads the file again after compaction and `--resume`, which keep the same session ID. `/clear` and a new session get a new ID and so a new, empty file. For work that spans sessions, the next session reads the old file by hand (`ls -t .agent-progress/`) and copies what it needs into its own.
+The hook loads the file again after compaction and `--resume`, which keep the same session ID. `/clear` and a new session get a new ID and so a new, empty file. For work that spans sessions, the next session reads the old file by hand (`ls -t` on the folder in the path the hook printed) and copies what it needs into its own.
 
-A forked session gets a new ID. Its notes path is the newest one the hook printed; it copies what it needs from the parent's file. Subagents get no path and keep no notes file.
+A forked session gets a new ID and its own path. It finds the parent's file with `ls -t` on the folder in the path the hook printed, and copies what it needs. Subagents get no path and keep no notes file.
 
 The issue body stays the public plan and checklist; the progress file is your working memory.
 

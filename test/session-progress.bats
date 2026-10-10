@@ -94,20 +94,33 @@ hook() {
   [[ "$output" == *"same notes"* ]]
 }
 
-@test "a worktree session gets the main checkout's notes path" {
+@test "a worktree session gets the worktree's own notes path" {
   printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
   WT="$ROOT/.claude/worktrees/wt"
   git -C "$ROOT" worktree add -q -b wt "$WT"
   CLAUDE_PROJECT_DIR="$WT" hook "$WT"
-  [[ "$output" == *"main checkout notes"* ]]
-  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
-  [[ "$output" != *"$WT/.agent-progress"* ]]
+  [[ "$output" == *"$WT/.agent-progress/$SID.md"* ]]
+  [[ "$output" != *"main checkout notes"* ]]
 }
 
-@test "a worktree outside the main checkout also gets the main checkout's path" {
+@test "an EnterWorktree session (project dir is the main checkout) gets the worktree root" {
+  printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
+  WT="$ROOT/.claude/worktrees/wt"
+  git -C "$ROOT" worktree add -q -b wt "$WT"
+  mkdir -p "$WT/src/deep"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT/src/deep"
+  [ "$output" == "Keep progress notes for this session in $WT/.agent-progress/$SID.md (none written yet)." ]
+}
+
+@test "a worktree outside the main checkout gets its own root" {
   WT="${BATS_TEST_TMPDIR}/elsewhere"
   git -C "$ROOT" worktree add -q -b wt2 "$WT"
-  hook "$WT"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT"
+  [[ "$output" == *"$WT/.agent-progress/$SID.md"* ]]
+}
+
+@test "falls back to the project when cwd is not in a git repo" {
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$BATS_TEST_TMPDIR"
   [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
 }
 
@@ -125,10 +138,18 @@ hook() {
   [[ "$output" == *"$WORK/.agent-progress/$SID.md"* ]]
 }
 
-@test "the SessionStart matcher reloads notes on resume and compact" {
+@test "the SessionStart matcher covers startup, clear, fork, resume and compact" {
   matcher=$(jq -r '.hooks.SessionStart[0].matcher' "${BATS_TEST_DIRNAME}/../src/templates/.claude/settings.json")
-  [[ "$matcher" =~ (^|\|)resume(\||$) ]]
-  [[ "$matcher" =~ (^|\|)compact(\||$) ]]
+  for event in startup clear fork resume compact; do
+    [[ "$matcher" =~ (^|\|)${event}(\||$) ]]
+  done
+}
+
+@test "only .gitignore is tracked in .agent-progress" {
+  repo="${BATS_TEST_DIRNAME}/.."
+  tracked=$(git -C "$repo" ls-files -- '.agent-progress' 'src/templates/.agent-progress' | grep -v '/\?\.gitignore$' || true)
+  [ -z "$tracked" ] || { echo "only .gitignore is tracked in .agent-progress; also tracked: $tracked" >&2; return 1; }
+  [ -f "$repo/src/templates/.agent-progress/.gitignore" ]
 }
 
 @test "falls back to the project when cwd is in an unrelated repo" {
