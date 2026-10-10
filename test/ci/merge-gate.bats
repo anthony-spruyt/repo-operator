@@ -178,3 +178,22 @@ no_commit_matches() {
 @test "repo-operator's own .mergify.yml is the template rendered for it" {
   diff <(render repo-operator | jq -S .) <(yq -o=json '.' "$REPO_ROOT/.mergify.yml" | jq -S .)
 }
+
+required_checks() {
+  yq -o=json -I0 '[.. | select(tag == "!!map" and has("requiredStatusChecks")) | .requiredStatusChecks | .. | select(tag == "!!map" and has("context"))]' "$1"
+}
+
+@test "every required status check names the app that posts it" {
+  local f
+  for f in "$SRC"/*.yaml; do
+    run required_checks "$f"
+    echo "$f: $output"
+    [ "$(jq -r '[.[] | select(.integrationId | type != "number")] | length' <<<"$output")" = "0" ]
+  done
+}
+
+@test "the required checks map to their posting apps" {
+  local all
+  all=$(jq -cn --argjson g "$(required_checks "$SRC/groups.yaml")" --argjson r "$(required_checks "$SRC/repos.yaml")" '$g + $r')
+  [ "$(jq -cS 'group_by(.context) | map({(.[0].context): (map(.integrationId) | unique)}) | add' <<<"$all")" = '{"Guard Linter Removals":[15368],"Mergify Merge Protections":[10562],"PR Title":[15368],"SonarCloud Code Analysis":[12526],"summary / Check Results":[15368]}' ]
+}

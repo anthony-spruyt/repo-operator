@@ -101,6 +101,7 @@ repos:
                     $values:
                       # A flavor losing a linter must ship as a major release, not a patch
                       - context: "Guard Linter Removals"
+                        integrationId: 15368
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
