@@ -1,8 +1,8 @@
 # Public Repos
 
-Every repo is public. Anything written in it, or on GitHub about it, can be read and indexed by anyone.
+This repo and its GitHub issues, PRs and comments are public: anyone can read and index them. The only private place for security notes is the `anthony-spruyt/security` repo.
 
-## Never write publicly
+## Never write in public
 
 - Known gaps, unfixed weaknesses, or what a control does not cover
 - Attack paths, bypass steps, exploit recipes
@@ -13,8 +13,8 @@ This covers issues, PRs, comments, commit messages, READMEs, docs, code comments
 
 ## Instead
 
-- Describe controls as the end state: "Only the API gateway can reach this service"
-- Word open security work as a neutral task: "Restrict admin paths to the LAN"
-- Track security work and findings as issues in the private `anthony-spruyt/security` repo
-- Report security findings off GitHub: a subagent reports them to the agent that called it, and the main session reports them to the owner
+- Track security work and findings as issues in `anthony-spruyt/security`
+- Report security findings to whoever asked: a subagent to the agent that called it, the main session to the owner
+- In public text, describe controls as the end state: "Only the API gateway can reach this service"
+- In public commit and PR titles, word security work as a neutral task: "Restrict admin paths to the LAN"
 - Post other reports as usual, with security findings removed
