@@ -84,7 +84,7 @@ jobs:
           echo "::warning::Partial preview: merge settings and ruleset bypass_actors are not visible to the read-only Plan App"
 
       - name: "Preview Sync"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
           config: "./src"
           dry-run: true
@@ -92,7 +92,7 @@ jobs:
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
 
       - name: "Preview Secrets Sync"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
           command: "secrets-sync"
           config: "./src"
@@ -178,7 +178,7 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
           config: "./src"
           dry-run: true
@@ -187,7 +187,7 @@ jobs:
 
       - name: "Plan Secrets Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
           command: "secrets-sync"
           config: "./src"
@@ -239,7 +239,7 @@ jobs:
         run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         env:
           OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
         with:
@@ -248,7 +248,7 @@ jobs:
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Apply Secrets Sync"
-        uses: "anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750" # v8.4.0
+        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         env:
           RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
