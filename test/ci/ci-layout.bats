@@ -8,6 +8,14 @@ setup() {
   REPO_JOB='{"needs":["lint"],"uses":"./.github/workflows/ci-repo.yaml","permissions":{"contents":"read"},"secrets":"inherit"}'
 }
 
+# eval_if <expr> <lint result> <repo result> <cancelled> - a job's if, rewritten to jq; any other function or context fails jq
+eval_if() {
+  local jq_expr
+  jq_expr=$(sed -E -e 's/!cancelled\(\)/($cancelled | not)/g' -e 's/needs\.(lint|repo)\.result/$\1/g' \
+    -e 's/&&/and/g' -e 's/\|\|/or/g' -e "s/'/\"/g" <<<"$1")
+  jq -n --arg lint "$2" --arg repo "$3" --argjson cancelled "$4" "$jq_expr"
+}
+
 repo_job_is_standard() {
   [ "$(yq -o=json '.jobs.repo' "$1" | jq -cS .)" = "$(jq -cS . <<<"$REPO_JOB")" ]
 }
@@ -24,8 +32,25 @@ repo_job_is_standard() {
 }
 
 @test "the ci.yaml template's image job runs when repo is skipped, not when lint fails or the run is cancelled" {
-  run yq -r '.jobs.image.if' "$WORKFLOWS/ci.yaml"
-  [ "$output" = "!cancelled() && needs.lint.result == 'success' && (needs.repo.result == 'success' || needs.repo.result == 'skipped')" ]
+  expr=$(yq -r '.jobs.image.if' "$WORKFLOWS/ci.yaml")
+  while read -r lint repo cancelled want; do
+    run eval_if "$expr" "$lint" "$repo" "$cancelled"
+    [ "$output" = "$want" ] || {
+      echo "lint=$lint repo=$repo cancelled=$cancelled: got '$output', want $want"
+      return 1
+    }
+  done <<'EOF'
+success success false true
+success skipped false true
+success failure false false
+success cancelled false false
+failure success false false
+failure skipped false false
+skipped skipped false false
+cancelled skipped false false
+success success true false
+success skipped true false
+EOF
 }
 
 @test "image-ci.yaml is retired: no group overrides ci.yaml, and the image groups only set its language" {
