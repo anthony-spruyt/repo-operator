@@ -28,4 +28,4 @@ Under 100 lines; the hook loads only the first 9,000 characters. Write for a rea
 1. **Start**: read the notes and `git log --oneline -10` before anything else. When they disagree, git wins.
 2. **One step at a time**: finish it, test it, commit it, then update the notes.
 3. **Before you stop**: update the notes so the next session can start without asking.
-4. **Done**: delete the file once the branch merges.
+4. **Done**: delete the file when the task is finished or the branch merges, so a later session on the same branch does not load stale notes.

@@ -79,6 +79,17 @@ hook() {
   [[ "$output" != *"main notes"* ]]
 }
 
+@test "falls back to the project when cwd is in an unrelated repo" {
+  printf 'project notes\n' >"$ROOT/.agent-progress/main.md"
+  OTHER="${BATS_TEST_TMPDIR}/other"
+  git -C "$BATS_TEST_TMPDIR" init -q -b main other
+  mkdir -p "$OTHER/.agent-progress"
+  printf 'other notes\n' >"$OTHER/.agent-progress/main.md"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$OTHER"
+  [[ "$output" == *"project notes"* ]]
+  [[ "$output" != *"other notes"* ]]
+}
+
 @test "truncates a large file below the 10,000 character hook cap" {
   head -c 20000 /dev/zero | tr '\0' 'a' >"$ROOT/.agent-progress/main.md"
   hook "$ROOT"

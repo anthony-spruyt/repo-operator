@@ -77,7 +77,7 @@
         "hooks": [
           {
             "type": "command",
-            "command": "bash \"$CLAUDE_PROJECT_DIR/.claude/session-progress.sh\""
+            "command": "[ ! -f \"$CLAUDE_PROJECT_DIR/.claude/session-progress.sh\" ] || bash \"$CLAUDE_PROJECT_DIR/.claude/session-progress.sh\""
           }
         ]
       }

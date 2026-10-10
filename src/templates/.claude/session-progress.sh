@@ -2,9 +2,18 @@
 # No ${...} here - xfg would substitute it on sync.
 set -eu
 
-# cwd, not CLAUDE_PROJECT_DIR: only cwd follows Claude into a worktree
+common_dir() {
+  git -C "$1" rev-parse --path-format=absolute --git-common-dir 2>/dev/null || true
+}
+
+project=$(printenv CLAUDE_PROJECT_DIR || true)
 cwd=$(jq -r '.cwd // empty')
+[ -n "$cwd" ] || cwd=$project
 [ -n "$cwd" ] || exit 0
+# cwd follows Claude into a worktree, but also into any other repo it cd's to
+if [ -n "$project" ] && [ "$(common_dir "$cwd")" != "$(common_dir "$project")" ]; then
+  cwd=$project
+fi
 root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || exit 0
 branch=$(git -C "$root" branch --show-current)
 [ -n "$branch" ] || exit 0
