@@ -284,7 +284,7 @@ xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg
 
 ## PR title check
 
-Repos squash-merge with the PR title, so the title becomes the commit on `main` that release-please reads. The `github-ci` group syncs `.github/workflows/pr-title.yaml` on every sync, and its `PR Title` job checks that the title follows [Conventional Commits](https://www.conventionalcommits.org/):
+Repos squash-merge with the PR title and a blank body, so the title becomes the commit on `main` that release-please reads. The `github-ci` group syncs `.github/workflows/pr-title.yaml` on every sync, and its `PR Title` job checks that the title follows [Conventional Commits](https://www.conventionalcommits.org/):
 
 | Part     | Rule                                                                                           |
 | -------- | ---------------------------------------------------------------------------------------------- |
