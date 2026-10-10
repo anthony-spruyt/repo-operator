@@ -24,7 +24,7 @@ jobs:
       actions: "read"
       contents: "read"
       security-events: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@cb40ddc2ff6cd9f0441cd59406c849c68f6bd464" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@6d50fa5ce20ffc1c29c38ee7c2ff44fb86127777" # main
 
   # Repo-only jobs go in ci-repo.yaml, which the repo owns; xfg seeds it once
   repo:
@@ -44,7 +44,7 @@ jobs:
     if: "!cancelled() && needs.lint.result == 'success' && (needs.repo.result == 'success' || needs.repo.result == 'skipped')"
     permissions:
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_images.yaml@cb40ddc2ff6cd9f0441cd59406c849c68f6bd464" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_images.yaml@6d50fa5ce20ffc1c29c38ee7c2ff44fb86127777" # main
 
   # The one required check from CI: it judges every job in the run, the repo / ... jobs included
   summary:
@@ -56,4 +56,4 @@ jobs:
     permissions:
       actions: "read"
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@cb40ddc2ff6cd9f0441cd59406c849c68f6bd464" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_summary.yaml@6d50fa5ce20ffc1c29c38ee7c2ff44fb86127777" # main
