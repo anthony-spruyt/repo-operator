@@ -132,7 +132,7 @@ The `SonarQube Cloud Settings` workflow (`.github/workflows/sonar-settings.yaml`
 
 The workflow plans on PRs that touch the config, the script or `src/repos.yaml`. It reads public settings, so no token is needed. It applies on push to `main`, every Monday, and on manual dispatch, with `SONAR_TOKEN` from the `sonar` environment (`main` only). A recreated project is fixed by the next run.
 
-Create the SonarQube Cloud project before adding a repo to the `sonar` group, or the workflow fails on the missing project. To plan locally:
+SonarQube Cloud's GitHub integration creates the project automatically when the repo is created. If the `Apply` on the merge push fails with a 404 because the project did not exist yet, re-run it once the project appears. To plan locally:
 
 ```bash
 .github/scripts/sync-sonar-settings.sh
