@@ -8,13 +8,16 @@
         "anthony-spruyt/Chromance"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -52,6 +55,7 @@
         "anthony-spruyt/SunGather"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -59,9 +63,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -102,6 +108,7 @@
         "anthony-spruyt/claude-plugins"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -109,9 +116,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -150,6 +159,7 @@
         "anthony-spruyt/container-images"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -157,9 +167,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -200,13 +212,16 @@
         "anthony-spruyt/esphome"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -243,6 +258,7 @@
         "anthony-spruyt/kata-tap-qdisc-fix"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -250,9 +266,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -293,6 +311,7 @@
         "anthony-spruyt/litellm-middleware"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -300,9 +319,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -343,6 +364,7 @@
         "anthony-spruyt/mcp-header-proxy"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -350,9 +372,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -393,6 +417,7 @@
         "anthony-spruyt/spruyt-labs"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -400,9 +425,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -443,6 +470,7 @@
         "anthony-spruyt/traefik-api-key-auth"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -450,9 +478,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
@@ -493,6 +523,7 @@
         "anthony-spruyt/xfg"
       ],
       "matchFileNames": [
+        ".agent-progress/.gitignore",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -500,9 +531,11 @@
         ".claude/output-styles/eli5.md",
         ".claude/rules/comments.md",
         ".claude/rules/github.md",
+        ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
         ".claude/rules/tdd.md",
+        ".claude/session-progress.sh",
         ".claude/settings.json",
         ".claude/statusline.sh",
         ".devcontainer/.gitignore",
