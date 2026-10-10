@@ -133,6 +133,6 @@ The xfg-apply job pushes the updated configuration directly to target repos (`pr
 
 `sonar-settings.yaml` owns SonarQube Cloud project settings for the `sonar` group, from `.github/sonar-settings.yaml`. It plans on PRs that touch its paths (public GET, no token) and applies on `main` push, weekly and dispatch with `SONAR_TOKEN` from the `sonar` environment. It is not a required check, because its paths filter would leave it pending on other PRs. See the README.
 
-`sonar-new-issues.yaml` (`SonarCloud / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit and uses no token. guard-test also runs its bats tests in `test/sonar-new-issues.bats`. See `docs/ci.md`.
+The `sonar` job in `ci.yaml` (`sonar / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit, uses no token, and `summary` judges it. The `sonar` group adds the same job to the synced `ci.yaml` and appends it to `summary.needs`. guard-test also runs its bats tests in `test/sonar-new-issues.bats`. See `docs/ci.md`.
 
 Additional workflows distributed to target repos include Trivy vulnerability scanning.

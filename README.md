@@ -136,7 +136,7 @@ Create the SonarQube Cloud project before adding a repo to the `sonar` group, or
 .github/scripts/sync-sonar-settings.sh
 ```
 
-The `SonarCloud` workflow (`.github/workflows/sonar-new-issues.yaml`) fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues).
+The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and [Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
 
 ## Credentials
 
