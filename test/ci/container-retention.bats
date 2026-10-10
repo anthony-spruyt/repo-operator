@@ -52,7 +52,8 @@ step_script() {
     [ "$status" -ne 0 ]
     [[ "$output" == *"::error::"* ]]
     [[ "$output" != *"::notice::"* ]]
-    ! grep -q '^list=' "$GITHUB_OUTPUT"
+    run grep -q '^list=' "$GITHUB_OUTPUT"
+    [ "$status" -ne 0 ]
   done
 }
 
