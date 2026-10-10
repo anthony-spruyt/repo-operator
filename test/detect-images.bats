@@ -568,6 +568,93 @@ released() {
   [ "$(images)" = "chrony,happy-server" ]
 }
 
+# edit_config <jq filter> - rewrite release-please-config.json in the work tree, uncommitted
+edit_config() {
+  jq "$1" "$REPO/release-please-config.json" >"$REPO/c.json"
+  mv "$REPO/c.json" "$REPO/release-please-config.json"
+  git -C "$REPO" add release-please-config.json
+}
+
+@test "pull request: adding its own files to exclude-paths does not skip the build" {
+  use_layout spruyt-labs
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  edit_config '.packages["cmd/shutdown-orchestrator"]."exclude-paths" = ["cmd/shutdown-orchestrator"]'
+  commit_files cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
+}
+
+@test "pull request: adding its own files to extra-files does not make it a release PR" {
+  use_layout spruyt-labs
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  edit_config '.packages["cmd/shutdown-orchestrator"]."extra-files" = ["main.go", "/release-please-config.json"]'
+  commit_files .release-please-manifest.json cmd/shutdown-orchestrator/CHANGELOG.md cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
+}
+
+@test "pull request: removing its own package from the config does not skip the build" {
+  use_layout spruyt-labs
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  edit_config 'del(.packages["cmd/shutdown-orchestrator"])'
+  commit_files cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator" ]
+}
+
+@test "pull request: deleting the config does not skip the build" {
+  use_layout spruyt-labs
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  git -C "$REPO" rm -q release-please-config.json
+  commit_files ts/agent-queue-worker/src/index.ts
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "agent-queue-worker" ]
+}
+
+@test "pull request: a package the PR adds builds from the PR's config" {
+  use_layout spruyt-labs
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  edit_config '.packages["cmd/new-svc"] = {"release-type": "simple", "component": "new-svc"}'
+  commit_files cmd/new-svc/Dockerfile cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "shutdown-orchestrator,new-svc" ]
+}
+
+@test "pull request: a repo whose base has no config builds the packages the PR adds" {
+  mkdir -p "$REPO"
+  : >"$REPO/Dockerfile"
+  git -C "$REPO" init -q -b main
+  git -C "$REPO" add -A
+  git -C "$REPO" commit -q -m base
+  BASE_SHA=$(git -C "$REPO" rev-parse HEAD)
+  export BASE_SHA
+  echo '{"packages": {".": {"release-type": "simple"}}}' >"$REPO/release-please-config.json"
+  git -C "$REPO" add release-please-config.json
+  git -C "$REPO" commit -q -m release-please
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(images)" = "fixture" ]
+}
+
+@test "push: the pushed commit's config applies, including its own exclude-paths" {
+  use_layout spruyt-labs
+  edit_config '.packages["cmd/shutdown-orchestrator"]."exclude-paths" = ["cmd/shutdown-orchestrator"]'
+  commit_files cmd/shutdown-orchestrator/main.go
+  detect
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
 @test "pull request: a base commit missing from the clone fails clearly" {
   use_layout container-images
   export BASE_SHA=0123456789abcdef0123456789abcdef01234567

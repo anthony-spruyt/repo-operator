@@ -151,16 +151,16 @@ def str_or($d): if type == "string" and . != "" then . else $d end;
 '
 
 list_images() {
-  local pkgs entries=() line path component name entry
-  if [[ ! -f "$CONFIG" ]]; then
+  local config="$1" label="$2" pkgs entries=() line path component name entry
+  if [[ ! -f "$config" ]]; then
     echo '{"packages":[],"images":[]}'
     return 0
   fi
-  pkgs=$(jq -c "$PACKAGES_JQ" "$CONFIG") || die "$CONFIG: invalid config"
+  pkgs=$(jq -c "$PACKAGES_JQ" "$config") || die "$label: invalid config"
   while IFS= read -r line; do
     path=$(jq -r '.path' <<<"$line")
     component=$(jq -r '.component' <<<"$line")
-    safe_path "$path" || die "$CONFIG: invalid package path: $path"
+    safe_path "$path" || die "$label: invalid package path: $path"
     [[ -f "$path/Dockerfile" || -f "$path/flavor.yaml" ]] || continue
     if [[ -n "$component" ]]; then
       name="$component"
@@ -182,11 +182,24 @@ list_images() {
   return 0
 }
 
+require_base() {
+  git cat-file -e "${base}^{commit}" 2>/dev/null ||
+    die "Base commit $base is not in the clone; check out with fetch-depth: 0"
+  return 0
+}
+
+base_listing() {
+  local file="$work_dir/base-config.json"
+  if git cat-file -e "${base}:$CONFIG" 2>/dev/null; then
+    git show "${base}:$CONFIG" >"$file" || die "Cannot read $CONFIG at base commit $base"
+  fi
+  list_images "$file" "$CONFIG at base commit $base"
+  return 0
+}
+
 changed_files() {
   local out="$1"
   if [[ -n "$base" ]]; then
-    git cat-file -e "${base}^{commit}" 2>/dev/null ||
-      die "Base commit $base is not in the clone; check out with fetch-depth: 0"
     git diff --name-only --no-renames -z "${base}...HEAD" >"$out" ||
       die "No merge base with $base; check out with fetch-depth: 0"
   else
@@ -269,14 +282,31 @@ select_images() {
       names=$(jq -r ".images | $NAMES_JQ" <<<"$listing")
       die "Unknown image: $image. Images: $names"
     fi
-  elif [[ "$mode" == "all" || "$(jq '.images | length' <<<"$listing")" == "0" ]]; then
+  elif [[ "$mode" == "all" ]]; then
     jq -c '.images' <<<"$listing" >"$out"
   else
-    diff="$out.diff"
-    changed_files "$diff"
-    # --rawfile, not --argjson: one argument caps at 128 KB, so large diffs would fail
-    jq -c --rawfile diff "$diff" "$SELECT_JQ" <<<"$listing" >"$out"
+    changed_images "$listing" "$out"
   fi
+  return 0
+}
+
+# A pull request could edit its own config to skip its build, so the base's config selects images too
+changed_images() {
+  local listing="$1" out="$2" diff="$2.diff" listings=("$1") base_list l
+  if [[ -n "$base" ]]; then
+    require_base
+    base_list=$(base_listing)
+    listings+=("$base_list")
+  fi
+  if [[ "$(printf '%s\n' "${listings[@]}" | jq -s 'map(.images | length) | add')" == "0" ]]; then
+    echo '[]' >"$out"
+    return 0
+  fi
+  changed_files "$diff"
+  for l in "${listings[@]}"; do
+    # --rawfile, not --argjson: one argument caps at 128 KB, so large diffs would fail
+    jq -c --rawfile diff "$diff" "$SELECT_JQ" <<<"$l"
+  done | jq -cs 'add | reduce .[] as $i ([]; if any(.[]; .name == $i.name) then . else . + [$i] end)' >"$out"
   return 0
 }
 
@@ -304,7 +334,7 @@ main() {
   validate
   work_dir=$(mktemp -d)
   trap 'rm -rf "$work_dir"' EXIT
-  listing=$(list_images)
+  listing=$(list_images "$CONFIG" "$CONFIG")
   select_images "$listing" "$work_dir/selected"
   write_outputs "$work_dir/selected"
   return 0

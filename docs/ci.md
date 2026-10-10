@@ -62,6 +62,9 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
 
+On a pull request, images are selected twice: once with the PR's `release-please-config.json` and once with the config at `base-sha`. An image that either selects builds, so a PR can't skip its own build by editing `exclude-paths`, `extra-files` or its package entry, and a package the PR adds still builds. A push uses the pushed commit's config
+only.
+
 Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them
 too:
 
@@ -75,7 +78,7 @@ Other release types count only their changelog and `extra-files`, so their relea
 
 - `mode` (default `changed`): `changed`; `all` for every image without diffing; `released` for the images release-please just released
 - `image`: select exactly this image; fails when the repo has no such image. `released` mode refuses it
-- `base-sha` (default: the pull request's base commit): diff against the merge base with this commit; empty diffs `HEAD~1`
+- `base-sha` (default: the pull request's base commit): diff against the merge base with this commit, and select images with its config as well; empty diffs `HEAD~1`
 - `releases`: `released` mode only, the release-please-action outputs as JSON (`toJSON(steps.<id>.outputs)`)
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
