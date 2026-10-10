@@ -283,6 +283,7 @@ groups:
     settings:
       codeScanning: false
       repo:
+        allowAutoMerge: false
         privateVulnerabilityReporting: false
         secretScanning: false
         secretScanningPushProtection: false
