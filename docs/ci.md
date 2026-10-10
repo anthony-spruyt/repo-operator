@@ -64,8 +64,7 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
 
-On a pull request, images are selected twice: once with the PR's `release-please-config.json` and once with the config at `base-sha`. An image that either selects builds. The base branch's config also selects images, so a PR's config can only add builds, and a package the PR adds still builds. A push uses the pushed commit's config
-only.
+On a pull request, images are selected twice: once with the PR's `release-please-config.json` and once with the config at `base-sha`. An image that either selects builds. The base branch's config also selects images, so a PR's config can only add builds, and a package the PR adds still builds. A push uses the pushed commit's config only.
 
 Release files never trigger a build. Each package's changelog (`changelog-path`, default `CHANGELOG.md`) and `.release-please-manifest.json` are always skipped. A diff that changes the manifest and nothing but release files is a release PR and builds nothing. Release files also include the version files release-please writes, which skip only in a release PR, because dependency updates change them
 too:
@@ -239,8 +238,7 @@ gh attestation verify oci://ghcr.io/anthony-spruyt/<image>:<tag> \
 
 `--repo` is the source repo that the attestation names. Without `--signer-repo` the check fails, because by default `gh` expects the signer to be a workflow in the source repo.
 
-Tags released before container-images or spruyt-labs joined the `image` group are signed by that repo's own `_build-image.yaml`, which called the `build-image` action rather than the shared workflow. That covers every image of both repos, all three of spruyt-labs' (shutdown-orchestrator, agent-queue-worker and bull-board) included. Pin the signer workflow for
-those:
+Tags released before container-images or spruyt-labs joined the `image` group are signed by that repo's own `_build-image.yaml`, which called the `build-image` action rather than the shared workflow. That covers every image of both repos, all three of spruyt-labs' (shutdown-orchestrator, agent-queue-worker and bull-board) included. Pin the signer workflow for those:
 
 ```bash
 gh attestation verify oci://ghcr.io/anthony-spruyt/llm-guard:<tag> \
@@ -275,8 +273,7 @@ Every repo gets the same `ci.yaml`. The `image` job builds the repo's images (se
 `$arrayMerge: append`, so `summary` judges [`sonar-new-issues`](#sonar-new-issues) as `sonar / New Issues`. Its skip outside pull requests and on Mergify merge-queue PRs counts as a pass, because `summary` fails only on a failed or cancelled job. A `sonar` repo lists `github-ci` before `sonar`, so the job merges onto the synced `ci.yaml`. The group pins the call in `src/groups.yaml` to the
 template's `main` commit, and repo-operator's Renovate reads that file with its `github-actions` manager, so the monthly `repo-operator shared CI` PR bumps it with the template pins. xfg pushes each repo's changes as one commit (`prOptions.merge: direct`), so the seed lands with the `ci.yaml` that calls it; a `ci.yaml` that calls a missing `ci-repo.yaml` makes the whole run invalid.
 
-A new push to a pull request cancels that PR's older `CI` run. Every other run (a push to `main`, a `labeled` event from xfg's overlay) gets its own concurrency group, so it never waits for or cancels another run: GitHub keeps one pending run per group and cancels the older pending one even with `cancel-in-progress: false`, and on
-`main` the summary and the release that follows must finish.
+A new push to a pull request cancels that PR's older `CI` run. Every other run (a push to `main`, a `labeled` event from xfg's overlay) gets its own concurrency group, so it never waits for or cancels another run: GitHub keeps one pending run per group and cancels the older pending one even with `cancel-in-progress: false`, and on `main` the summary and the release that follows must finish.
 
 Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply. It carries the same `sonar` job by hand, calling `./.github/workflows/_sonar-new-issues.yaml` so a PR checks its own branch of the workflow, and Guard Tests keep it in `summary.needs`.
 
@@ -309,8 +306,8 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 | `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                            |
 | `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
 
-A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml`
-when it has more than one image or its image name isn't the lowercased repo name.
+A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
+tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml` when it has more than one image or its image name isn't the lowercased repo name.
 
 Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
@@ -322,7 +319,7 @@ Every `megalinter` repo gets a managed `lint.sh`, rendered from `src/templates/l
 `${...}` as a variable. The pin comes from the first match below:
 
 1. A per-repo `lint.sh` `vars` override in `src/repos.yaml`, for a repo on its own flavor (spruyt-labs).
-2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`.
+2. `megalinter-flavor` repos: a conditional group keyed on the language groups. `cpp` gives `megalinter-cpp`, `go` gives `megalinter-go`, `python` gives `megalinter-python`, `typescript` gives `megalinter-typescript`, and no language group gives `megalinter-base`. `dotnet` has no flavor, so it gets `megalinter-base` too.
 
 Each language conditional excludes the others with `noneOf`, so a repo never gets two pins. A `megalinter-flavor` repo with two language groups gets none and fails the plan with `Unknown xfg template variable: megalinterImage`.
 

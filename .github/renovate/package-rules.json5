@@ -232,6 +232,10 @@
       addLabels: ["renovate/npm"]
     },
     {
+      matchManagers: ["nuget"],
+      addLabels: ["renovate/nuget"]
+    },
+    {
       matchManagers: ["pep621", "pip_requirements"],
       addLabels: ["renovate/python"]
     },
