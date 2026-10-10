@@ -165,18 +165,19 @@ Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-ima
 
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
-- `packages` (default: repository name, lowercased): comma-separated package names. Wildcards are refused, because expanding them needs a PAT.
+- `packages` (default empty): comma-separated package names that override discovery. Empty cleans every image the repo builds, found by [`detect-images`](#detect-images) in `all` mode (a root package uses the `image` name). A repo with no images skips the cleanup with a notice; a detect result that is not a valid matrix fails the run. Wildcards are refused, because expanding them needs a PAT.
+- `image` (default empty): image name for a package at the repo root, passed to `detect-images` as `root-name`. Empty uses the lowercased repo name. Set it only when the root image is not named after the repo; the synced caller does not pass it.
 - `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
 
 Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
 
-The calling job needs `packages: write`, and each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
+The calling job needs `packages: write`, and `contents: read` so the job can check out the repo to find its images. Each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
 
 A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
 
-A repo with several images passes them all in `packages`: container-images and spruyt-labs list theirs in the `retentionPackages` var in `src/repos.yaml`. Only GHCR is cleaned; Docker Hub tags are kept, and so are old GitHub releases and git tags.
+The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Only GHCR is cleaned; Docker Hub tags are kept, and so are old GitHub releases and git tags.
 
 The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 
@@ -195,6 +196,7 @@ permissions: {}
 jobs:
   cleanup:
     permissions:
+      contents: read
       packages: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@<sha> # main
     with:
@@ -307,7 +309,7 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 | `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
 
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
-tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and sets `retentionPackages` in `src/repos.yaml` when it has more than one image or its image name isn't the lowercased repo name.
+tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`.
 
 Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
@@ -379,14 +381,7 @@ files:
 
 The job is `image` in `ci.yaml` and `release` in `release-please.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
-`container-retention.yaml` cleans the lowercased repository name. A repo whose package has another name sets it with the `retentionPackages` var (comma-separated):
-
-```yaml
-files:
-  .github/workflows/container-retention.yaml:
-    vars:
-      retentionPackages: "my-image"
-```
+`container-retention.yaml` needs no per-repo setting: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. A root image not named after the repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`; no repo needs it today.
 
 ## Caller example (Go)
 

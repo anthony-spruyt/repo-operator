@@ -140,16 +140,12 @@ EOF
   [ "$output" = '[true,false]' ]
   run yq -o=json -I0 "$repo | .files[\".github/workflows/ci.yaml\"].content.jobs | [(.repo.permissions | to_entries | sort_by(.key) | from_entries), (.image.with.language // null)]" "$SRC/repos.yaml"
   [ "$output" = '[{"actions":"read","contents":"read","pull-requests":"read"},null]' ]
-  run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
-  [ "$output" = "shutdown-orchestrator" ]
 }
 
-@test "container-images joins image with retention for its 16 packages and no separate dockerhub group" {
+@test "container-images joins image with no separate dockerhub group" {
   repo='.repos[] | select(.git == "https://github.com/anthony-spruyt/container-images.git")'
   run yq -o=json -I0 "$repo | .groups | [any_c(. == \"image\"), any_c(. == \"dockerhub\")]" "$SRC/repos.yaml"
   [ "$output" = '[true,false]' ]
-  run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
-  [ "$output" = "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation" ]
 }
 
 @test "the 8 image repos all get the image group, directly or through go-image or python-image" {
@@ -309,4 +305,14 @@ check_pins() {
   run grep -rIl -e 'rebuild-release' -e 'Rebuild Release' "$SRC" "$REPO_ROOT/.github/workflows" "$REPO_ROOT/.github/actions"
   echo "$output"
   [ "$status" -eq 1 ]
+}
+
+@test "no config sets retentionPackages, because container retention finds the packages itself" {
+  run grep -rn "retentionPackages" "$SRC" "$REPO_ROOT/docs" "$REPO_ROOT/README.md"
+  [ "$status" -eq 1 ]
+}
+
+@test "the retention template passes no packages and grants contents: read next to packages: write" {
+  run yq -o=json -I0 '.jobs.cleanup | [.permissions, (.with | keys)]' "$WORKFLOWS/image-container-retention.yaml"
+  [ "$output" = '[{"contents":"read","packages":"write"},["dry-run"]]' ]
 }
