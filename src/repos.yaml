@@ -80,10 +80,6 @@ repos:
       - mergify
       - renovate
       - sonar
-    files:
-      .github/workflows/container-retention.yaml:
-        vars:
-          retentionPackages: "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation"
     settings:
       labels:
         "renovate/upstream":
@@ -254,9 +250,6 @@ repos:
                 actions: "read"
                 contents: "read"
                 pull-requests: "read"
-      .github/workflows/container-retention.yaml:
-        vars:
-          retentionPackages: "shutdown-orchestrator"
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
@@ -385,9 +378,6 @@ repos:
           jobs:
             release:
               with: *sungather-with
-      .github/workflows/container-retention.yaml:
-        vars:
-          retentionPackages: "sungather"
       .mcp.json:
         content:
           mcpServers:

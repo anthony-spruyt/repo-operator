@@ -133,8 +133,6 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
         template: true
-        vars:
-          retentionPackages: ""
         content: "@templates/.github/workflows/image-container-retention.yaml"
   go-image:
     extends:

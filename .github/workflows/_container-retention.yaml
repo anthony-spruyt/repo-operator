@@ -6,7 +6,7 @@ on:
   workflow_call:
     inputs:
       packages:
-        description: Comma-separated GHCR package names (default the repository name, lowercased). No wildcards
+        description: Comma-separated GHCR package names. Empty cleans every image the repository builds (found by detect-images). No wildcards
         required: false
         type: string
         default: ""
@@ -33,6 +33,7 @@ jobs:
     name: GHCR Cleanup
     runs-on: ubuntu-latest
     permissions:
+      contents: read
       packages: write
     # ghcr-cleanup-action is not safe to run in parallel against one package
     concurrency:
@@ -44,8 +45,7 @@ jobs:
         with:
           egress-policy: audit
 
-      - name: Resolve packages
-        id: packages
+      - name: Validate inputs
         env:
           PACKAGES: ${{ inputs.packages }}
           OLDER_THAN: ${{ inputs.older-than }}
@@ -60,19 +60,42 @@ jobs:
             echo "::error::keep-n-tagged must be a whole number of at least 1."
             exit 1
           fi
-          if [ -z "$PACKAGES" ]; then
-            PACKAGES="${GITHUB_REPOSITORY#*/}"
-            PACKAGES="${PACKAGES,,}"
-          fi
           case "$PACKAGES" in
             *[*?]*)
               echo "::error::Wildcards need a PAT; list each package by name."
               exit 1
               ;;
           esac
+
+      - name: Checkout
+        if: inputs.packages == ''
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      - name: Detect images
+        id: detect
+        if: inputs.packages == ''
+        uses: $/.github/actions/detect-images
+        with:
+          mode: all
+
+      - name: Resolve packages
+        id: packages
+        env:
+          PACKAGES: ${{ inputs.packages }}
+          MATRIX: ${{ steps.detect.outputs.matrix }}
+        run: |
+          if [ -z "$PACKAGES" ]; then
+            PACKAGES=$(jq -r '[.include[].name] | join(",")' <<<"$MATRIX")
+          fi
+          if [ -z "$PACKAGES" ]; then
+            echo "::notice::No images found in this repository, skipping cleanup."
+          fi
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
       - name: Clean up package versions
+        if: steps.packages.outputs.list != ''
         uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
         with:
           token: ${{ github.token }}
