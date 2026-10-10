@@ -194,6 +194,7 @@
     {
       description: "Dependency bumps in image repos release a patch: release-please hides chore commits there. The dev container never reaches the image, so it stays chore",
       matchRepositories: [
+        "anthony-spruyt/agent-platform",
         "anthony-spruyt/kata-tap-qdisc-fix",
         "anthony-spruyt/litellm-middleware",
         "anthony-spruyt/mcp-header-proxy",
