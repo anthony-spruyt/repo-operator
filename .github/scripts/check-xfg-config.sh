@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Checks that xfg config targets only github.com hosts, anthony-spruyt repos and the pinned AI endpoint, and holds no env references.
+# Checks that xfg config targets only github.com hosts, anthony-spruyt repos and the pinned AI endpoints, and holds no env references.
 # Runs before every xfg step in ci.yaml. Usage: check-xfg-config.sh [dir]
 set -euo pipefail
 
@@ -9,6 +9,9 @@ config_dir="${1:-src}"
 readonly ALLOWED_SECRET_ENV='["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY","GHCR_READ_TOKEN","DOCKERHUB_TOKEN"]'
 readonly ALLOWED_AI_KEY_ENV="OPENROUTER_API_KEY"
 readonly ALLOWED_AI_BASE_URL="https://openrouter.ai/api/v1"
+readonly ALLOWED_AI_GATEWAY_KEY_ENV="LITELLM_API_KEY"
+readonly ALLOWED_AI_GATEWAY_URL_ENV="LITELLM_BASE_URL"
+readonly ALLOWED_AI_HEADER_ENV='["CF_ACCESS_CLIENT_ID","CF_ACCESS_CLIENT_SECRET"]'
 
 # Mirrors xfg's env interpolation (config/env.ts): $${...} is an escape, ${VAR...} reads process.env.
 readonly JQ_ENV_REF='def env_refs: gsub("\\$\\$\\{(?!xfg:)[^}]+\\}"; "") | [match("\\$\\{[A-Za-z_][A-Za-z0-9_.]*(:[?-][^}]*)?\\}"; "g").string] | .[];'
@@ -16,6 +19,19 @@ readonly JQ_ENV_REF='def env_refs: gsub("\\$\\$\\{(?!xfg:)[^}]+\\}"; "") | [matc
 # shellcheck disable=SC2016
 readonly JQ_CONFIG='
 def bad($m): "\($f): \($m)";
+def ai_provider($path; $primary):
+  (if has("baseUrl") and has("baseUrlEnv") then bad("\($path): baseUrl and baseUrlEnv together are not allowed") else empty end),
+  (if has("baseUrl") and .baseUrl != $ai_base_url then bad("\($path).baseUrl not allowed: \(.baseUrl | tojson)") else empty end),
+  (if has("baseUrlEnv") and (($primary | not) or .baseUrlEnv != $ai_gateway_url_env)
+    then bad("\($path).baseUrlEnv not allowed: \(.baseUrlEnv | tojson)") else empty end),
+  (if has("apiKeyEnv") and .apiKeyEnv != (if has("baseUrlEnv") then $ai_gateway_key_env else $ai_key_env end)
+    then bad("\($path).apiKeyEnv not allowed: \(.apiKeyEnv | tojson)") else empty end),
+  (if has("headersEnv") then
+    (.headersEnv | if type != "object" then bad("\($path).headersEnv must be a map of header name to env var name")
+      else to_entries[] | select(.value | IN($ai_header_env[]) | not)
+        | bad("\($path).headersEnv env not allowed: \(.value | tojson)") end),
+    (if has("baseUrlEnv") | not then bad("\($path).headersEnv needs baseUrlEnv") else empty end)
+  else empty end);
 def github_url: type == "string" and test("\\Ahttps://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\z");
 def owned_url: type == "string" and test("\\Ahttps://github\\.com/anthony-spruyt/[A-Za-z0-9_.-]+\\z");
 (.. | objects | select(has("githubHosts")) | .githubHosts
@@ -38,10 +54,11 @@ else empty end),
 (.. | objects | select(has("files")) | .files | objects | keys[]
   | select(test("(\\A|[/\\\\])\\.git([/\\\\]|\\z)"; "i"))
   | bad("file path has a .git segment: \(tojson)")),
-(.. | objects | select(has("apiKeyEnv")) | .apiKeyEnv | select(. != $ai_key_env)
-  | bad("prOptions.ai.apiKeyEnv not allowed: \(tojson)")),
-(.. | objects | select(has("ai")) | .ai | objects | select(has("baseUrl")) | .baseUrl
-  | select(. != $ai_base_url) | bad("prOptions.ai.baseUrl not allowed: \(tojson)"))
+(.. | objects | select(has("apiKeyEnv")) | .apiKeyEnv | select(IN($ai_key_env, $ai_gateway_key_env) | not)
+  | bad("apiKeyEnv not allowed: \(tojson)")),
+(.. | objects | select(has("ai")) | .ai | objects
+  | ai_provider("prOptions.ai"; true),
+    (.fallback | objects | ai_provider("prOptions.ai.fallback"; false)))
 '
 
 violations=()
@@ -77,7 +94,10 @@ while IFS= read -r -d '' file; do
   report < <(printf '%s\n' "$json" | jq -r --arg f "$file" \
     --argjson secret_env "$ALLOWED_SECRET_ENV" \
     --arg ai_key_env "$ALLOWED_AI_KEY_ENV" \
-    --arg ai_base_url "$ALLOWED_AI_BASE_URL" "$JQ_CONFIG")
+    --arg ai_base_url "$ALLOWED_AI_BASE_URL" \
+    --arg ai_gateway_key_env "$ALLOWED_AI_GATEWAY_KEY_ENV" \
+    --arg ai_gateway_url_env "$ALLOWED_AI_GATEWAY_URL_ENV" \
+    --argjson ai_header_env "$ALLOWED_AI_HEADER_ENV" "$JQ_CONFIG")
 done < <(find "$config_dir" -mindepth 1 -name '.*' -prune -o -type f \( -iname '*.yaml' -o -iname '*.yml' \) -print0)
 
 # xfg interpolates ${VAR} from its environment into file content, and any file under the config dir

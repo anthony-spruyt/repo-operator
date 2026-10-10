@@ -219,6 +219,148 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+ai_litellm_with_fallback() {
+  cat >>"$CFG/base.yaml" <<'YAML'
+prOptions:
+  ai:
+    provider: openai
+    baseUrlEnv: LITELLM_BASE_URL
+    model: openrouter/anthropic/claude-haiku-5.5
+    apiKeyEnv: LITELLM_API_KEY
+    headersEnv:
+      CF-Access-Client-Id: CF_ACCESS_CLIENT_ID
+      CF-Access-Client-Secret: CF_ACCESS_CLIENT_SECRET
+    fallback:
+      provider: openai
+      baseUrl: https://openrouter.ai/api/v1
+      model: anthropic/claude-haiku-5.5
+      apiKeyEnv: OPENROUTER_API_KEY
+YAML
+}
+
+@test "allows the LiteLLM AI config with the OpenRouter fallback" {
+  ai_litellm_with_fallback
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows the LiteLLM AI config without a fallback" {
+  ai_litellm_with_fallback
+  yq -i 'del(.prOptions.ai.fallback)' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejects baseUrl and baseUrlEnv on the same provider" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.baseUrl = "https://openrouter.ai/api/v1"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"baseUrl"* ]]
+}
+
+@test "rejects a baseUrl other than OpenRouter on the primary when a fallback is set" {
+  ai_litellm_with_fallback
+  yq -i 'del(.prOptions.ai.baseUrlEnv) | .prOptions.ai.baseUrl = "https://attacker.example/v1"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+}
+
+@test "rejects a baseUrlEnv other than LITELLM_BASE_URL" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.baseUrlEnv = "RELEASE_PLEASE_APP_PRIVATE_KEY"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"baseUrlEnv"* ]]
+}
+
+@test "rejects a baseUrlEnv on the fallback" {
+  ai_litellm_with_fallback
+  yq -i 'del(.prOptions.ai.fallback.baseUrl) | .prOptions.ai.fallback.baseUrlEnv = "LITELLM_BASE_URL"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"baseUrlEnv"* ]]
+}
+
+@test "rejects a fallback baseUrl other than OpenRouter" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback.baseUrl = "https://attacker.example/v1"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"baseUrl"* ]]
+}
+
+@test "rejects a fallback AI key env other than OPENROUTER_API_KEY" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback.apiKeyEnv = "XFG_GITHUB_APP_PRIVATE_KEY"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"apiKeyEnv"* ]]
+}
+
+@test "rejects the LiteLLM key on a provider that has no baseUrlEnv" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback.apiKeyEnv = "LITELLM_API_KEY"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"apiKeyEnv"* ]]
+}
+
+@test "rejects the OpenRouter key on the baseUrlEnv provider" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.apiKeyEnv = "OPENROUTER_API_KEY"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"apiKeyEnv"* ]]
+}
+
+@test "rejects a headersEnv value other than the Cloudflare Access vars" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.headersEnv.X-Leak = "RELEASE_PLEASE_APP_PRIVATE_KEY"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"headersEnv"* ]]
+}
+
+@test "rejects a headersEnv that is not a map of env var names" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.headersEnv = "CF_ACCESS_CLIENT_ID"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"headersEnv"* ]]
+}
+
+@test "rejects headersEnv on a provider that has no baseUrlEnv" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback.headersEnv.CF-Access-Client-Id = "CF_ACCESS_CLIENT_ID"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"headersEnv"* ]]
+}
+
+@test "rejects an AI key env outside prOptions.ai" {
+  ai_litellm_with_fallback
+  printf 'extra:\n  apiKeyEnv: XFG_GITHUB_APP_PRIVATE_KEY\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"apiKeyEnv"* ]]
+}
+
+@test "rejects an env var reference in the LiteLLM AI config" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.model = "${LITELLM_BASE_URL}"' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"env var reference"* ]]
+}
+
+@test "rejects a LiteLLM AI config set at group or repo level with a bad URL env" {
+  printf 'groups:\n  g:\n    prOptions:\n      ai:\n        provider: openai\n        baseUrlEnv: APP_PRIVATE_KEY\n' >"$CFG/groups.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"baseUrlEnv"* ]]
+}
+
 @test "rejects escapes that could build an env var reference in JSON5" {
   mkdir -p "$CFG/templates"
   printf '{a: "\\x24{XFG_GITHUB_APP_PRIVATE_KEY}"}\n' >"$CFG/templates/a.json5"
