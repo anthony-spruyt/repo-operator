@@ -141,7 +141,7 @@ EOF
   run yq -o=json -I0 "$repo | .files[\".github/workflows/ci.yaml\"].content.jobs | [(.repo.permissions | to_entries | sort_by(.key) | from_entries), (.image.with.language // null)]" "$SRC/repos.yaml"
   [ "$output" = '[{"actions":"read","contents":"read","pull-requests":"read"},null]' ]
   run yq -r "$repo | .files[\".github/workflows/container-retention.yaml\"].vars.retentionPackages" "$SRC/repos.yaml"
-  [ "$output" = "shutdown-orchestrator,agent-queue-worker,bull-board" ]
+  [ "$output" = "shutdown-orchestrator" ]
 }
 
 @test "container-images joins image with retention for its 16 packages and no separate dockerhub group" {
@@ -152,9 +152,9 @@ EOF
   [ "$output" = "chrony,claude-agent-read,claude-agent-spruyt-labs,claude-agent-write,coder-gitops,devcontainer-common,happy-server,llm-guard,llm-guard-cuda,megalinter-base,megalinter-cpp,megalinter-go,megalinter-python,megalinter-spruyt-labs,megalinter-typescript,ssh-key-rotation" ]
 }
 
-@test "the 7 image repos all get the image group, directly or through go-image or python-image" {
+@test "the 8 image repos all get the image group, directly or through go-image or python-image" {
   run yq -r '[.repos[] | select(.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "SunGather container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
+  [ "$output" = "SunGather agent-platform container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
 }
 
 @test "the image group defaults the release caller's language to none, and no repo repeats it" {

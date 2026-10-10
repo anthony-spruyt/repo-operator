@@ -1,6 +1,26 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 # Configuration for repo-operator - syncs files to target repositories
 repos:
+  - git: https://github.com/anthony-spruyt/agent-platform.git
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - megalinter-flavor
+      - protected-main-branch
+      - docker
+      - image
+      - dotnet
+      - release-please
+      - mergify
+      - renovate
+      - sonar
+    settings:
+      repo:
+        description: "Temporal workers and webhook intake for homelab agents, in .NET."
+
   - git: https://github.com/anthony-spruyt/Chromance.git
     groups:
       - claude
@@ -221,7 +241,6 @@ repos:
       - image
       - release-please
       - terraform
-      - biome
       - mergify
       - renovate
       - sonar
@@ -237,7 +256,7 @@ repos:
                 pull-requests: "read"
       .github/workflows/container-retention.yaml:
         vars:
-          retentionPackages: "shutdown-orchestrator,agent-queue-worker,bull-board"
+          retentionPackages: "shutdown-orchestrator"
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
@@ -322,10 +341,6 @@ repos:
             clusterconfig/
             legacy/
             .taskfiles/talos/scripts/
-      biome.json:
-        content:
-          files:
-            includes: ["ts/**/src/**/*.ts"]
       trivy-mega-linter.yaml:
         content:
           scan:
