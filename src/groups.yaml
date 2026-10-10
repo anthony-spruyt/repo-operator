@@ -92,6 +92,10 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: Repo-owned CI jobs; ci.yaml calls this after lint. See https://github.com/anthony-spruyt/repo-operator/blob/main/docs/ci.md
         content: "@templates/.github/workflows/ci-repo.yaml"
+      .github/workflows/pr-title.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/pr-title.yaml for template comments
+        content: "@templates/.github/workflows/pr-title.yaml"
   image:
     extends:
       - github-ci
@@ -581,6 +585,7 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                    - context: "PR Title"
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [protected-main-branch, github-ci, sonar]
@@ -596,6 +601,7 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                    - context: "PR Title"
                     - context: "SonarCloud Code Analysis"
                   strictRequiredStatusChecksPolicy: false
   - when:
@@ -611,6 +617,7 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                    - context: "PR Title"
                     - context: "Mergify Merge Protections"
                     - context: "SonarCloud Code Analysis"
                   strictRequiredStatusChecksPolicy: false
@@ -628,6 +635,7 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                    - context: "PR Title"
                     - context: "Mergify Merge Protections"
                   strictRequiredStatusChecksPolicy: false
   - when:
