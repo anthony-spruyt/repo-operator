@@ -1,7 +1,8 @@
 #!/usr/bin/env bats
 # shellcheck disable=SC2016,SC2030,SC2031 # each @test runs in its own subshell by design
 # Fixtures copy the release-please config of SunGather, container-images, spruyt-labs and xfg on 2026-10-09,
-# with empty Dockerfiles and flavor.yaml files. The megalinter-*/ and spruyt-labs metadata.yaml files are the planned additions.
+# with empty Dockerfiles and flavor.yaml files. The spruyt-labs metadata.yaml files match spruyt-labs' main; the container-images
+# ones predate container-images' own and differ from them in detail.
 # diffs/*.txt are the files changed by the real PR named in each file name; *-only.txt are synthetic.
 # releases/*.json are release-please-action v5 outputs for the real releases named in each file name, built from
 # the GitHub releases API the way the action's outputReleases maps them; release-matrix-scratch-* is a run's own
