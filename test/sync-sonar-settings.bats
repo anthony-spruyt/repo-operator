@@ -157,7 +157,8 @@ posts() {
   run_sync
   [ "$status" -eq 0 ]
   [[ "$output" != *gamma* ]]
-  ! grep -q gamma "$CURL_LOG"
+  run grep -q gamma "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "dry-run shows drift without a token and posts nothing" {
@@ -175,7 +176,8 @@ posts() {
   export SONAR_TOKEN="dummy-token-value"
   run_sync
   [ "$status" -eq 0 ]
-  ! grep -q 'auth=yes' "$CURL_LOG"
+  run grep -q 'auth=yes' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "per-repo values replace the default for that key and keep the other defaults" {
@@ -224,15 +226,19 @@ posts() {
   run_sync --apply
   [ "$status" -eq 0 ]
   [ "$(posts)" -eq 2 ]
-  ! grep -q '^POST .* auth=no' "$CURL_LOG"
-  ! grep -q '^GET .* auth=yes' "$CURL_LOG"
+  [[ "$output" != *"dummy-token-value"* ]]
   grep -qxF '  component=anthony-spruyt_alpha' "$CURL_LOG"
   grep -qxF '  key=sonar.issue.ignore.multicriteria' "$CURL_LOG"
   grep -qxF '  fieldValues={"ruleKey":"*:S8431","resourceKey":"**/*"}' "$CURL_LOG"
   grep -qxF '  values=src/**' "$CURL_LOG"
-  ! grep -qx '  key=sonar.exclusions' "$CURL_LOG"
-  [[ "$output" != *"dummy-token-value"* ]]
-  ! grep -q 'dummy-token-value' "$CURL_LOG"
+  run grep -q '^POST .* auth=no' "$CURL_LOG"
+  [ "$status" -eq 1 ]
+  run grep -q '^GET .* auth=yes' "$CURL_LOG"
+  [ "$status" -eq 1 ]
+  run grep -qx '  key=sonar.exclusions' "$CURL_LOG"
+  [ "$status" -eq 1 ]
+  run grep -q 'dummy-token-value' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "apply sends one values field per list entry" {
@@ -321,7 +327,8 @@ posts() {
   run_sync
   [ "$status" -eq 1 ]
   [[ "$output" == *"one YAML document"* ]]
-  ! grep -q '^GET' "$CURL_LOG"
+  run grep -q '^GET' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "rejects a config file with more than one YAML document" {
@@ -330,7 +337,8 @@ posts() {
   run_sync --apply
   [ "$status" -eq 1 ]
   [[ "$output" == *"one YAML document"* ]]
-  ! grep -q '^GET' "$CURL_LOG"
+  run grep -q '^GET' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "fails when config names a repo outside the sonar group" {
@@ -346,7 +354,8 @@ posts() {
   run_sync
   [ "$status" -eq 1 ]
   [[ "$output" == *"setting key not allowed"* ]]
-  ! grep -q '^GET' "$CURL_LOG"
+  run grep -q '^GET' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "rejects a value that is not a string, list of strings or list of string maps" {
@@ -368,7 +377,8 @@ posts() {
   run_sync
   [ "$status" -eq 1 ]
   [[ "$output" == *"someone-else"* ]]
-  ! grep -q '^GET' "$CURL_LOG"
+  run grep -q '^GET' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "passes values with URL metacharacters through as a single encoded field" {
@@ -378,7 +388,8 @@ posts() {
   [ "$status" -eq 0 ]
   grep -qxF '  values=a&key=sonar.evil&component=other' "$CURL_LOG"
   [ "$(grep -c '^  component=' "$CURL_LOG")" -ge 1 ]
-  ! grep -qxF '  component=other' "$CURL_LOG"
+  run grep -qxF '  component=other' "$CURL_LOG"
+  [ "$status" -eq 1 ]
 }
 
 @test "rejects an unknown option" {
