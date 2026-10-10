@@ -43,7 +43,6 @@ hook() {
 }
 
 @test "prints nothing without a session_id" {
-  printf 'notes\n' >"$ROOT/.agent-progress/main.md"
   run bash "$SCRIPT" <<<"{\"hook_event_name\":\"SessionStart\",\"cwd\":\"$ROOT\"}"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
@@ -78,12 +77,6 @@ hook() {
   [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
 }
 
-@test "ignores a branch-named notes file" {
-  printf 'branch notes\n' >"$ROOT/.agent-progress/main.md"
-  hook "$ROOT"
-  [[ "$output" != *"branch notes"* ]]
-}
-
 @test "loads the same notes on a detached HEAD or another branch" {
   printf 'same notes\n' >"$ROOT/.agent-progress/$SID.md"
   git -C "$ROOT" checkout -q --detach
@@ -104,7 +97,6 @@ hook() {
 }
 
 @test "an EnterWorktree session (project dir is the main checkout) gets the worktree root" {
-  printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
   WT="$ROOT/.claude/worktrees/wt"
   git -C "$ROOT" worktree add -q -b wt "$WT"
   mkdir -p "$WT/src/deep"
@@ -170,4 +162,62 @@ hook() {
   [ "$status" -eq 0 ]
   [ "${#output}" -lt 10000 ]
   [[ "$output" == *"truncated"* ]]
+}
+
+@test "reloads notes written in the project checkout after cwd moves to a worktree" {
+  printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
+  WT="$ROOT/.claude/worktrees/wt"
+  git -C "$ROOT" worktree add -q -b wt "$WT"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"main checkout notes"* ]]
+  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
+  [[ "$output" == *"$WT/.agent-progress/$SID.md"* ]]
+}
+
+@test "prefers the cwd checkout's notes over the project checkout's" {
+  printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
+  WT="$ROOT/.claude/worktrees/wt"
+  git -C "$ROOT" worktree add -q -b wt "$WT"
+  mkdir -p "$WT/.agent-progress"
+  printf 'worktree notes\n' >"$WT/.agent-progress/$SID.md"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT"
+  [[ "$output" == *"worktree notes"* ]]
+  [[ "$output" != *"main checkout notes"* ]]
+}
+
+@test "skips a symlinked notes folder" {
+  rmdir "$ROOT/.agent-progress"
+  mkdir "${BATS_TEST_TMPDIR}/elsewhere-notes"
+  printf 'linked notes\n' >"${BATS_TEST_TMPDIR}/elsewhere-notes/$SID.md"
+  ln -s "${BATS_TEST_TMPDIR}/elsewhere-notes" "$ROOT/.agent-progress"
+  hook "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "skips a symlinked notes file" {
+  printf 'linked notes\n' >"${BATS_TEST_TMPDIR}/target.md"
+  ln -s "${BATS_TEST_TMPDIR}/target.md" "$ROOT/.agent-progress/$SID.md"
+  hook "$ROOT"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "prints nothing for a session_id containing a newline" {
+  run bash "$SCRIPT" <<<"{\"session_id\":\"abc\\ndef\",\"cwd\":\"$ROOT\"}"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "falls back to the project when the cwd directory does not exist" {
+  CLAUDE_PROJECT_DIR="$ROOT" hook "${BATS_TEST_TMPDIR}/gone"
+  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
+}
+
+@test "prints nothing in a bare repo" {
+  git init -q --bare "${BATS_TEST_TMPDIR}/bare.git"
+  hook "${BATS_TEST_TMPDIR}/bare.git"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
