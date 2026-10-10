@@ -214,6 +214,22 @@
       semanticCommitType: "fix",
       semanticCommitScope: "deps"
     },
+    {
+      description: "Runtime NuGet dependency bumps in agent-platform release a patch; test-only packages never reach the image, so they stay chore",
+      matchRepositories: ["anthony-spruyt/agent-platform"],
+      matchManagers: ["nuget"],
+      matchFileNames: ["Directory.Packages.props"],
+      matchPackageNames: [
+        "!xunit.v3*",
+        "!xunit.runner.*",
+        "!Microsoft.AspNetCore.Mvc.Testing",
+        "!Microsoft.Testing.*",
+        "!Microsoft.NET.Test.Sdk",
+        "!coverlet.*"
+      ],
+      semanticCommitType: "fix",
+      semanticCommitScope: "deps"
+    },
 
     // ============ Managers ============
     {
