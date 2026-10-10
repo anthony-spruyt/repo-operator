@@ -94,16 +94,41 @@ hook() {
   [[ "$output" == *"same notes"* ]]
 }
 
-@test "uses a worktree's own root, not the main checkout's" {
+@test "a worktree session gets the main checkout's notes path" {
   printf 'main checkout notes\n' >"$ROOT/.agent-progress/$SID.md"
   WT="$ROOT/.claude/worktrees/wt"
   git -C "$ROOT" worktree add -q -b wt "$WT"
-  mkdir -p "$WT/.agent-progress"
-  printf 'worktree notes\n' >"$WT/.agent-progress/$SID.md"
-  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT"
-  [[ "$output" == *"worktree notes"* ]]
-  [[ "$output" != *"main checkout notes"* ]]
-  [[ "$output" == *"$WT/.agent-progress/$SID.md"* ]]
+  CLAUDE_PROJECT_DIR="$WT" hook "$WT"
+  [[ "$output" == *"main checkout notes"* ]]
+  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
+  [[ "$output" != *"$WT/.agent-progress"* ]]
+}
+
+@test "a worktree outside the main checkout also gets the main checkout's path" {
+  WT="${BATS_TEST_TMPDIR}/elsewhere"
+  git -C "$ROOT" worktree add -q -b wt2 "$WT"
+  hook "$WT"
+  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
+}
+
+@test "a plain checkout keeps its own root" {
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$ROOT"
+  [[ "$output" == *"$ROOT/.agent-progress/$SID.md"* ]]
+}
+
+@test "a git dir that is not named .git falls back to the work tree root" {
+  BARE="${BATS_TEST_TMPDIR}/gitdir-elsewhere"
+  WORK="${BATS_TEST_TMPDIR}/work"
+  mkdir -p "$WORK"
+  git init -q -b main --separate-git-dir "$BARE" "$WORK"
+  hook "$WORK"
+  [[ "$output" == *"$WORK/.agent-progress/$SID.md"* ]]
+}
+
+@test "the SessionStart matcher reloads notes on resume and compact" {
+  matcher=$(jq -r '.hooks.SessionStart[0].matcher' "${BATS_TEST_DIRNAME}/../src/templates/.claude/settings.json")
+  [[ "$matcher" =~ (^|\|)resume(\||$) ]]
+  [[ "$matcher" =~ (^|\|)compact(\||$) ]]
 }
 
 @test "falls back to the project when cwd is in an unrelated repo" {

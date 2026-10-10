@@ -20,6 +20,9 @@ if [[ -n "$project" && "$(common_dir "$cwd")" != "$(common_dir "$project")" ]]; 
   cwd=$project
 fi
 root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || exit 0
+# Notes live in the main checkout, also for a worktree session
+gitdir=$(common_dir "$cwd")
+[[ "$(basename "$gitdir")" == ".git" ]] && root=$(dirname "$gitdir")
 
 file="$root/.agent-progress/$session_id.md"
 
