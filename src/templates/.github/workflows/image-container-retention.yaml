@@ -19,7 +19,7 @@ jobs:
     permissions:
       contents: "read"
       packages: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@03ce087ec3006c13aa278b3d1b42e8f409cd6c43" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@deae0ca3ab62acbb470d38676712cc037318ee9f" # main
     with:
       # Scheduled runs get no inputs, so only a dispatch can dry-run
       dry-run: "${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}"
