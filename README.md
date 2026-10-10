@@ -145,14 +145,15 @@ The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issue
 
 Keep this table current when adding a secret.
 
-| Secret                 | Where it lives                                                                                        |
-| ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `APP_*`                | repo-operator `production` and `plan-main` environments (`main` only); both hold their own copy       |
-| `PLAN_APP_*`           | repo-operator only; XFG Plan (preview)                                                                |
-| `RELEASE_PLEASE_APP_*` | Synced by the `release-please` group into each repo's `release` environment (`main` only)             |
-| `GHCR_READ_TOKEN`      | Synced to `github-trivy`; a classic PAT with `read:packages`, because the list API rejects app tokens |
-| `DOCKERHUB_TOKEN`      | Synced by `dockerhub`, which `image` extends, into `release` only                                     |
-| `SONAR_TOKEN`          | repo-operator `sonar` environment (`main` only), for `sonar-settings.yaml`                            |
+| Secret                 | Where it lives                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `APP_*`                | repo-operator `production` and `plan-main` environments (`main` only); both hold their own copy                 |
+| `PLAN_APP_*`           | repo-operator only; XFG Plan (preview) and Lint Canary                                                          |
+| `RELEASE_PLEASE_APP_*` | Synced by the `release-please` group into each repo's `release` environment (`main` only; xfg's also `v*` tags) |
+| `GHCR_READ_TOKEN`      | Synced to `github-trivy`; a classic PAT with `read:packages`, because the list API rejects app tokens           |
+| `DOCKERHUB_TOKEN`      | Synced by `dockerhub`, which `image` extends, into `release` only                                               |
+| `SONAR_TOKEN`          | repo-operator `sonar` environment (`main` only), for `sonar-settings.yaml`                                      |
+| `OPENROUTER_API_KEY`   | repo-operator `production` environment; XFG Apply AI commit messages                                            |
 
 ### Rotating a synced secret
 

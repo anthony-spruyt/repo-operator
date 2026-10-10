@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
-# Checks that xfg config only targets github.com and holds no env references. Runs before every
-# xfg step in ci.yaml. Usage: check-xfg-config.sh [dir]
+# Checks that xfg config targets only github.com hosts, anthony-spruyt repos and the pinned AI endpoint, and holds no env references.
+# Runs before every xfg step in ci.yaml. Usage: check-xfg-config.sh [dir]
 set -euo pipefail
 
 config_dir="${1:-src}"
@@ -80,8 +80,8 @@ while IFS= read -r -d '' file; do
     --arg ai_base_url "$ALLOWED_AI_BASE_URL" "$JQ_CONFIG")
 done < <(find "$config_dir" -mindepth 1 -name '.*' -prune -o -type f \( -iname '*.yaml' -o -iname '*.yml' \) -print0)
 
-# xfg interpolates ${VAR} from its environment into file content, so every file under the config
-# dir is checked, raw and decoded.
+# xfg interpolates ${VAR} from its environment into file content, and any file under the config dir
+# can be content, so every file is checked, raw and decoded.
 while IFS= read -r -d '' file; do
   report < <(perl -0777 -ne 's/\$\$\{(?!xfg:)[^}]+\}//g; print "$ARGV: env var reference not allowed: $1\n" while /(\$\{[A-Za-z_][A-Za-z0-9_.]*(?::[?-][^}]*)?\})/g' "$file")
   decoded=""
