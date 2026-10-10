@@ -273,7 +273,7 @@ released_images() {
 }
 
 select_images() {
-  local listing="$1" out="$2" names diff
+  local listing="$1" out="$2" names
   if [[ "$mode" == "released" ]]; then
     released_images "$listing" "$out"
   elif [[ -n "$image" ]]; then
@@ -292,7 +292,7 @@ select_images() {
 
 # A pull request could edit its own config to skip its build, so the base's config selects images too
 changed_images() {
-  local listing="$1" out="$2" diff="$2.diff" listings=("$1") base_list l
+  local out="$2" diff="$2.diff" listings=("$1") base_list l
   if [[ -n "$base" ]]; then
     require_base
     base_list=$(base_listing)
