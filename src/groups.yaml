@@ -604,7 +604,9 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                      integrationId: 15368
                     - context: "PR Title"
+                      integrationId: 15368
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [protected-main-branch, github-ci, sonar]
@@ -620,8 +622,11 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                      integrationId: 15368
                     - context: "PR Title"
+                      integrationId: 15368
                     - context: "SonarCloud Code Analysis"
+                      integrationId: 12526
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [mergify, protected-main-branch, github-ci, sonar]
@@ -636,9 +641,13 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                      integrationId: 15368
                     - context: "PR Title"
+                      integrationId: 15368
                     - context: "Mergify Merge Protections"
+                      integrationId: 10562
                     - context: "SonarCloud Code Analysis"
+                      integrationId: 12526
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [mergify, protected-main-branch, github-ci]
@@ -654,8 +663,11 @@ conditionalGroups:
                   doNotEnforceOnCreate: false
                   requiredStatusChecks:
                     - context: "summary / Check Results"
+                      integrationId: 15368
                     - context: "PR Title"
+                      integrationId: 15368
                     - context: "Mergify Merge Protections"
+                      integrationId: 10562
                   strictRequiredStatusChecksPolicy: false
   - when:
       allOf: [renovate]

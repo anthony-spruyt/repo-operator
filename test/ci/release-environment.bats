@@ -100,14 +100,46 @@ release_env() {
   [ "$output" = "release" ]
 }
 
+# Jobs that reference a release secret in their steps or in a job-level env block, as "file:job".
+secret_jobs() {
+  (cd "$1" && yq --no-doc -r '.jobs | to_entries[] | select([.value.steps, .value.env] | [.. | select(tag == "!!str")] | any_c(test("secrets\.(RELEASE_PLEASE_APP_[A-Z_]+|DOCKERHUB_TOKEN)"))) | filename + ":" + .key' _*.yaml | sort)
+}
+
 @test "every shared-workflow job that reads a release secret uses the release environment, and no other job does" {
   local secret_jobs env_jobs
-  secret_jobs=$(cd "$WF" && yq --no-doc -r '.jobs | to_entries[] | select(.value.steps != null and ([.value.steps[] | .. | select(tag == "!!str")] | any_c(test("secrets\.(RELEASE_PLEASE_APP_[A-Z_]+|DOCKERHUB_TOKEN)")))) | filename + ":" + .key' _*.yaml | sort)
+  secret_jobs=$(secret_jobs "$WF")
   env_jobs=$(cd "$WF" && yq --no-doc -r '.jobs | to_entries[] | select(.value.environment != null) | filename + ":" + .key + "=" + (.value.environment | tostring)' _*.yaml | sort)
   echo "secret jobs: $secret_jobs"
   echo "environment jobs: $env_jobs"
   [ "$secret_jobs" = $'_build-image.yaml:publish\n_release-please.yaml:release-please' ]
   [ "$env_jobs" = $'_build-image.yaml:publish=release\n_release-please.yaml:release-please=release' ]
+}
+
+@test "a release secret in a job-level env block counts as a read" {
+  cat >"$BATS_TEST_TMPDIR/_fixture.yaml" <<'YAML'
+on: workflow_call
+jobs:
+  via-env:
+    runs-on: ubuntu-latest
+    env:
+      TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
+    steps:
+      - run: echo hi
+  via-step:
+    runs-on: ubuntu-latest
+    steps:
+      - run: echo "$KEY"
+        env:
+          KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+  clean:
+    runs-on: ubuntu-latest
+    env:
+      NAME: value
+    steps:
+      - run: echo hi
+YAML
+  run secret_jobs "$BATS_TEST_TMPDIR"
+  [ "$output" = $'_fixture.yaml:via-env\n_fixture.yaml:via-step' ]
 }
 
 @test "no pull request path reaches the release environment" {
