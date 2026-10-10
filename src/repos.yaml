@@ -193,6 +193,23 @@ repos:
         vars:
           gateFilesExtra: "src/|test/ci/|"
 
+  - git: https://github.com/anthony-spruyt/security.git
+    groups:
+      - private-repo
+    files:
+      inherit: false
+    settings:
+      repo:
+        allowForking: false
+        automatedSecurityFixes: false
+        hasDiscussions: false
+        hasIssues: true
+        hasProjects: false
+        hasWiki: false
+        vulnerabilityAlerts: false
+      labels:
+        inherit: false
+
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
       - claude

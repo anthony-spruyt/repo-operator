@@ -281,6 +281,7 @@ groups:
           description: "Mergify queued"
   private-repo:
     settings:
+      codeScanning: false
       repo:
         privateVulnerabilityReporting: false
         secretScanning: false
