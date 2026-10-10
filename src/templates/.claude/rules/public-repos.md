@@ -14,6 +14,7 @@ This covers issues, PRs, comments, commit messages, READMEs, docs, code comments
 ## Instead
 
 - Track security work and findings as issues in `anthony-spruyt/security`
+- Public commits and PRs reference a neutral public issue, never the security repo
 - Report security findings to whoever asked: a subagent to the agent that called it, the main session to the owner
 - In public text, describe controls as the end state: "Only the API gateway can reach this service"
 - In public commit and PR titles, word security work as a neutral task: "Restrict admin paths to the LAN"
