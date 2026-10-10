@@ -420,7 +420,7 @@ groups:
           jobs:
             sonar:
               permissions: {}
-              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@55f5772eda61e5585fcfe7207d409f86ab130c5b" # main
+              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@03ce087ec3006c13aa278b3d1b42e8f409cd6c43" # main
             summary:
               needs:
                 $arrayMerge: append
