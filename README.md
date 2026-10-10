@@ -138,40 +138,26 @@ Create the SonarQube Cloud project before adding a repo to the `sonar` group, or
 .github/scripts/sync-sonar-settings.sh
 ```
 
-The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and [Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
+The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and
+[Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
 
 ## Credentials
 
-Every credential that can act on the managed repos. Keep this current when adding an app, token, or bypass actor.
+Keep this table current when adding a secret.
 
-### GitHub Apps and bots
-
-| Actor                            | ID      | Credential                                                                                                                                                                 | Can do                                           | Bypass                                         |
-| -------------------------------- | ------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------ | ---------------------------------------------- |
-| `repo-operator[bot]`             | 2758555 | `APP_*`, repo-operator `production` and `plan-main` (`main` only) environments                                                                                             | Files, settings, rulesets, secrets on every repo | `pr-rules` `always` (direct-push sync)         |
-| Plan App                         | n/a     | `PLAN_APP_*`, repo-operator only                                                                                                                                           | Read-only metadata for `xfg` dry-runs            | none                                           |
-| `repo-operator-release-bot[bot]` | 4745999 | One app for every release-please repo; `RELEASE_PLEASE_APP_*` synced by the `release-please` group into its `release` environment only (`main` only; xfg's also `v*` tags) | Opens release PRs, creates tags and releases     | `tag-rules` `always` on `release-please` repos |
-| `mergify[bot]`                   | 10562   | Mergify-hosted                                                                                                                                                             | Merges PRs, queue branches                       | `pr-rules` `exempt`                            |
-
-`tag-rules` blocks creating, updating and deleting any tag in every repo, so only its bypass actors can tag: the release bot in `release-please` repos (including xfg's floating `vN` tag). Repos outside `release-please` take no tags.
-
-`pr-rules` only exists on `protected-main-branch` repos. Mergify never approves a PR; release PRs are ordinary PRs that merge once a collaborator approves them.
-
-### Tokens
-
-| Token              | Type                                                           | Where                                                             | Can do                                                 |
-| ------------------ | -------------------------------------------------------------- | ----------------------------------------------------------------- | ------------------------------------------------------ |
-| `GHCR_READ_TOKEN`  | Classic PAT, `read:packages` only                              | Synced to `github-trivy`                                          | Read every package; the list API rejects app tokens    |
-| `DOCKERHUB_TOKEN`  | Docker Hub access token for `aspruyt`                          | Synced by `dockerhub`, which `image` extends, into `release` only | Push images to Docker Hub in the release jobs          |
-| `SONAR_TOKEN`      | SonarQube Cloud token                                          | repo-operator `sonar` environment (`main` only)                   | Set project settings (`sonar-settings.yaml`)           |
-| `GH_TOKEN` (local) | Fine-grained PAT                                               | `~/.secrets/.env.common`                                          | `gh` and local dry-runs; no secrets or packages access |
-| xfg test creds     | `TEST_*`, `GH_PAT_ORG`, `GITLAB_TOKEN`, `AZURE_DEVOPS_EXT_PAT` | xfg only                                                          | Integration tests against test orgs                    |
-
-The local PAT stays on purpose: `gh` needs a user identity.
+| Secret                 | Where it lives                                                                                                  |
+| ---------------------- | --------------------------------------------------------------------------------------------------------------- |
+| `APP_*`                | repo-operator `production` and `plan-main` environments (`main` only); both hold their own copy                 |
+| `PLAN_APP_*`           | repo-operator only; XFG Plan (preview) and Lint Canary                                                          |
+| `RELEASE_PLEASE_APP_*` | Synced by the `release-please` group into each repo's `release` environment (`main` only; xfg's also `v*` tags) |
+| `GHCR_READ_TOKEN`      | Synced to `github-trivy`; a classic PAT with `read:packages`, because the list API rejects app tokens           |
+| `DOCKERHUB_TOKEN`      | Synced by `dockerhub`, which `image` extends, into `release` only                                               |
+| `SONAR_TOKEN`          | repo-operator `sonar` environment (`main` only), for `sonar-settings.yaml`                                      |
+| `OPENROUTER_API_KEY`   | repo-operator `production` environment; XFG Apply AI commit messages                                            |
 
 ### Rotating a synced secret
 
-Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
+Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment (for `APP_*`, also in `plan-main`), run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
 
 ## Related Projects
 
