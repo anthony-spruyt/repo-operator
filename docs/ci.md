@@ -165,7 +165,8 @@ Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-ima
 
 Untagged versions are kept: setting `keep-n-tagged` turns off the action's default of deleting them. Multi-arch children, attestations and signatures are deleted only with their parent.
 
-- `packages` (default empty): comma-separated package names that override discovery. Empty cleans every image the repo builds, found by [`detect-images`](#detect-images) in `all` mode (a root package uses the lowercased repo name). A repo with no images skips the cleanup with a notice. Wildcards are refused, because expanding them needs a PAT.
+- `packages` (default empty): comma-separated package names that override discovery. Empty cleans every image the repo builds, found by [`detect-images`](#detect-images) in `all` mode (a root package uses the `image` name). A repo with no images skips the cleanup with a notice; a detect result that is not a valid matrix fails the run. Wildcards are refused, because expanding them needs a PAT.
+- `image` (default empty): image name for a package at the repo root, passed to `detect-images` as `root-name`. Empty uses the lowercased repo name. Set it only when the root image is not named after the repo; the synced caller does not pass it.
 - `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
@@ -380,7 +381,7 @@ files:
 
 The job is `image` in `ci.yaml` and `release` in `release-please.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
-`container-retention.yaml` needs no per-repo setting: it cleans every image `detect-images` finds, so a repo with several images, or an image not named after the repo, is covered once it is in `release-please-config.json`.
+`container-retention.yaml` needs no per-repo setting: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. A root image not named after the repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`; no repo needs it today.
 
 ## Caller example (Go)
 

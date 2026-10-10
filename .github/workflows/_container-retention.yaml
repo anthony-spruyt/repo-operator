@@ -10,6 +10,11 @@ on:
         required: false
         type: string
         default: ""
+      image:
+        description: Image name for a package at the repo root. Defaults to the lowercased repository name
+        required: false
+        type: string
+        default: ""
       older-than:
         description: Only consider versions older than this (e.g. 4 weeks, 30 days)
         required: false
@@ -79,6 +84,7 @@ jobs:
         uses: $/.github/actions/detect-images
         with:
           mode: all
+          root-name: ${{ inputs.image }}
 
       - name: Resolve packages
         id: packages
@@ -87,7 +93,10 @@ jobs:
           MATRIX: ${{ steps.detect.outputs.matrix }}
         run: |
           if [ -z "$PACKAGES" ]; then
-            PACKAGES=$(jq -r '[.include[].name] | join(",")' <<<"$MATRIX")
+            PACKAGES=$(jq -er '[.include[].name] | join(",")' <<<"$MATRIX") || {
+              echo "::error::detect-images returned no valid matrix."
+              exit 1
+            }
           fi
           if [ -z "$PACKAGES" ]; then
             echo "::notice::No images found in this repository, skipping cleanup."

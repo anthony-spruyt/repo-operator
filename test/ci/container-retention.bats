@@ -21,7 +21,7 @@ step_script() {
   run yq -o=json -I0 '.jobs.cleanup.steps[] | select(.name == "Checkout") | [.if, .with["persist-credentials"], (.uses | sub("@[0-9a-f]{40}$"; "@<sha>"))]' "$WF"
   [ "$output" = '["inputs.packages == '"''"'",false,"actions/checkout@<sha>"]' ]
   run yq -o=json -I0 '.jobs.cleanup.steps[] | select(.id == "detect") | [.if, .uses, .with]' "$WF"
-  [ "$output" = '["inputs.packages == '"''"'","$/.github/actions/detect-images",{"mode":"all"}]' ]
+  [ "$output" = '["inputs.packages == '"''"'","$/.github/actions/detect-images",{"mode":"all","root-name":"${{ inputs.image }}"}]' ]
 }
 
 @test "discovered images become the comma-separated package list" {
@@ -44,6 +44,25 @@ step_script() {
   grep -qx 'list=' "$GITHUB_OUTPUT"
   run yq -r '.jobs.cleanup.steps[] | select(.name == "Clean up package versions") | .if' "$WF"
   [ "$output" = "steps.packages.outputs.list != ''" ]
+}
+
+@test "an empty or malformed matrix fails instead of skipping" {
+  for bad in "" "not json" "{}" '{"include":null}'; do
+    run env PACKAGES="" MATRIX="$bad" bash -e -c "$(step_script "Resolve packages")"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"::error::"* ]]
+    [[ "$output" != *"::notice::"* ]]
+    ! grep -q '^list=' "$GITHUB_OUTPUT"
+  done
+}
+
+@test "the image input defaults to empty and is passed to detect-images as root-name" {
+  run yq -o=json -I0 '.on.workflow_call.inputs.image | [.required, .type, .default]' "$WF"
+  [ "$output" = '[false,"string",""]' ]
+  run yq -r '.on.workflow_call.inputs.image.description' "$WF"
+  [ "$output" = "$(yq -r '.on.workflow_call.inputs.image.description' "$REPO_ROOT/.github/workflows/_images.yaml")" ]
+  run yq -r '.jobs.cleanup.steps[] | select(.id == "detect") | .with["root-name"]' "$WF"
+  [ "$output" = '${{ inputs.image }}' ]
 }
 
 @test "a non-empty packages input overrides discovery" {
