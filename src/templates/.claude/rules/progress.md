@@ -8,11 +8,11 @@ Any task with more than one step, or that may outlive this session. Skip one-sho
 
 ## Where
 
-`.agent-progress/<branch>.md` at the root of the checkout you are working in, with each `/` in the branch name replaced by `-`. In a worktree that is the worktree's root, not the main checkout. The folder is gitignored and stays on this machine. A SessionStart hook loads the current branch's file on startup, `/clear` and compaction.
+`.agent-progress/<session_id>.md` at the root of the checkout you are working in. A SessionStart hook prints the exact path at the start of every session, so use that path; sessions sharing a checkout or branch each get their own file. The folder is gitignored and stays on this machine.
+
+The hook loads the file again after compaction and `--resume`, which keep the same session ID. `/clear` and a new session get a new ID and so a new, empty file. For work that spans sessions, the next session reads the old file by hand (`ls -t .agent-progress/`) and copies what it needs into its own.
 
 The issue body stays the public plan and checklist; the progress file is your working memory.
-
-When orchestrating from `main`, make a local branch in a worktree for your notes; never write `main.md`, and never put working notes on the issue.
 
 ## What
 
@@ -27,7 +27,7 @@ Under 100 lines; the hook loads only the first 9,000 characters. Write for a rea
 
 ## How
 
-1. **Start**: read the notes and `git log --oneline -10` before anything else. When they disagree, git wins.
+1. **Start**: read the notes if the hook loaded any, and `git log --oneline -10`, before anything else. When they disagree, git wins.
 2. **One step at a time**: finish it, test it, commit it, then update the notes.
 3. **Before you stop**: update the notes so the next session can start without asking.
-4. **Done**: delete the file when the task is finished or the branch merges, so a later session on the same branch does not load stale notes.
+4. **Done**: delete your file when the task is finished, so a later session does not pick up stale notes.
