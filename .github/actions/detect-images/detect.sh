@@ -107,6 +107,7 @@ image_entry() {
   ctx=$(norm_path "$ctx")
   [[ -d "$ctx" ]] || die "$meta_file: build_context directory does not exist: $ctx"
   workdir=$(norm_path "$(jq -r '.workdir' <<<"$entry")")
+  [[ -d "$workdir" ]] || die "$meta_file: workdir directory does not exist: $workdir"
   jq -c --arg ctx "$ctx" --arg workdir "$workdir" '.context = $ctx | .workdir = $workdir' <<<"$entry"
   return 0
 }

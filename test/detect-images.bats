@@ -683,6 +683,15 @@ released() {
   [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: build_context directory does not exist: ts/missing"* ]]
 }
 
+@test "metadata.yaml: a workdir that does not exist fails" {
+  use_layout spruyt-labs
+  printf 'language: node\nworkdir: ./ts/missing/\n' >"$REPO/ts/agent-queue-worker/bull-board/metadata.yaml"
+  MODE=all detect
+  [ "$status" -eq 1 ]
+  [[ "$stderr" == *"::error::ts/agent-queue-worker/bull-board/metadata.yaml: workdir directory does not exist: ts/missing"* ]]
+  [ ! -s "$GITHUB_OUTPUT" ]
+}
+
 @test "metadata.yaml: free-disk must be a boolean" {
   use_layout spruyt-labs
   printf 'free-disk: yes please\n' >"$REPO/ts/agent-queue-worker/metadata.yaml"
