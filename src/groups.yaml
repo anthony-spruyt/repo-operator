@@ -21,8 +21,6 @@ groups:
         content: "@templates/.claude/rules/comments.md"
       .claude/rules/github.md:
         content: "@templates/.claude/rules/github.md"
-      .claude/rules/public-repos.md:
-        content: "@templates/.claude/rules/public-repos.md"
       .claude/rules/research.md:
         content: "@templates/.claude/rules/research.md"
       .claude/rules/tdd.md:
@@ -448,6 +446,12 @@ groups:
   typescript: {}
 
 conditionalGroups:
+  - when:
+      allOf: [claude]
+      noneOf: [private-repo]
+    files:
+      .claude/rules/public-repos.md:
+        content: "@templates/.claude/rules/public-repos.md"
   - when:
       noneOf: [go]
     files:
