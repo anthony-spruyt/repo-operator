@@ -381,7 +381,7 @@ files:
 
 The job is `image` in `ci.yaml` and `release` in `release-please.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
-`container-retention.yaml` needs no per-repo setting: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. A root image not named after the repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`; no repo needs it today.
+`container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in `repos.yaml`; no repo needs one today.
 
 ## Caller example (Go)
 
