@@ -47,7 +47,7 @@ jobs:
           persist-credentials: false
 
       - name: Render planned files
-        uses: anthony-spruyt/xfg@10085a5051b14a14d8fa220b0c39d029e8717750 # v8.4.0
+        uses: anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc # v8.5.0
         with:
           config: ./src
           dry-run: true
