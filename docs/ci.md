@@ -57,9 +57,10 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 
-`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
+
+`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
 
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.

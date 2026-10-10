@@ -290,7 +290,7 @@ select_images() {
   return 0
 }
 
-# A pull request could edit its own config to skip its build, so the base's config selects images too
+# The base branch's config also selects images, so a PR's config can only add builds
 changed_images() {
   local out="$2" diff="$2.diff" listings=("$1") base_list l
   if [[ -n "$base" ]]; then
