@@ -200,7 +200,6 @@ repos:
       inherit: false
     settings:
       repo:
-        allowForking: false
         automatedSecurityFixes: false
         hasDiscussions: false
         hasIssues: true
