@@ -226,6 +226,7 @@ jobs:
             github.com:443
             objects.githubusercontent.com:443
             openrouter.ai:443
+            ${{ vars.LITELLM_HOST }}:443
             registry.npmjs.org:443
             results-receiver.actions.githubusercontent.com:443
 
@@ -242,7 +243,7 @@ jobs:
         uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         env:
           OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
-          LITELLM_BASE_URL: "${{ vars.LITELLM_BASE_URL }}"
+          LITELLM_BASE_URL: "https://${{ vars.LITELLM_HOST }}/v1"
           LITELLM_API_KEY: "${{ secrets.LITELLM_API_KEY }}"
           CF_ACCESS_CLIENT_ID: "${{ secrets.CF_ACCESS_CLIENT_ID }}"
           CF_ACCESS_CLIENT_SECRET: "${{ secrets.CF_ACCESS_CLIENT_SECRET }}"
