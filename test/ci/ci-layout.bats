@@ -53,11 +53,11 @@ success skipped true false
 EOF
 }
 
-@test "image-ci.yaml is retired: no group overrides ci.yaml, and the image groups only set its language" {
+@test "image-ci.yaml is retired: no group overrides ci.yaml, the image groups only set its language, and sonar only adds its job" {
   [ ! -e "$WORKFLOWS/image-ci.yaml" ]
   run grep -rn 'image-ci' "$SRC"
   [ "$status" -eq 1 ]
-  run yq -o=json -I0 '.groups | to_entries | map(select(.key != "github-ci" and .value.files[".github/workflows/ci.yaml"] != null) | [.key, .value.files[".github/workflows/ci.yaml"]])' "$SRC/groups.yaml"
+  run yq -o=json -I0 '.groups | to_entries | map(select(.key != "github-ci" and .key != "sonar" and .value.files[".github/workflows/ci.yaml"] != null) | [.key, .value.files[".github/workflows/ci.yaml"]])' "$SRC/groups.yaml"
   [ "$output" = '[["go-image",{"content":{"jobs":{"image":{"with":{"language":"go"}}}}}],["python-image",{"content":{"jobs":{"image":{"with":{"language":"python"}}}}}]]' ]
 }
 
@@ -70,6 +70,53 @@ EOF
 @test "the ci.yaml template holds no commented-out code" {
   run grep -nE '^\s*#\s*(workflow_dispatch|build|runs-on|steps|- uses|- run|uses|permissions|contents):' "$WORKFLOWS/ci.yaml"
   [ -z "$output" ]
+}
+
+@test "the sonar group adds a no-permission sonar job calling _sonar-new-issues.yaml, and appends it to summary.needs" {
+  run yq -o=json -I0 '.groups.sonar.files[".github/workflows/ci.yaml"].content | [(.jobs | keys), (.jobs.sonar | keys), .jobs.sonar.permissions, (.jobs.sonar.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .jobs.summary]' "$SRC/groups.yaml"
+  [ "$output" = '[["sonar","summary"],["permissions","uses"],{},"anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@<sha>",{"needs":{"$arrayMerge":"append","$values":["sonar"]}}]' ]
+}
+
+@test "the sonar job is pinned to the same main commit as the ci.yaml template's shared workflows" {
+  sonar=$(yq -r '.groups.sonar.files[".github/workflows/ci.yaml"].content.jobs.sonar.uses | sub("^.*@"; "")' "$SRC/groups.yaml")
+  run yq -r '[.jobs[].uses | select(test("^anthony-spruyt/repo-operator/")) | sub("^.*@"; "")] | unique | join(" ")' "$WORKFLOWS/ci.yaml"
+  [ "$output" = "$sonar" ]
+}
+
+@test "every sonar repo lists github-ci before sonar, so the job lands on the synced ci.yaml" {
+  run yq -r '[.repos[] | select(.groups // [] | any_c(. == "sonar")) | select((.groups | to_entries | map(select(.value == "github-ci")) | .[0].key // 999) > (.groups | to_entries | map(select(.value == "sonar")) | .[0].key)) | .git] | join(" ")' "$SRC/repos.yaml"
+  [ -z "$output" ]
+}
+
+@test "the ci.yaml template with the sonar overlay passes actionlint, and summary judges sonar last" {
+  target="$BATS_TEST_TMPDIR/target"
+  mkdir -p "$target/.github/workflows"
+  cp "$SRC/templates/.github/actionlint.yaml" "$target/.github/actionlint.yaml"
+  cp "$WORKFLOWS/ci-repo.yaml" "$target/.github/workflows/"
+  job=$(yq -o=json -I0 '.groups.sonar.files[".github/workflows/ci.yaml"].content.jobs.sonar' "$SRC/groups.yaml")
+  SONAR_JOB="$job" yq '.jobs.sonar = env(SONAR_JOB) | .jobs.summary.needs += ["sonar"]' "$WORKFLOWS/ci.yaml" >"$target/.github/workflows/ci.yaml"
+  run yq -o=json -I0 '.jobs.summary.needs' "$target/.github/workflows/ci.yaml"
+  [ "$output" = '["lint","repo","image","sonar"]' ]
+  git init -q "$target"
+  cd "$target"
+  run actionlint -no-color
+  echo "$output"
+  [ "$status" -eq 0 ]
+}
+
+@test "repo-operator's ci.yaml runs the sonar job like the synced one, summary judges it, and no separate caller is left" {
+  run yq -o=json -I0 '.jobs.sonar' "$REPO_ROOT/.github/workflows/ci.yaml"
+  [ "$output" = '{"permissions":{},"uses":"./.github/workflows/_sonar-new-issues.yaml"}' ]
+  run yq -r '.jobs.summary.needs | any_c(. == "sonar")' "$REPO_ROOT/.github/workflows/ci.yaml"
+  [ "$output" = "true" ]
+  [ ! -e "$REPO_ROOT/.github/workflows/sonar-new-issues.yaml" ]
+  run grep -rlE '^\s*uses:\s*"?\./\.github/workflows/_sonar-new-issues\.yaml' "$REPO_ROOT/.github/workflows"
+  [ "$output" = "$REPO_ROOT/.github/workflows/ci.yaml" ]
+}
+
+@test "repo-operator's Renovate reads src/groups.yaml with the github-actions manager, so the sonar pin moves with the template pins" {
+  run jq -r '.["github-actions"].managerFilePatterns | join(" ")' "$REPO_ROOT/renovate-overrides.json5"
+  [ "$output" = '/(^|/)src/groups\.yaml$/' ]
 }
 
 @test "github-ci seeds ci-repo.yaml once" {
@@ -139,13 +186,15 @@ EOF
   run yq -o=json -I0 "$overlay | .on.pull_request.types" "$SRC/repos.yaml"
   [ "$output" = '["opened","synchronize","reopened","labeled"]' ]
   run yq -o=json -I0 "$overlay | [(.jobs | keys), (.jobs | to_entries | map(.value.if))]" "$SRC/repos.yaml"
-  [ "$output" = "$(jq -cn --arg g "$guard" '[["lint","repo","image","summary"],[$g,$g,$g,"always() && (\($g))"]]')" ]
+  [ "$output" = "$(jq -cn --arg g "$guard" '[["lint","repo","image","sonar","summary"],[$g,$g,$g,$g,"always() && (\($g))"]]')" ]
   run yq -o=json -I0 '.jobs | keys' "$WORKFLOWS/ci.yaml"
   [ "$output" = '["lint","repo","image","summary"]' ]
+  run yq -o=json -I0 '.groups.sonar.files[".github/workflows/ci.yaml"].content.jobs | keys' "$SRC/groups.yaml"
+  [ "$output" = '["sonar","summary"]' ]
 }
 
 @test "every group that syncs a ci.yaml calling ci-repo.yaml also gets the seed" {
-  run yq -r '[.groups | to_entries[] | select(.value.files[".github/workflows/ci.yaml"] != null) | select(.key != "github-ci") | select((.value.extends // []) | any_c(. == "github-ci") | not) | .key] | join(" ")' "$SRC/groups.yaml"
+  run yq -r '[.groups | to_entries[] | select(.value.files[".github/workflows/ci.yaml"] != null) | select(.key != "github-ci" and .key != "sonar") | select((.value.extends // []) | any_c(. == "github-ci") | not) | .key] | join(" ")' "$SRC/groups.yaml"
   [ "$output" = "go-image python-image" ]
   run yq -r '[.groups["go-image", "python-image"].extends | any_c(. == "image")] | all' "$SRC/groups.yaml"
   [ "$output" = "true" ]
@@ -207,7 +256,7 @@ check_pins() {
     elif ! git -C "$REPO_ROOT" merge-base --is-ancestor "$sha" origin/main 2>/dev/null; then
       bad+="${file}:${line} ${sha} is not on origin/main"$'\n'
     fi
-  done < <(grep -rnoiE 'anthony-spruyt/repo-operator(/[^"@[:space:]]*)?@[^"#[:space:]]+' "$dir" | sed -E 's/^([^:]+):([0-9]+):.*@/\1:\2:/')
+  done < <(grep -HrnoiE 'anthony-spruyt/repo-operator(/[^"@[:space:]]*)?@[^"#[:space:]]+' "$dir" | sed -E 's/^([^:]+):([0-9]+):.*@/\1:\2:/')
   [ -z "$bad" ] || {
     echo "bad repo-operator pins:"
     echo "$bad"
@@ -219,8 +268,9 @@ check_pins() {
   }
 }
 
-@test "every repo-operator ref pinned in src/templates is an ancestor of origin/main" {
+@test "every repo-operator ref pinned in src/templates and src/groups.yaml is an ancestor of origin/main" {
   check_pins "$SRC/templates" 7
+  check_pins "$SRC/groups.yaml" 1
 }
 
 @test "the pin guard flags short, pathless and mixed-case repo-operator pins" {

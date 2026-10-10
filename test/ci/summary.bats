@@ -89,6 +89,15 @@ two_pages() {
   [ "$output" = '[35,["object"]]' ]
 }
 
+@test "passes when the sonar job is skipped, as on a merge-queue PR" {
+  page p1.json 1 3
+  jq '.jobs += [{name: "sonar / New Issues", conclusion: "skipped"}]' "$BATS_TEST_TMPDIR/p1.json" >"$BATS_TEST_TMPDIR/p1.tmp" && mv "$BATS_TEST_TMPDIR/p1.tmp" "$BATS_TEST_TMPDIR/p1.json"
+  export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"
+  run bash -e "$SCRIPT"
+  [ "$status" -eq 0 ]
+  grep -qF '| sonar / New Issues | ⏭️ skipped |' "$GITHUB_STEP_SUMMARY"
+}
+
 @test "fails on a failed job on the first page" {
   page p1.json 1 30 2
   export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"
