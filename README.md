@@ -141,18 +141,22 @@ Create the SonarQube Cloud project before adding a repo to the `sonar` group, or
 The `sonar` group adds a `sonar` job to the synced `ci.yaml` (`sonar / New Issues`, judged by `summary / Check Results`) that fails a PR when SonarQube Cloud reports any new open issue or hotspot to review on it, which the free plan's quality gate lets through. It reads the public API, so no token is needed. See [`sonar-new-issues`](docs/ci.md#sonar-new-issues) and
 [Standard `ci.yaml`](docs/ci.md#standard-ciyaml-and-ci-repoyaml).
 
-## Rotating a synced secret
+## Credentials
 
-| Secret                 | Where it is used                                                                                      |
+Keep this table current when adding a secret.
+
+| Secret                 | Where it lives                                                                                        |
 | ---------------------- | ----------------------------------------------------------------------------------------------------- |
-| `APP_*`                | repo-operator `production` and `plan-main` environments (`main` only)                                 |
+| `APP_*`                | repo-operator `production` and `plan-main` environments (`main` only); both hold their own copy       |
 | `PLAN_APP_*`           | repo-operator only; XFG Plan (preview)                                                                |
 | `RELEASE_PLEASE_APP_*` | Synced by the `release-please` group into each repo's `release` environment (`main` only)             |
 | `GHCR_READ_TOKEN`      | Synced to `github-trivy`; a classic PAT with `read:packages`, because the list API rejects app tokens |
 | `DOCKERHUB_TOKEN`      | Synced by `dockerhub`, which `image` extends, into `release` only                                     |
 | `SONAR_TOKEN`          | repo-operator `sonar` environment (`main` only), for `sonar-settings.yaml`                            |
 
-Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment, run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
+### Rotating a synced secret
+
+Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`groups.yaml`) are copied from repo-operator's own secrets by `xfg secrets sync` in CI. To rotate one: update the secret in the repo-operator `production` environment (for `APP_*`, also in `plan-main`), run the `CI` workflow by hand (`workflow_dispatch` always syncs), and approve the `production` gate.
 
 ## Related Projects
 

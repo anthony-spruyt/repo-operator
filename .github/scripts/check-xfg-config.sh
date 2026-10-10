@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Checks that xfg config only targets github.com and holds no env references. Runs before every
-# xfg step that holds an App key. Usage: check-xfg-config.sh [dir]
+# xfg step in ci.yaml. Usage: check-xfg-config.sh [dir]
 set -euo pipefail
 
 config_dir="${1:-src}"
