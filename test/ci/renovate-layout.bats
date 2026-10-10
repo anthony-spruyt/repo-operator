@@ -27,9 +27,11 @@ setup() {
   [ "$output" = "0" ]
 }
 
-@test "every repo uses the plain renovate group" {
-  run yq -r '[.repos[] | select((.groups // []) | any_c(. == "renovate") | not) | .git] | join(" ")' "$SRC/repos.yaml"
+@test "every repo that syncs files uses the plain renovate group" {
+  run yq -r '[.repos[] | select(.files.inherit != false) | select((.groups // []) | any_c(. == "renovate") | not) | .git] | join(" ")' "$SRC/repos.yaml"
   [ -z "$output" ]
+  run yq -o=json -I0 '[.repos[] | select(.files.inherit == false) | {"git": .git, "groups": .groups, "files": .files}]' "$SRC/repos.yaml"
+  [ "$output" = '[{"git":"https://github.com/anthony-spruyt/security.git","groups":["private-repo"],"files":{"inherit":false}}]' ]
   run yq -r '.groups | has("renovate-fork")' "$SRC/groups.yaml"
   [ "$output" = "false" ]
 }
