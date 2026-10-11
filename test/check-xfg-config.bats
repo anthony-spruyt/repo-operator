@@ -194,6 +194,21 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
+@test "allows the LiteLLM gateway secrets synced into an environment" {
+  for name in LITELLM_HOST LITELLM_API_KEY CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET; do
+    printf 'settings:\n  environments:\n    integration:\n      secrets:\n        %s:\n          env: %s\n' "$name" "$name" >"$CFG/$name.yaml"
+  done
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejects an environment secret sourced from an env that is not listed" {
+  printf 'settings:\n  environments:\n    integration:\n      secrets:\n        OPENROUTER_API_KEY:\n          env: OPENROUTER_API_KEY\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"OPENROUTER_API_KEY"* ]]
+}
+
 @test "rejects a secret sourced from the App key env" {
   printf 'groups:\n  g:\n    settings:\n      secrets:\n        LEAK:\n          env: XFG_GITHUB_APP_PRIVATE_KEY\n' >"$CFG/groups.yaml"
   run "$SCRIPT" "$CFG"
