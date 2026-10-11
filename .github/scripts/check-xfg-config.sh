@@ -5,7 +5,7 @@ set -euo pipefail
 
 config_dir="${1:-src}"
 
-# Must match the env passed to the Apply Secrets Sync step in .github/workflows/ci.yaml
+# Must match the env passed to the Apply Secrets Sync step in .github/workflows/ci.yaml (both secret lists)
 readonly ALLOWED_SECRET_ENV='["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY","GHCR_READ_TOKEN","DOCKERHUB_TOKEN"]'
 readonly ALLOWED_GATEWAY_SECRET_ENV='["LITELLM_HOST","LITELLM_API_KEY","CF_ACCESS_CLIENT_ID","CF_ACCESS_CLIENT_SECRET"]'
 readonly ALLOWED_AI_KEY_ENV="OPENROUTER_API_KEY"
@@ -67,13 +67,16 @@ else empty end),
   | bad("file path has a .git segment: \(tojson)")),
 (.. | objects | select(has("apiKeyEnv")) | .apiKeyEnv | select(IN($ai_key_env, $ai_gateway_key_env) | not)
   | bad("apiKeyEnv not allowed: \(tojson)")),
-(.. | objects | select(has("ai")) | .ai | objects
-  | ai_provider("prOptions.ai"; true),
-    (if has("fallback") then
-      .fallback | if type != "object" then bad("prOptions.ai.fallback must be a mapping")
-        elif has("fallback") then bad("prOptions.ai.fallback.fallback is not allowed")
-        else ai_provider("prOptions.ai.fallback"; false) end
-    else empty end))
+(.. | objects | select(has("ai")) | .ai
+  | if . == true then bad("prOptions.ai: true is not allowed; set baseUrl or baseUrlEnv")
+    elif type == "object" then
+      ai_provider("prOptions.ai"; true),
+      (if has("fallback") then
+        .fallback | if type != "object" then bad("prOptions.ai.fallback must be a mapping")
+          elif has("fallback") then bad("prOptions.ai.fallback.fallback is not allowed")
+          else ai_provider("prOptions.ai.fallback"; false) end
+      else empty end)
+    else empty end)
 '
 
 violations=()

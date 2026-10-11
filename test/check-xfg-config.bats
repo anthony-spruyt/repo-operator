@@ -254,6 +254,16 @@ xfg_repos() {
   done
 }
 
+@test "rejects the LiteLLM gateway secrets on a repo whose name only starts with xfg" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/xfg-other.git\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  for name in $GATEWAY_NAMES; do
+    [[ "$output" == *"secret source env not allowed here: \"$name\""* ]]
+  done
+}
+
 @test "rejects the LiteLLM gateway secrets in the xfg repo-level secrets" {
   xfg_repos
   gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.secrets'
@@ -362,7 +372,20 @@ YAML
   yq -i 'del(.prOptions.ai.baseUrlEnv) | .prOptions.ai.baseUrl = "https://attacker.example/v1"' "$CFG/base.yaml"
   run "$SCRIPT" "$CFG"
   [ "$status" -eq 1 ]
-  [[ "$output" == *"baseUrl"* ]]
+  [[ "$output" == *'prOptions.ai.baseUrl not allowed: "https://attacker.example/v1"'* ]]
+}
+
+@test "rejects ai: true, which has no baseUrl" {
+  printf 'prOptions:\n  ai: true\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"prOptions.ai: true is not allowed; set baseUrl or baseUrlEnv"* ]]
+}
+
+@test "allows ai: false" {
+  printf 'prOptions:\n  ai: false\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
 }
 
 @test "rejects a primary provider with neither baseUrl nor baseUrlEnv" {
