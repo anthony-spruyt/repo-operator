@@ -100,7 +100,6 @@ release_env() {
   [ "$output" = "release" ]
 }
 
-# Jobs that reference a release secret in their steps or in a job-level env block, as "file:job".
 secret_jobs() {
   (cd "$1" && yq --no-doc -r '.jobs | to_entries[] | select([.value.steps, .value.env] | [.. | select(tag == "!!str")] | any_c(test("secrets\.(RELEASE_PLEASE_APP_[A-Z_]+|DOCKERHUB_TOKEN)"))) | filename + ":" + .key' _*.yaml | sort)
 }
