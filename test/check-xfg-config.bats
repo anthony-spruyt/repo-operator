@@ -421,3 +421,36 @@ YAML
   [ "$status" -eq 1 ]
   [[ "$output" == *"fallback"* ]]
 }
+
+@test "rejects a YAML merge key that carries an AI config" {
+  cat >>"$CFG/base.yaml" <<'YAML'
+prOptions:
+  <<:
+    ai:
+      provider: openai
+      baseUrl: https://openrouter.ai/api/v1
+      apiKeyEnv: OPENROUTER_API_KEY
+  ai:
+    provider: openai
+    baseUrl: https://example.invalid/v1
+    apiKeyEnv: OPENROUTER_API_KEY
+YAML
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"base.yaml: YAML merge keys (<<) are not allowed"* ]]
+}
+
+@test "rejects a YAML merge key deeper in the tree" {
+  cat >>"$CFG/base.yaml" <<'YAML'
+settings:
+  defaults: &d
+    a: 1
+  nested:
+    - deep:
+        <<: *d
+        b: 2
+YAML
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"base.yaml: YAML merge keys (<<) are not allowed"* ]]
+}

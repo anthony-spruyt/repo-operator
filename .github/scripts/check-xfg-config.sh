@@ -85,9 +85,13 @@ done < <(find "$config_dir" -type l -print0)
 
 # The files xfg loads as config: every .yaml/.yml, skipping dot-prefixed files and directories
 while IFS= read -r -d '' file; do
-  if ! json="$(yq -o=json -I0 'explode(.)' "$file" 2>&1)"; then
+  if ! json="$(yq -o=json -I0 'explode(.)' "$file" 2>/dev/null)"; then
     violations+=("$file: not valid YAML")
     continue
+  fi
+  # yq and xfg's YAML library resolve << differently, so the decoded config cannot be trusted
+  if ! merges="$(yq '[.. | select(tag == "!!map") | keys[] | select(. == "<<")] | length' "$file" 2>/dev/null)" || grep -qvx 0 <<<"$merges"; then
+    violations+=("$file: YAML merge keys (<<) are not allowed")
   fi
   if [[ "$(printf '%s\n' "$json" | grep -c .)" -gt 1 ]]; then
     violations+=("$file: multiple YAML documents are not allowed")
