@@ -5,7 +5,8 @@ setup() {
   SCRIPT="${REPO_ROOT}/src/templates/.claude/pull-default-branch.sh"
   T="$BATS_TEST_TMPDIR"
   unset CLAUDE_PROJECT_DIR
-  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null GIT_TERMINAL_PROMPT=0
+  unset GIT_TERMINAL_PROMPT
+  export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_SYSTEM=/dev/null
 
   git init -q --bare -b main "$T/remote.git"
   git clone -q "$T/remote.git" "$T/seed" 2>/dev/null
@@ -233,6 +234,75 @@ hook() {
   [ "$status" -eq 0 ]
   [ -z "$output" ]
   [ "$(head_of "$MAIN")" = "$(upstream_sha)" ]
+}
+
+@test "leaves a diverged default branch alone and creates no merge commit" {
+  echo local >"$MAIN/b.txt"
+  g "$MAIN" commit -q -am "local only"
+  before=$(head_of "$MAIN")
+  upstream a.txt two
+  export GIT_AUTHOR_NAME=t GIT_AUTHOR_EMAIL=t@example.com GIT_COMMITTER_NAME=t GIT_COMMITTER_EMAIL=t@example.com
+  hook
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ "$(head_of "$MAIN")" = "$before" ]
+  [ "$(git -C "$MAIN" rev-list --merges --count HEAD)" -eq 0 ]
+}
+
+@test "fetches with prompting disabled" {
+  real_git=$(command -v git)
+  mkdir "$T/fakebin"
+  cat >"$T/fakebin/git" <<EOF
+#!/bin/bash
+printf '%s|%s\n' "\$*" "\${GIT_TERMINAL_PROMPT-unset}" >>"$T/git-calls.log"
+exec "$real_git" "\$@"
+EOF
+  chmod +x "$T/fakebin/git"
+  upstream a.txt two
+  PATH="$T/fakebin:$PATH" hook
+  [ "$status" -eq 0 ]
+  [ "$(head_of "$MAIN")" = "$(upstream_sha)" ]
+  grep -E ' fetch .*\|0$' "$T/git-calls.log"
+}
+
+@test "does nothing, silently, when timeout is not installed" {
+  mkdir "$T/nobin"
+  for tool in bash git jq sed cat printenv dirname; do
+    ln -s "$(command -v "$tool")" "$T/nobin/$tool"
+  done
+  before=$(head_of "$MAIN")
+  upstream a.txt two
+  git -C "$MAIN" fetch -q origin
+  PATH="$T/nobin" run "$T/nobin/bash" "$SCRIPT" <<<"{\"cwd\":\"$MAIN\"}"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ "$(head_of "$MAIN")" = "$before" ]
+}
+
+@test "bails out when origin/HEAD names a branch that is not a valid branch name" {
+  name="--upload-pack=$T/marker.sh"
+  printf '#!/bin/sh\ntouch "%s/marker"\nexit 1\n' "$T" >"$T/marker.sh"
+  chmod +x "$T/marker.sh"
+  git -C "$MAIN" symbolic-ref refs/remotes/origin/HEAD "refs/remotes/origin/$name"
+  git -C "$MAIN" symbolic-ref HEAD "refs/heads/$name"
+  hook
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ ! -e "$T/marker" ]
+}
+
+@test "skips repository hooks during the fast-forward" {
+  mkdir "$T/hooks"
+  printf '#!/bin/sh\ntouch "%s/hook-ran"\n' "$T" >"$T/hooks/post-merge"
+  cp "$T/hooks/post-merge" "$T/hooks/reference-transaction"
+  chmod +x "$T/hooks/post-merge" "$T/hooks/reference-transaction"
+  git -C "$MAIN" config core.hooksPath "$T/hooks"
+  upstream a.txt two
+  hook
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ "$(head_of "$MAIN")" = "$(upstream_sha)" ]
+  [ ! -e "$T/hook-ran" ]
 }
 
 @test "settings.json runs the script in the background on SubagentStop and UserPromptSubmit" {
