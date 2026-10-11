@@ -83,10 +83,16 @@ jobs:
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::warning::Partial preview: merge settings and ruleset bypass_actors are not visible to the read-only Plan App"
 
+      # The Plan App is not installed on every repo in src, so preview only the repos it can read
+      - name: "Filter preview repos"
+        run: |
+          cp -r src "$RUNNER_TEMP/xfg-preview"
+          yq -i 'del(.repos[] | select(.git == "https://github.com/anthony-spruyt/security.git"))' "$RUNNER_TEMP/xfg-preview/repos.yaml"
+
       - name: "Preview Sync"
         uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
-          config: "./src"
+          config: "${{ runner.temp }}/xfg-preview"
           dry-run: true
           github-client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
@@ -95,7 +101,7 @@ jobs:
         uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         with:
           command: "secrets-sync"
-          config: "./src"
+          config: "${{ runner.temp }}/xfg-preview"
           dry-run: true
           github-client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"

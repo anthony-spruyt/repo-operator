@@ -316,3 +316,30 @@ check_pins() {
   run yq -o=json -I0 '.jobs.cleanup | [.permissions, (.with | keys)]' "$WORKFLOWS/image-container-retention.yaml"
   [ "$output" = '[{"contents":"read","packages":"write"},["dry-run"]]' ]
 }
+
+@test "xfg-preview plans a copy of src without the security repo, and xfg-plan and xfg-apply plan the real src" {
+  ci="$REPO_ROOT/.github/workflows/ci.yaml"
+  run yq -o=json -I0 '.jobs["xfg-preview"].steps | map(select(.name == "Preview Sync" or .name == "Preview Secrets Sync") | .with.config)' "$ci"
+  [ "$output" = '["${{ runner.temp }}/xfg-preview","${{ runner.temp }}/xfg-preview"]' ]
+  run yq -o=json -I0 '[(.jobs["xfg-plan"], .jobs["xfg-apply"]) | .steps[] | select(.uses != null and (.uses | test("anthony-spruyt/xfg@"))) | .with.config]' "$ci"
+  [ "$output" = '["./src","./src","./src","./src"]' ]
+  run yq -o=json -I0 '[(.jobs["xfg-plan"], .jobs["xfg-apply"]) | .steps[] | select(tostring | test("xfg-preview|security.git"))] | length' "$ci"
+  [ "$output" = "0" ]
+}
+
+@test "the xfg-preview filter step drops only the security repo from the copy and leaves src untouched" {
+  ci="$REPO_ROOT/.github/workflows/ci.yaml"
+  run yq -r '.jobs["xfg-preview"].steps[] | select(.name == "Filter preview repos") | .run' "$ci"
+  [ -n "$output" ]
+  script="$output"
+  temp="$BATS_TEST_TMPDIR/runner-temp"
+  mkdir "$temp"
+  before=$(yq '.repos | length' "$SRC/repos.yaml")
+  cd "$REPO_ROOT"
+  RUNNER_TEMP="$temp" bash -e -c "$script"
+  [ "$(yq '.repos | length' "$temp/xfg-preview/repos.yaml")" -eq $((before - 1)) ]
+  [ "$(yq '[.repos[] | select(.git == "https://github.com/anthony-spruyt/security.git")] | length' "$temp/xfg-preview/repos.yaml")" -eq 0 ]
+  [ "$(yq '.repos | length' "$SRC/repos.yaml")" -eq "$before" ]
+  for f in base files groups settings; do cmp "$SRC/$f.yaml" "$temp/xfg-preview/$f.yaml"; done
+  diff -r "$SRC/templates" "$temp/xfg-preview/templates"
+}
