@@ -194,10 +194,103 @@ setup() {
   [ "$status" -eq 0 ]
 }
 
-@test "allows the LiteLLM gateway secrets synced into an environment" {
-  for name in LITELLM_HOST LITELLM_API_KEY CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET; do
-    printf 'settings:\n  environments:\n    integration:\n      secrets:\n        %s:\n          env: %s\n' "$name" "$name" >"$CFG/$name.yaml"
+GATEWAY_NAMES="LITELLM_HOST LITELLM_API_KEY CF_ACCESS_CLIENT_ID CF_ACCESS_CLIENT_SECRET"
+
+gateway_secrets_at() {
+  local file="$1" path="$2" name
+  for name in $GATEWAY_NAMES; do
+    yq -i "${path}.${name}.env = \"${name}\"" "$file"
   done
+}
+
+xfg_repos() {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/xfg.git\n' >"$CFG/repos.yaml"
+}
+
+@test "allows the LiteLLM gateway secrets in the xfg integration environments" {
+  xfg_repos
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration-main.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "allows the LiteLLM gateway secrets when the xfg git URL has no .git suffix or is a list of xfg URLs" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/xfg\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+  printf 'repos:\n  - git: [https://github.com/anthony-spruyt/xfg.git, https://github.com/anthony-spruyt/xfg]\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejects the LiteLLM gateway secrets in a group" {
+  printf 'groups:\n  g:\n    id: x\n' >"$CFG/groups.yaml"
+  gateway_secrets_at "$CFG/groups.yaml" '.groups.g.settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  for name in $GATEWAY_NAMES; do
+    [[ "$output" == *"secret source env not allowed here: \"$name\""* ]]
+  done
+}
+
+@test "rejects the LiteLLM gateway secrets in the top-level settings" {
+  printf 'settings:\n  id: x\n' >>"$CFG/base.yaml"
+  gateway_secrets_at "$CFG/base.yaml" '.settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"secret source env not allowed here: \"LITELLM_HOST\""* ]]
+}
+
+@test "rejects the LiteLLM gateway secrets in another repo's integration environment" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/xfg.git\n  - git: https://github.com/anthony-spruyt/other.git\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[1].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  for name in $GATEWAY_NAMES; do
+    [[ "$output" == *"secret source env not allowed here: \"$name\""* ]]
+  done
+}
+
+@test "rejects the LiteLLM gateway secrets on a repo whose name only starts with xfg" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/xfg-other.git\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  for name in $GATEWAY_NAMES; do
+    [[ "$output" == *"secret source env not allowed here: \"$name\""* ]]
+  done
+}
+
+@test "rejects the LiteLLM gateway secrets in the xfg repo-level secrets" {
+  xfg_repos
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"secret source env not allowed here: \"LITELLM_API_KEY\""* ]]
+}
+
+@test "rejects the LiteLLM gateway secrets in an xfg environment with another name" {
+  xfg_repos
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.release.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"secret source env not allowed here: \"CF_ACCESS_CLIENT_ID\""* ]]
+}
+
+@test "rejects the LiteLLM gateway secrets on a repo whose git list mixes xfg and another repo" {
+  printf 'repos:\n  - git: [https://github.com/anthony-spruyt/xfg.git, https://github.com/anthony-spruyt/other.git]\n' >"$CFG/repos.yaml"
+  gateway_secrets_at "$CFG/repos.yaml" '.repos[0].settings.environments.integration.secrets'
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"secret source env not allowed here: \"CF_ACCESS_CLIENT_SECRET\""* ]]
+}
+
+@test "still allows the other secret envs at the repo-level secrets of any repo" {
+  printf 'repos:\n  - git: https://github.com/anthony-spruyt/other.git\n' >"$CFG/repos.yaml"
+  yq -i '.repos[0].settings.secrets.GHCR_READ_TOKEN.env = "GHCR_READ_TOKEN"' "$CFG/repos.yaml"
   run "$SCRIPT" "$CFG"
   [ "$status" -eq 0 ]
 }
@@ -279,6 +372,36 @@ YAML
   yq -i 'del(.prOptions.ai.baseUrlEnv) | .prOptions.ai.baseUrl = "https://attacker.example/v1"' "$CFG/base.yaml"
   run "$SCRIPT" "$CFG"
   [ "$status" -eq 1 ]
+  [[ "$output" == *'prOptions.ai.baseUrl not allowed: "https://attacker.example/v1"'* ]]
+}
+
+@test "rejects ai: true, which has no baseUrl" {
+  printf 'prOptions:\n  ai: true\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"prOptions.ai: true is not allowed; set baseUrl or baseUrlEnv"* ]]
+}
+
+@test "allows ai: false" {
+  printf 'prOptions:\n  ai: false\n' >>"$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 0 ]
+}
+
+@test "rejects a primary provider with neither baseUrl nor baseUrlEnv" {
+  ai_litellm_with_fallback
+  yq -i 'del(.prOptions.ai.baseUrlEnv) | del(.prOptions.ai.headersEnv)' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"prOptions.ai.baseUrl is required without baseUrlEnv"* ]]
+}
+
+@test "rejects a fallback provider with neither baseUrl nor baseUrlEnv" {
+  ai_litellm_with_fallback
+  yq -i 'del(.prOptions.ai.fallback.baseUrl)' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"prOptions.ai.fallback.baseUrl is required without baseUrlEnv"* ]]
 }
 
 @test "rejects a baseUrlEnv other than LITELLM_BASE_URL" {

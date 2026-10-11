@@ -5,8 +5,9 @@ set -euo pipefail
 
 config_dir="${1:-src}"
 
-# Must match the env passed to the Apply Secrets Sync step in .github/workflows/ci.yaml
-readonly ALLOWED_SECRET_ENV='["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY","GHCR_READ_TOKEN","DOCKERHUB_TOKEN","LITELLM_HOST","LITELLM_API_KEY","CF_ACCESS_CLIENT_ID","CF_ACCESS_CLIENT_SECRET"]'
+# Must match the env passed to the Apply Secrets Sync step in .github/workflows/ci.yaml (both secret lists)
+readonly ALLOWED_SECRET_ENV='["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY","GHCR_READ_TOKEN","DOCKERHUB_TOKEN"]'
+readonly ALLOWED_GATEWAY_SECRET_ENV='["LITELLM_HOST","LITELLM_API_KEY","CF_ACCESS_CLIENT_ID","CF_ACCESS_CLIENT_SECRET"]'
 readonly ALLOWED_AI_KEY_ENV="OPENROUTER_API_KEY"
 readonly ALLOWED_AI_BASE_URL="https://openrouter.ai/api/v1"
 readonly ALLOWED_AI_GATEWAY_KEY_ENV="LITELLM_API_KEY"
@@ -20,6 +21,7 @@ readonly JQ_ENV_REF='def env_refs: gsub("\\$\\$\\{(?!xfg:)[^}]+\\}"; "") | [matc
 readonly JQ_CONFIG='
 def bad($m): "\($f): \($m)";
 def ai_provider($path; $primary):
+  (if has("baseUrl") or has("baseUrlEnv") then empty else bad("\($path).baseUrl is required without baseUrlEnv") end),
   (if has("baseUrl") and has("baseUrlEnv") then bad("\($path): baseUrl and baseUrlEnv together are not allowed") else empty end),
   (if has("baseUrl") and .baseUrl != $ai_base_url then bad("\($path).baseUrl not allowed: \(.baseUrl | tojson)") else empty end),
   (if has("baseUrlEnv") and (($primary | not) or .baseUrlEnv != $ai_gateway_url_env)
@@ -33,6 +35,12 @@ def ai_provider($path; $primary):
     (if has("baseUrlEnv") | not then bad("\($path).headersEnv needs baseUrlEnv") else empty end)
   else empty end);
 def github_url: type == "string" and test("\\Ahttps://github\\.com/[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+\\z");
+def xfg_url: type == "string" and test("\\Ahttps://github\\.com/anthony-spruyt/xfg(\\.git)?\\z");
+def xfg_repo: type == "object" and (.git | if type == "array" then . else [.] end | length > 0 and all(xfg_url));
+def gateway_secret_site($p):
+  ($p | length) == 8 and $p[0] == "repos" and $p[2] == "settings" and $p[3] == "environments"
+  and ($p[4] | IN("integration", "integration-main")) and $p[5] == "secrets"
+  and (getpath($p[0:2]) | xfg_repo);
 def owned_url: type == "string" and test("\\Ahttps://github\\.com/anthony-spruyt/[A-Za-z0-9_.-]+\\z");
 (.. | objects | select(has("githubHosts")) | .githubHosts
   | if type != "array" then bad("githubHosts must be a list")
@@ -47,22 +55,28 @@ def owned_url: type == "string" and test("\\Ahttps://github\\.com/anthony-spruyt
     end
   end
 else empty end),
-(paths(type == "string") as $p
+(. as $root | paths(type == "string") as $p
   | select(($p | length) >= 3 and $p[-1] == "env" and $p[-3] == "secrets")
-  | getpath($p) | select(IN($secret_env[]) | not)
-  | bad("secret source env not allowed: \(tojson)")),
+  | ($root | getpath($p)) as $v
+  | select($v | IN($secret_env[]) | not)
+  | if ($v | IN($gateway_secret_env[])) then
+      (if ($root | gateway_secret_site($p)) then empty else bad("secret source env not allowed here: \($v | tojson)") end)
+    else bad("secret source env not allowed: \($v | tojson)") end),
 (.. | objects | select(has("files")) | .files | objects | keys[]
   | select(test("(\\A|[/\\\\])\\.git([/\\\\]|\\z)"; "i"))
   | bad("file path has a .git segment: \(tojson)")),
 (.. | objects | select(has("apiKeyEnv")) | .apiKeyEnv | select(IN($ai_key_env, $ai_gateway_key_env) | not)
   | bad("apiKeyEnv not allowed: \(tojson)")),
-(.. | objects | select(has("ai")) | .ai | objects
-  | ai_provider("prOptions.ai"; true),
-    (if has("fallback") then
-      .fallback | if type != "object" then bad("prOptions.ai.fallback must be a mapping")
-        elif has("fallback") then bad("prOptions.ai.fallback.fallback is not allowed")
-        else ai_provider("prOptions.ai.fallback"; false) end
-    else empty end))
+(.. | objects | select(has("ai")) | .ai
+  | if . == true then bad("prOptions.ai: true is not allowed; set baseUrl or baseUrlEnv")
+    elif type == "object" then
+      ai_provider("prOptions.ai"; true),
+      (if has("fallback") then
+        .fallback | if type != "object" then bad("prOptions.ai.fallback must be a mapping")
+          elif has("fallback") then bad("prOptions.ai.fallback.fallback is not allowed")
+          else ai_provider("prOptions.ai.fallback"; false) end
+      else empty end)
+    else empty end)
 '
 
 violations=()
@@ -101,6 +115,7 @@ while IFS= read -r -d '' file; do
   fi
   report < <(printf '%s\n' "$json" | jq -r --arg f "$file" \
     --argjson secret_env "$ALLOWED_SECRET_ENV" \
+    --argjson gateway_secret_env "$ALLOWED_GATEWAY_SECRET_ENV" \
     --arg ai_key_env "$ALLOWED_AI_KEY_ENV" \
     --arg ai_base_url "$ALLOWED_AI_BASE_URL" \
     --arg ai_gateway_key_env "$ALLOWED_AI_GATEWAY_KEY_ENV" \
