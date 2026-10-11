@@ -156,7 +156,7 @@ Keep this table current when adding a secret.
 | `OPENROUTER_API_KEY`   | repo-operator `production` environment; XFG Apply AI commit messages, the fallback after LiteLLM                                                |
 | `LITELLM_API_KEY`      | repo-operator `production` environment; XFG Apply AI commit messages through LiteLLM                                                            |
 | `CF_ACCESS_CLIENT_*`   | repo-operator `production` environment (`CF_ACCESS_CLIENT_ID` and `CF_ACCESS_CLIENT_SECRET`); the access headers for LiteLLM                    |
-| `LITELLM_HOST`         | repo-operator `production` environment variable (not a secret); the LiteLLM bare hostname, kept out of the repo                                 |
+| `LITELLM_HOST`         | repo-operator `production` environment secret; the LiteLLM bare hostname, kept out of the repo                                                  |
 
 ### Rotating a synced secret
 

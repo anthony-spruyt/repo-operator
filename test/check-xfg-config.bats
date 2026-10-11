@@ -405,3 +405,19 @@ YAML
   run "$SCRIPT" "$CFG"
   [ "$status" -eq 0 ]
 }
+
+@test "rejects a fallback that is a list" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback = [{"provider": "openai", "baseUrl": "https://attacker.example/v1", "apiKeyEnv": "OPENROUTER_API_KEY"}]' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fallback"* ]]
+}
+
+@test "rejects a fallback nested inside the fallback" {
+  ai_litellm_with_fallback
+  yq -i '.prOptions.ai.fallback.fallback = {"provider": "openai", "baseUrl": "https://attacker.example/v1", "apiKeyEnv": "OPENROUTER_API_KEY"}' "$CFG/base.yaml"
+  run "$SCRIPT" "$CFG"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"fallback"* ]]
+}

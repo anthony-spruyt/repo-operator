@@ -58,7 +58,11 @@ else empty end),
   | bad("apiKeyEnv not allowed: \(tojson)")),
 (.. | objects | select(has("ai")) | .ai | objects
   | ai_provider("prOptions.ai"; true),
-    (.fallback | objects | ai_provider("prOptions.ai.fallback"; false)))
+    (if has("fallback") then
+      .fallback | if type != "object" then bad("prOptions.ai.fallback must be a mapping")
+        elif has("fallback") then bad("prOptions.ai.fallback.fallback is not allowed")
+        else ai_provider("prOptions.ai.fallback"; false) end
+    else empty end))
 '
 
 violations=()

@@ -226,9 +226,8 @@ jobs:
             github.com:443
             objects.githubusercontent.com:443
             openrouter.ai:443
-            ${{ vars.LITELLM_HOST }}:443
             registry.npmjs.org:443
-            results-receiver.actions.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443${{ secrets.LITELLM_HOST != '' && format(' {0}:443', secrets.LITELLM_HOST) || '' }}
 
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
@@ -243,7 +242,7 @@ jobs:
         uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
         env:
           OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
-          LITELLM_BASE_URL: "https://${{ vars.LITELLM_HOST }}/v1"
+          LITELLM_BASE_URL: "${{ secrets.LITELLM_HOST != '' && format('https://{0}/v1', secrets.LITELLM_HOST) || '' }}"
           LITELLM_API_KEY: "${{ secrets.LITELLM_API_KEY }}"
           CF_ACCESS_CLIENT_ID: "${{ secrets.CF_ACCESS_CLIENT_ID }}"
           CF_ACCESS_CLIENT_SECRET: "${{ secrets.CF_ACCESS_CLIENT_SECRET }}"
