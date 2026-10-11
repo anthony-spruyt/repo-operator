@@ -137,6 +137,9 @@ them. No job on the pull request path (`_images.yaml`, the `build` job) uses the
 xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag, and `docs.yaml` deploys on a push of the floating `vN` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*`, which covers both. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from
 the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.
 
+xfg's entry also copies the four LiteLLM gateway secrets (`LITELLM_HOST`, `LITELLM_API_KEY`, `CF_ACCESS_CLIENT_ID`, `CF_ACCESS_CLIENT_SECRET`) into its `integration` and `integration-main` environments. It sets `deleteOrphaned: false` on the environments and on each environment's secrets, so secrets and settings already there are never removed, and `integration-main` restates its `main`-only
+branch policy.
+
 Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 `_lint.yaml` runs three jobs. Callers grant `actions: read`, `contents: read` and `security-events: write`:
