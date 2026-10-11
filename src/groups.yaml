@@ -30,6 +30,8 @@ groups:
         content: "@templates/.claude/rules/research.md"
       .claude/rules/tdd.md:
         content: "@templates/.claude/rules/tdd.md"
+      .claude/pull-default-branch.sh:
+        content: "@templates/.claude/pull-default-branch.sh"
       .claude/session-progress.sh:
         content: "@templates/.claude/session-progress.sh"
       .claude/settings.json:
