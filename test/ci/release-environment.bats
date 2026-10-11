@@ -24,7 +24,7 @@ release_env() {
   [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
-@test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release" {
+@test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release, and adds the integration ones" {
   run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings.environments != null) | {(.key): (.value.settings.environments | keys)}]' "$SRC/groups.yaml"
   [ "$output" = '[{"dockerhub":["release"]},{"release-please":["release"]}]' ]
   local f
@@ -36,7 +36,25 @@ release_env() {
   run yq -r '[.conditionalGroups[] | .. | select(tag == "!!map" and has("environments"))] | length' "$SRC/groups.yaml"
   [ "$output" = "0" ]
   run yq -o=json -I0 '[.repos[] | select([.. | select(tag == "!!map" and has("environments"))] | length > 0) | {(.git): (.settings.environments | keys)}]' "$SRC/repos.yaml"
-  [ "$output" = "[{\"$XFG_GIT\":[\"release\"]}]" ]
+  [ "$output" = "[{\"$XFG_GIT\":[\"deleteOrphaned\",\"release\",\"integration\",\"integration-main\"]}]" ]
+}
+
+@test "xfg's integration environments take the four gateway secrets and never delete anything" {
+  local names='["CF_ACCESS_CLIENT_ID","CF_ACCESS_CLIENT_SECRET","LITELLM_API_KEY","LITELLM_HOST"]'
+  run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments.deleteOrphaned" "$SRC/repos.yaml"
+  [ "$output" = "false" ]
+  local e
+  for e in integration integration-main; do
+    run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments[\"$e\"].secrets" "$SRC/repos.yaml"
+    echo "$e: $output"
+    [ "$(jq -c '.deleteOrphaned' <<<"$output")" = "false" ]
+    [ "$(jq -cS 'del(.deleteOrphaned) | keys' <<<"$output")" = "$names" ]
+    [ "$(jq -c 'del(.deleteOrphaned) | to_entries | all(.value.env == .key)' <<<"$output")" = "true" ]
+  done
+  run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments[\"integration-main\"].deploymentBranchPolicy" "$SRC/repos.yaml"
+  [ "$(jq -cS . <<<"$output")" = '{"custom":[{"name":"main","type":"branch"}]}' ]
+  run yq -o=json -I0 ".repos[] | select(.git == \"$XFG_GIT\") | .settings.environments.integration | has(\"deploymentBranchPolicy\")" "$SRC/repos.yaml"
+  [ "$output" = "false" ]
 }
 
 @test "xfg's release environment allows main and v* tags, inheriting the release App secrets" {

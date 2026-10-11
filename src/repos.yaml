@@ -517,6 +517,7 @@ repos:
           description: ""
       # Publish runs on v*.*.* tags and docs deploy on vN tags; a repo-level policy replaces the group's, so main is restated
       environments:
+        deleteOrphaned: false
         release:
           deploymentBranchPolicy:
             custom:
@@ -524,6 +525,32 @@ repos:
                 name: main
               - type: tag
                 name: "v*"
+        integration:
+          secrets:
+            deleteOrphaned: false
+            LITELLM_HOST:
+              env: LITELLM_HOST
+            LITELLM_API_KEY:
+              env: LITELLM_API_KEY
+            CF_ACCESS_CLIENT_ID:
+              env: CF_ACCESS_CLIENT_ID
+            CF_ACCESS_CLIENT_SECRET:
+              env: CF_ACCESS_CLIENT_SECRET
+        integration-main:
+          deploymentBranchPolicy:
+            custom:
+              - type: branch
+                name: main
+          secrets:
+            deleteOrphaned: false
+            LITELLM_HOST:
+              env: LITELLM_HOST
+            LITELLM_API_KEY:
+              env: LITELLM_API_KEY
+            CF_ACCESS_CLIENT_ID:
+              env: CF_ACCESS_CLIENT_ID
+            CF_ACCESS_CLIENT_SECRET:
+              env: CF_ACCESS_CLIENT_SECRET
       rulesets:
         branch-signatures:
           conditions:
