@@ -9,6 +9,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
         ".claude/output-styles/eli5.md",
@@ -56,6 +57,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -109,6 +111,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -161,6 +164,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -212,6 +216,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -265,6 +270,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
         ".claude/output-styles/eli5.md",
@@ -311,6 +317,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -364,6 +371,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -417,6 +425,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -470,6 +479,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -522,6 +532,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
@@ -575,6 +586,7 @@
       ],
       "matchFileNames": [
         ".agent-progress/.gitignore",
+        ".claude/agents/Explore.md",
         ".claude/hookify-plus/warn-code-scanning-ref.md",
         ".claude/hookify-plus/warn-comment-density.md",
         ".claude/hookify-plus/warn-raw-container-run.md",
