@@ -30,6 +30,8 @@ groups:
         content: "@templates/.claude/rules/root-cause.md"
       .claude/rules/tdd.md:
         content: "@templates/.claude/rules/tdd.md"
+      .claude/skills/repo-operator/SKILL.md:
+        content: "@templates/.claude/skills/repo-operator/SKILL.md"
       .claude/pull-default-branch.sh:
         content: "@templates/.claude/pull-default-branch.sh"
       .claude/restore-shell-tools.sh:

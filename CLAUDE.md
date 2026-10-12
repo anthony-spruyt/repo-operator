@@ -39,60 +39,37 @@ DISABLE_LINTERS=SPELL_LYCHEE ENABLE_DISABLE_LINTERS_PRIORITY=DISABLE ./lint.sh
 
 # Run config sync manually (requires GH_TOKEN environment variable)
 GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
-
-# Dry-run config sync (validates config and shows planned changes without applying)
-npx --safe-chain-skip-minimum-package-age @aspruyt/xfg sync --config ./src --dry-run
 ```
 
-**When to dry-run**: After any change to `src/` files (groups, repos, settings, files). Catches issues like xfg deduplicating rules by type, incorrect array merging, or missing file references before pushing to CI.
+Dry-run before pushing any `src/` change; the command and the xfg mechanics are in the `repo-operator` skill.
 
-Pre-commit hooks run automatically for linting (yamllint, prettier), security (gitleaks), and file hygiene (whitespace, line endings, merge conflicts, smart quotes).
+Pre-commit hooks run automatically on commit.
 
 ## Architecture
 
 ### XFG Configuration System
 
-The operator uses [xfg](https://github.com/anthony-spruyt/xfg) to sync files to target repositories.
+xfg syncs `src/` to the target repos. Load the `repo-operator` skill (source: `src/templates/.claude/skills/repo-operator/SKILL.md`) for how `src/` is laid out, groups, `createOnly`, template variables, escaping, the managed-file guard, the dry-run command and the sync and approval flow. Repo specifics:
 
-**Configuration directory**: `src/` (multi-file directory-based config)
-
-- `base.yaml` - Core config: `id`, `deleteOrphaned`, `prOptions`
-- `files.yaml` - Default files to sync to all repos
-- `groups.yaml` - Group definitions and conditional groups
-- `repos.yaml` - Target repositories with optional per-repo overrides
-- `settings.yaml` - Global settings: labels, repo defaults, rulesets, code scanning
-- File content uses `@templates/` references (resolved relative to fragment file)
-- `prOptions.merge: direct` - Changes are pushed directly
-
-**Templates directory**: `src/templates/` Contains all template files that get distributed: devcontainer setup, GitHub workflows, linting configs, editor configs, etc.
-
-**Key xfg mechanics**:
-
-- `createOnly: true` - file is **seeded once** and never overwritten on later syncs (use for files repos customize, e.g. `.gitignore`, `.mega-linter.yml`, `renovate-overrides.json5`). Default (omitted) overwrites on every sync.
-- `$arrayMerge: append` + `$values: [...]` - appends to an array (e.g. pre-commit `repos`, devcontainer `extensions`) instead of replacing it. Required because plain YAML keys replace.
-- **Groups** (`groups.yaml`) - named bundles of files/settings; can `extends` other groups. Repos opt in via the `groups:` list in `repos.yaml`.
-- **conditionalGroups** (`groups.yaml`) - apply files/settings based on which groups a repo has, via `allOf` / `anyOf` / `noneOf` predicates. Used for cross-cutting rules (e.g. status-check rulesets that differ when `mergify` is present).
 - `.prettierrc.yaml` uses `requirePragma` overrides to skip md/json/yaml because prettier only reads `.prettierignore` from the cwd (subdirectory runs ignore it). `*.json` needs `parser: json5` since the `json` parser ignores `requirePragma`. mdformat owns markdown.
 - MegaLinter excludes live in `.mega-linter-base.yml` as `ADDITIONAL_EXCLUDED_DIRECTORIES`, which adds to MegaLinter's defaults (`.git`, `node_modules`, ...). Repos add more via the same key, listed in `CONFIG_PROPERTIES_TO_APPEND`. Setting `EXCLUDED_DIRECTORIES` in a repo replaces MegaLinter's defaults, not the base list.
 - Trivy scanners are set by `scan.scanners` in `trivy-mega-linter.yaml`; `.mega-linter-base.yml` only strips MegaLinter's default `--scanners vuln,misconfig` so the config file wins. Vulnerabilities are scanned by the daily Trivy workflow instead.
 - `prOptions.ai` in `base.yaml` asks LiteLLM first (host from the `LITELLM_HOST` secret, never written in the repo; XFG Apply builds `LITELLM_BASE_URL` as `https://<host>/v1` and allows `<host>:443` in harden-runner, and leaves both out when the secret is empty) and falls back to OpenRouter when LiteLLM or any of its env vars is missing, empty or fails; the guard pins both. `prOptions.ai.prompt`
   keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
-- `template: true` + `vars` - substitutes `${xfg:name}` (and built-ins like `${xfg:repo.fullName}`) in a file. Unknown variables fail the sync. `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed
-  CI/release callers. Shell templates holding `${xfg:...}` use a `.tmpl` extension so this repo's shellcheck skips them. See `docs/ci.md`.
+- `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed CI/release callers. See `docs/ci.md`.
 - **PR approval gate** (design in [#581](https://github.com/anthony-spruyt/repo-operator/issues/581)). Each rule lives in one place:
   - `pr-rules` (`protected-main-branch`): one approval from someone who is neither the PR author nor the latest pusher; a real commit dismisses it, an "Update branch" keeps it. No CODEOWNERS.
-  - `.mergify.yml` merge protections: `approval` (one approval on every PR, including repos without `pr-rules`, such as spruyt-labs and esphome), `outsider` (an author outside the trusted bot and owner list needs `anthony-spruyt`) and `gate-files` (`.github/`, `.mergify.yml`, root `renovate.json` and `renovate-overrides.json5`, and the repo's `gateFilesExtra` need `anthony-spruyt` unless the PR is
-    pure Renovate or wholly the owner's). Mergify is in `pr-rules` `bypass_actors` (mode `exempt`) and enforces these protections.
+  - `.mergify.yml` merge protections: `approval` (one approval on every PR, including repos without `pr-rules`), `outsider` (an author outside the trusted bot and owner list needs `anthony-spruyt`) and `gate-files` (`.github/`, `.mergify.yml`, root `renovate.json` and `renovate-overrides.json5`, and the repo's `gateFilesExtra` need `anthony-spruyt` unless the PR is pure Renovate or wholly the
+    owner's). Mergify is in `pr-rules` `bypass_actors` (mode `exempt`) and enforces these protections.
   - Approvals on Renovate PRs reset when new commits are pushed: a `.mergify.yml` pull request rule dismisses them, including in repos without `pr-rules`.
   - Mergify never approves a PR. Release PRs are ordinary PRs that merge once a collaborator approves them.
   - "Pure" means the bot opened the PR and every commit has that bot's author login and `<id>+<login>@users.noreply.github.com` email, committer `noreply@github.com` and a valid signature. Only GitHub's web-flow key signs that combination; a commit signed with any other key carries its signer's committer email.
   - "Wholly the owner's" means `anthony-spruyt` opened the PR and every commit is verified with an owner author email and an owner or `noreply@github.com` committer email. The conditions match verified emails; GitHub verifies a signature only for its committer email's account, so agent commits (`spruyt-labs-bot`, app bots) do not qualify.
   - Only the release bot creates and moves tags, and only in `release-please` repos; other repos take no tags.
   - megalinter-refresh PRs commit unsigned through `git push`, so they need a normal approval until they commit through the API.
-  - `gateFilesExtra` is a template var prepended to the gate-files regex, with its own trailing `|`: repo-operator adds `src/` (the config the next Apply syncs) and `test/ci/` (the guard tests), traefik-api-key-auth its `scripts/test-image.sh` (run in the publish job after the registry logins). Leave it empty elsewhere, where `src/` is application code.
+  - `gateFilesExtra` is a template var prepended to the gate-files regex, with its own trailing `|`: repo-operator adds `src/` (the config the next Apply syncs) and `test/ci/` (the guard tests). A repo may add its own gate scripts; leave it empty where `src/` is application code.
 - The `main` XFG Plan runs `src/` before the owner reads it with the write key, so it runs behind a harden-runner egress block and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, `files` path with a `.git` segment, secret source env outside the allowed set (the LiteLLM gateway names
   only in the xfg `integration`/`integration-main` environments), AI endpoint, key env or header env outside the pinned LiteLLM and OpenRouter set, or AI provider with neither `baseUrl` nor `baseUrlEnv` (including `ai: true`).
-- Comments in a template are **not** synced - xfg emits generated YAML with only the `header:` lines from `groups.yaml`. Explain non-obvious template config here instead.
 
 ### Adding a New Repository
 
@@ -114,17 +91,13 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 - **Layout, the same in every repo**: the `renovate` group syncs a root `renovate.json` on every Apply (the shared presets, `forkProcessing: "enabled"`, then `local>${xfg:repo.fullName}//renovate-overrides.json5` last) and seeds a root `renovate-overrides.json5` once with `createOnly`. Edit the override file in the target repo, not here. Don't add per-repo Renovate entries to `repos.yaml`.
 - **Why root `renovate.json`**: with the app on all repositories, Renovate skips a fork unless `forkProcessing` is enabled in the default config file, `renovate.json`, and nowhere else. Renovate reads only the first config file it finds and never merges two, so nothing else may sit beside it.
 - **xfg-managed files**: `xfg-managed.json5` is generated from `src/`. It stops target repos from bumping files that xfg manages there without `createOnly`. After any `src/` change, run `.github/scripts/gen-xfg-managed-renovate.sh src > .github/renovate/xfg-managed.json5` and `.github/scripts/gen-xfg-managed-renovate.sh --map src > .github/xfg-managed.json`. Guard Tests fail if either drifts.
-- **Managed-file guard** ([#808](https://github.com/anthony-spruyt/repo-operator/issues/808)): `.claude/xfg-managed.sh` reads `.github/xfg-managed.json` from `main` (every repo, repo-operator included, cached 15 minutes in the git dir). A `PreToolUse` hook blocks Edit, Write, NotebookEdit and Bash writes to a managed file, and a pre-commit hook refuses commits that change one. The `claude` group
-  syncs all three. Here, edit `src/templates/` and let Apply sync the root copy.
 
 ### CI/CD Pipeline
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`. Code tests sit in `test/`: one `test/<name>.bats` per script in `.github/scripts/` (`check-xfg-config`, `sync-sonar-settings`, `gen-xfg-managed-renovate`), per action (`detect-images`,
-   `sonar-new-issues`) and for the synced `.claude/session-progress.sh`, `.claude/pull-default-branch.sh`, `.claude/restore-shell-tools.sh` and `.claude/xfg-managed.sh` hooks (`session-progress`, `pull-default-branch`, `restore-shell-tools`, `xfg-managed`) and `.devcontainer/post-start.d/claude-plugins.sh` (`claude-plugins`). Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate files: the rendered `lint.sh` in `lint-sh.bats`, the merge gate in
-   `merge-gate.bats`, the CI layout and actionlint on the `ci.yaml` templates and seed in `ci-layout.bats`, the Renovate layout in `renovate-layout.bats`, the image workflows in `image-workflows.bats`, the PR title check and its required context in `pr-title.bats`, the `release` environment and the jobs that use it in `release-environment.bats`, and `_summary.yaml`'s job check in `summary.bats`.
-   Fixtures and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`. Code tests: one `test/<name>.bats` per script in `.github/scripts/`, per action and per synced `.claude/*.sh` hook. Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate
+   files. Fixtures and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply). This is the plan to read before approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo
    variable).
@@ -138,7 +111,4 @@ The xfg-apply job pushes the updated configuration directly to target repos (`pr
 
 `sonar-settings.yaml` owns SonarQube Cloud project settings for the `sonar` group, from `.github/sonar-settings.yaml`. It plans on PRs that touch its paths (public GET, no token) and applies on `main` push, weekly and dispatch with `SONAR_TOKEN` from the `sonar` environment. It is not a required check, because its paths filter would leave it pending on other PRs. See the README.
 
-The `sonar` job in `ci.yaml` (`sonar / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit, uses no token, and `summary` judges it. The `sonar` group adds the same job to the synced `ci.yaml` and appends it to `summary.needs`. guard-test also runs its bats tests in
-`test/sonar-new-issues.bats`. See `docs/ci.md`.
-
-Additional workflows distributed to target repos include Trivy vulnerability scanning.
+The `sonar` job in `ci.yaml` (`sonar / New Issues`) fails a PR when SonarQube Cloud reports any open issue or hotspot to review on its head commit. It calls `_sonar-new-issues.yaml` at the same commit, uses no token, and `summary` judges it. The `sonar` group adds the same job to the synced `ci.yaml` and appends it to `summary.needs`. See `docs/ci.md`.
