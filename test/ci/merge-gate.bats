@@ -150,7 +150,12 @@ no_commit_matches() {
   run grep -cE 'agent/revert|emergency/merge|megalinter-refresh|request_reviews' "$TEMPLATE"
   [ "$output" = "0" ]
   run yq -o=json -I0 '[.pull_request_rules[].name]' "$TEMPLATE"
-  [ "$output" = '["cleanup labels on close"]' ]
+  [ "$output" = '["cleanup labels on close","dismiss stale approvals on Renovate PRs"]' ]
+}
+
+@test "approvals on Renovate PRs are dismissed when new commits are pushed" {
+  run yq -o=json -I0 '.pull_request_rules[] | select(.name == "dismiss stale approvals on Renovate PRs") | [.conditions, .actions]' "$TEMPLATE"
+  [ "$output" = '[["author = renovate[bot]"],{"dismiss_reviews":{"approved":true,"changes_requested":false}}]' ]
 }
 
 @test "the merge queue and blocked label are kept" {
