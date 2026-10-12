@@ -165,4 +165,3 @@ Secrets in `settings.secrets` and `settings.environments.<name>.secrets` (`group
 ## Related Projects
 
 - [xfg](https://github.com/anthony-spruyt/xfg) — The sync engine
-- [claude-config](https://github.com/anthony-spruyt/claude-config) — Shared Claude Code configuration

@@ -114,6 +114,7 @@ bash_hook() { hook Bash command "$1"; }
   [ "$status" -eq 2 ]
   [[ "$stderr" == *".claude/settings.json"* ]]
   [[ "$stderr" == *"anthony-spruyt/repo-operator"* ]]
+  [[ "$stderr" == *"Load the repo-operator skill"* ]]
 }
 
 @test "hook blocks Write and MultiEdit of a managed file" {
@@ -149,6 +150,7 @@ bash_hook() { hook Bash command "$1"; }
   run --separate-stderr hook Edit file_path "$REPO/.editorconfig"
   [ "$status" -eq 2 ]
   [[ "$stderr" == *"src/templates/.editorconfig"* ]]
+  [[ "$stderr" == *"Load the repo-operator skill"* ]]
 }
 
 @test "hook blocks Bash in-place edits" {
