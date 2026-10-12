@@ -111,7 +111,8 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 Deletes old tags from `docker.io/<namespace>/<package>` with the same rules as the GHCR cleanup (see [Container retention](#container-retention)). A version is a digest with all its tags; it is as old as its most recent tag push. The version tagged `latest` stays, and so does every version pushed within `older-than`. Of the rest, the newest `keep-n-tagged` stay and every tag of the others is
 deleted. A month is 30 days and a year 365, as in the GHCR cleanup.
 
-It logs in once per package through `POST /v2/auth/token`, because the Hub token lasts 10 minutes, and keeps the token out of `curl`'s arguments. A package with no Docker Hub repository is skipped with a notice. A tag already gone counts as deleted. Any other failure fails the run, after the remaining packages and tags are tried.
+It logs in through `POST /v2/auth/token` for each package, and again whenever the Hub token, which lasts 10 minutes, expires. The token reaches `curl` and `jq` only through files and the environment, never their arguments. Each page of tags goes to a file, so a repository with thousands of tags lists fine. A package whose repository is missing on the first page is skipped with a notice; a 404 on a
+later page fails. A tag already gone counts as deleted. Any other failure fails the run, after the remaining packages and tags are tried.
 
 - `namespace` (required): Docker Hub namespace
 - `username` (default: `namespace`): Docker Hub login
@@ -189,9 +190,10 @@ Untagged versions are kept: setting `keep-n-tagged` turns off the action's defau
 - `dockerhub-namespace` (default empty): also clean `docker.io/<namespace>/<package>` for every package, with the same rules, through [`dockerhub-cleanup`](#dockerhub-cleanup). Empty skips Docker Hub
 - `dockerhub-username` (default: `dockerhub-namespace`): Docker Hub login
 
-A `Find Packages` job resolves the package list once; `GHCR Cleanup` and `Docker Hub Cleanup` then run side by side and skip when the list is empty. GHCR runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+A `Find Packages` job resolves the package list once; `GHCR Cleanup` and `Docker Hub Cleanup` then run side by side and skip when the list is empty. Runs for the same repo queue rather than overlap, per registry: the GHCR action is not safe to run in parallel, and two Docker Hub runs would plan from different snapshots.
 
-`Docker Hub Cleanup` needs the `DOCKERHUB_RETENTION_TOKEN` secret, a Docker Hub personal access token with the **Read, Write, Delete** scope, and fails without it. It is the only job that reads the secret, runs in the main-only `container-retention` environment, and reaches only `hub.docker.com`.
+`Docker Hub Cleanup` needs the `DOCKERHUB_RETENTION_TOKEN` secret, a Docker Hub personal access token with the **Read, Write, Delete** scope, and fails without it. It is the only job that reads the secret, runs in the `container-retention` environment, and reaches only `hub.docker.com`. The `dockerhub` group creates that environment in each image repo with a deployment branch policy that allows
+only `main`.
 
 The calling job needs `packages: write`, and `contents: read` so the job can check out the repo to find its images. Each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
 

@@ -72,7 +72,7 @@ jobs:
             echo "::error::older-than must be a positive interval of at most 99999 units, such as '4 weeks' or '30 days'."
             exit 1
           fi
-          if ! [[ "$KEEP_N_TAGGED" =~ ^[0-9]+$ ]] || [ "$KEEP_N_TAGGED" -lt 1 ]; then
+          if ! [[ "$KEEP_N_TAGGED" =~ ^0*[1-9][0-9]{0,8}$ ]]; then
             echo "::error::keep-n-tagged must be a whole number of at least 1."
             exit 1
           fi
@@ -149,6 +149,9 @@ jobs:
     runs-on: ubuntu-latest
     environment: container-retention
     permissions: {}
+    concurrency:
+      group: container-retention-dockerhub-${{ github.repository }}
+      cancel-in-progress: false
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1

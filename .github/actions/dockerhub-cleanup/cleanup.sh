@@ -13,9 +13,9 @@ die() {
   exit 1
 }
 
-username="${USERNAME:-${NAMESPACE:-}}"
-[[ "${NAMESPACE:-}" =~ $NAME_RE ]] || die "dockerhub-namespace is not a Docker Hub namespace"
-[[ "$username" =~ $NAME_RE ]] || die "dockerhub-username is not a Docker Hub username"
+export LOGIN_USER="${USERNAME:-${NAMESPACE:-}}"
+[[ "${NAMESPACE:-}" =~ $NAME_RE ]] || die "namespace is not a Docker Hub namespace"
+[[ "$LOGIN_USER" =~ $NAME_RE ]] || die "username is not a Docker Hub username"
 [[ -n "${DOCKERHUB_TOKEN:-}" ]] || die "the Docker Hub token is empty"
 [[ "${KEEP_N_TAGGED:-}" =~ ^0*([1-9][0-9]{0,8})$ ]] || die "keep-n-tagged must be a whole number of at least 1"
 keep="${BASH_REMATCH[1]}"
@@ -34,8 +34,8 @@ done
 
 tmp="$(umask 077 && mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
-# Files keep the token out of argv, where any process on the runner could read it
-jq -n --arg u "$username" --arg s "$DOCKERHUB_TOKEN" '{identifier: $u, secret: $s}' >"$tmp/login"
+# The token reaches jq and curl only through env and files: argv is readable by any process on the runner
+jq -n '{identifier: env.LOGIN_USER, secret: env.DOCKERHUB_TOKEN}' >"$tmp/login"
 
 # shellcheck disable=SC2016
 readonly JQ_PLAN='
@@ -48,58 +48,79 @@ group_by(.digest // "tag:\(.name)")
 '
 
 show_body() {
-  jq -c '.message // .detail // .' <<<"$1" 2>/dev/null || tr -d '\000-\037\177' <<<"$1" | head -c 500
+  jq -c '.message // .detail // .' "$tmp/body" 2>/dev/null || tr -d '\000-\037\177' <"$tmp/body" | head -c 500
 }
 
-# request <out-var> <curl args...> <url>: runs curl and fails unless the status is 2xx; 404 sets STATUS and fails quietly
+# request <curl args...> <url>: the body lands in $tmp/body and the status in STATUS; fails unless it is 2xx
 request() {
-  local -n out="$1"
-  shift
-  STATUS="$(curl -q "${CURL_OPTS[@]}" -o "$tmp/body" "$@")" || return 1
-  out="$(cat "$tmp/body")"
-  [[ "$STATUS" =~ ^2[0-9][0-9]$ ]] && return 0
-  [[ "$STATUS" == 404 ]] || echo "::error::HTTP $STATUS from ${*: -1}: $(show_body "$out")" >&2
-  return 1
+  STATUS="$(curl -q "${CURL_OPTS[@]}" -o "$tmp/body" "$@")" || {
+    STATUS=""
+    return 1
+  }
+  [[ "$STATUS" =~ ^2[0-9][0-9]$ ]]
+}
+
+http_error() {
+  echo "::error::HTTP ${STATUS:-error} from $1: $(show_body)" >&2
 }
 
 login() {
-  local body token
-  request body -X POST -H "Content-Type: application/json" --data-binary "@$tmp/login" "$API/auth/token" || return 1
-  token="$(jq -er '.access_token | select(type == "string" and length > 0)' <<<"$body")" || return 1
+  local token
+  if ! request -X POST -H "Content-Type: application/json" --data-binary "@$tmp/login" "$API/auth/token"; then
+    http_error "$API/auth/token"
+    return 1
+  fi
+  token="$(jq -er '.access_token | select(type == "string" and length > 0)' "$tmp/body")" || return 1
   printf 'Authorization: Bearer %s\n' "$token" >"$tmp/auth"
 }
 
-# list_tags <out-var> <repo>: every tag as one JSON array; fails with STATUS=404 when the repository doesn't exist
+# hub <curl args...> <url>: an authenticated request that logs in again once if the token, which lasts 10 minutes, expired
+hub() {
+  request -H "@$tmp/auth" "$@" && return 0
+  [[ "$STATUS" == 401 ]] || return 1
+  login && request -H "@$tmp/auth" "$@"
+}
+
+# list_tags <repo>: writes every tag to $tmp/tags.json; returns 2 when the repository doesn't exist
 list_tags() {
-  local -n all="$1"
-  local url="$API/namespaces/$NAMESPACE/repositories/$2/tags?page_size=100" page
-  all='[]'
+  local url="$API/namespaces/$NAMESPACE/repositories/$1/tags?page_size=100" n=0
+  rm -rf "$tmp/pages" && mkdir "$tmp/pages"
   while [[ -n "$url" ]]; do
-    [[ "$url" == "$API/namespaces/$NAMESPACE/repositories/$2/tags?"* ]] || {
-      echo "::error::$2: next page is not on the Hub API" >&2
+    [[ "$url" == "$API/namespaces/$NAMESPACE/repositories/$1/tags?"* ]] || {
+      echo "::error::$1: next page is not on the Hub API" >&2
       return 1
     }
-    request page -H "@$tmp/auth" "$url" || return 1
-    all="$(jq -c --argjson all "$all" '$all + .results' <<<"$page")" || return 1
-    url="$(jq -r '.next // ""' <<<"$page")"
+    n=$((n + 1))
+    if ! hub "$url"; then
+      [[ "$n" == 1 && "$STATUS" == 404 ]] && return 2
+      http_error "$url"
+      return 1
+    fi
+    jq -e '.results | type == "array"' "$tmp/body" >/dev/null || {
+      echo "::error::$1: page $n is not a tag list" >&2
+      return 1
+    }
+    mv "$tmp/body" "$tmp/pages/$n.json"
+    url="$(jq -r '.next // ""' "$tmp/pages/$n.json")"
   done
+  jq -s 'map(.results[])' "$tmp/pages"/*.json >"$tmp/tags.json"
 }
 
 clean() {
-  local repo="$NAMESPACE/$1" tags plan tag body
+  local repo="$NAMESPACE/$1" plan tag rc=0
   if ! login; then
     echo "::error::$repo: could not log in to Docker Hub" >&2
     return 1
   fi
-  if ! list_tags tags "$1"; then
-    if [[ "${STATUS:-}" == 404 ]]; then
-      echo "::notice::$repo: no such Docker Hub repository, skipping"
-      return 0
-    fi
+  list_tags "$1" || rc=$?
+  if ((rc == 2)); then
+    echo "::notice::$repo: no such Docker Hub repository, skipping"
+    return 0
+  elif ((rc)); then
     echo "::error::$repo: could not list tags" >&2
     return 1
   fi
-  plan="$(jq -r --argjson cutoff "$cutoff" --argjson keep "$keep" "$JQ_PLAN" <<<"$tags")" || return 1
+  plan="$(jq -r --argjson cutoff "$cutoff" --argjson keep "$keep" "$JQ_PLAN" "$tmp/tags.json")" || return 1
   if [[ -z "$plan" ]]; then
     echo "$repo: nothing to delete"
     return 0
@@ -110,15 +131,17 @@ clean() {
       return 1
     }
   done <<<"$plan"
-  local failed=0
+  local failed=0 url
   while IFS= read -r tag; do
+    url="$API/namespaces/$NAMESPACE/repositories/$1/tags/$tag"
     if [[ "$DRY_RUN" == true ]]; then
       echo "$repo: would delete $tag"
-    elif request body -X DELETE -H "@$tmp/auth" "$API/namespaces/$NAMESPACE/repositories/$1/tags/$tag"; then
+    elif hub -X DELETE "$url"; then
       echo "$repo: deleted $tag"
     elif [[ "$STATUS" == 404 ]]; then
       echo "$repo: $tag already gone"
     else
+      http_error "$url"
       failed=1
     fi
   done <<<"$plan"

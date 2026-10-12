@@ -28,6 +28,11 @@ step_script() {
   [ "$output" = '["packages","needs.packages.outputs.list != '"''"' && inputs.dockerhub-namespace != '"''"'","container-retention",{}]' ]
 }
 
+@test "Docker Hub runs for the same repo queue rather than overlap" {
+  run yq -o=json -I0 '.jobs.dockerhub.concurrency' "$WF"
+  [ "$output" = '{"group":"container-retention-dockerhub-${{ github.repository }}","cancel-in-progress":false}' ]
+}
+
 @test "the Docker Hub job reaches only Docker Hub" {
   run yq -o=json -I0 '.jobs.dockerhub.steps[0] | [(.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .with["egress-policy"], .with["allowed-endpoints"]]' "$WF"
   [ "$output" = '["step-security/harden-runner@<sha>","block","hub.docker.com:443"]' ]
@@ -115,6 +120,8 @@ step_script() {
   run env PACKAGES="" OLDER_THAN="4 weeks" KEEP_N_TAGGED=0 bash -c "$(step_script "Validate inputs")"
   [ "$status" -eq 1 ]
   [[ "$output" == *"keep-n-tagged must be a whole number"* ]]
+  run env PACKAGES="" OLDER_THAN="4 weeks" KEEP_N_TAGGED=10000000000 bash -c "$(step_script "Validate inputs")"
+  [ "$status" -eq 1 ]
   run env PACKAGES="" OLDER_THAN="4 weeks" KEEP_N_TAGGED=5 bash -c "$(step_script "Validate inputs")"
   [ "$status" -eq 0 ]
 }

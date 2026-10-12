@@ -10,9 +10,10 @@ setup() {
   mkdir -p "$STATE" "$WORK/bin"
   : >"$CURL_LOG"
   write_fake_curl
+  write_jq_guard
   export PATH="$WORK/bin:$PATH"
   export NAMESPACE=aspruyt USERNAME="" DOCKERHUB_TOKEN=s3cret-pat PACKAGES=app OLDER_THAN="4 weeks" KEEP_N_TAGGED=2 DRY_RUN=false
-  unset FAKE_PAGE_SIZE FAKE_AUTH_STATUS FAKE_LIST_STATUS FAKE_DELETE_STATUS FAKE_NEXT
+  unset FAKE_PAGE_SIZE FAKE_AUTH_STATUS FAKE_LIST_STATUS FAKE_PAGE2_STATUS FAKE_DELETE_STATUS FAKE_NEXT FAKE_TOKEN_USES
 }
 
 # tags <repo> <name:digest:days-ago>...: writes the repo's tags as the Hub API lists them, newest push first
@@ -25,6 +26,20 @@ tags() {
     jq -cn --arg n "$name" --arg d "$digest" --arg t "$(date -u -d "@$((now - days * 86400 - 60))" +%Y-%m-%dT%H:%M:%S.123456Z)" \
       '{name: $n, digest: (if $d == "" then null else "sha256:\($d)" end), tag_last_pushed: $t, last_updated: $t}'
   done | jq -s 'sort_by(.tag_last_pushed) | reverse' >"$STATE/$repo.json"
+}
+
+# jq that refuses the token in its arguments, where any process on the runner could read it
+write_jq_guard() {
+  local real
+  real="$(command -v jq)"
+  cat >"$WORK/bin/jq" <<GUARD
+#!/usr/bin/env bash
+for a in "\$@"; do
+  [[ "\$a" != *s3cret-pat* ]] || { echo "jq guard: the token is in argv" >&2; exit 2; }
+done
+exec "$real" "\$@"
+GUARD
+  chmod +x "$WORK/bin/jq"
 }
 
 remaining() {
@@ -77,7 +92,7 @@ if [[ "$method" == POST && "$url" == "$api/auth/token" ]]; then
   if [[ -n "${FAKE_AUTH_STATUS:-}" ]]; then
     printf '{"message":"bad credentials"}'
     status "$FAKE_AUTH_STATUS"
-  elif jq -e --arg u "${USERNAME:-$NAMESPACE}" '. == {identifier: $u, secret: "s3cret-pat"}' >/dev/null <<<"$body"; then
+  elif jq -e --arg u "${USERNAME:-$NAMESPACE}" '. == {identifier: $u, secret: ("s3cret" + "-pat")}' >/dev/null <<<"$body"; then
     printf '{"access_token":"jwt-%s"}' "$n"
     status 200
   else
@@ -87,6 +102,11 @@ if [[ "$method" == POST && "$url" == "$api/auth/token" ]]; then
   exit 0
 fi
 [[ "$auth" == jwt-* ]] || { printf '{"message":"no token"}'; status 401; exit 0; }
+if [[ -n "${FAKE_TOKEN_USES:-}" ]] && (($(grep -c " auth=$auth\$" "$CURL_LOG") > FAKE_TOKEN_USES)); then
+  printf '{"message":"token expired"}'
+  status 401
+  exit 0
+fi
 re="^$api/namespaces/$NAMESPACE/repositories/([^/?]+)/tags(/([^/?]+))?(\?(.*))?$"
 [[ "$url" =~ $re ]] || { echo "fake curl: unexpected URL: $url" >&2; exit 2; }
 repo="${BASH_REMATCH[1]}" tag="${BASH_REMATCH[3]}" query="${BASH_REMATCH[5]}"
@@ -95,6 +115,9 @@ if [[ "$method" == GET && -z "$tag" ]]; then
   if [[ -n "${FAKE_LIST_STATUS:-}" && "$repo" == "${FAKE_LIST_STATUS%%=*}" ]]; then
     printf '{"message":"boom"}'
     status "${FAKE_LIST_STATUS#*=}"
+  elif [[ -n "${FAKE_PAGE2_STATUS:-}" && "$query" == *page=2* ]]; then
+    printf '{"message":"object not found"}'
+    status "$FAKE_PAGE2_STATUS"
   elif [[ ! -f "$file" ]]; then
     printf '{"message":"object not found"}'
     status 404
@@ -171,6 +194,37 @@ FAKE
   [ "$status" -eq 0 ]
   [ "$(remaining app)" = "a latest" ]
   [ "$(grep -c '^GET ' "$CURL_LOG")" = "3" ]
+}
+
+@test "lists hundreds of large tags without passing them as one argument" {
+  local now old
+  now="$(date -u +%s)"
+  old="$(date -u -d "@$((now - 60 * 86400))" +%Y-%m-%dT%H:%M:%S.123456Z)"
+  jq -n --arg t "$old" --arg pad "$(printf '%01000d' 0)" \
+    '[{name: "latest", digest: "sha256:new", tag_last_pushed: $t, last_updated: $t}]
+     + [range(400) | {name: "v\(.)", digest: "sha256:d\(.)", tag_last_pushed: $t, last_updated: $t, images: [{digest: $pad}]}]' >"$STATE/app.json"
+  run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(jq length "$STATE/app.json")" = "3" ]
+}
+
+@test "a 404 after the first page fails instead of skipping the package" {
+  tags app latest:d1:1 a:d2:40 b:d3:41 c:d4:42
+  FAKE_PAGE_SIZE=2 FAKE_PAGE2_STATUS=404 run "$SCRIPT"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"::notice::"* ]]
+  [[ "$output" == *"::error::HTTP 404"* ]]
+  [ "$(remaining app)" = "a b c latest" ]
+}
+
+@test "logs in again when the Hub token expires mid-package" {
+  tags app latest:d1:1 a:d2:40 b:d3:41 c:d4:42 d:d5:43
+  KEEP_N_TAGGED=1 FAKE_TOKEN_USES=2 run "$SCRIPT"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(remaining app)" = "a latest" ]
+  [ "$(grep -c '^POST ' "$CURL_LOG")" = "2" ]
 }
 
 @test "refuses a next page outside the Hub API" {
@@ -277,6 +331,10 @@ FAKE
   DOCKERHUB_TOKEN="" run "$SCRIPT"
   [ "$status" -eq 1 ]
   [[ "$output" == *"::error::the Docker Hub token is empty"* ]]
+  NAMESPACE=Bad run "$SCRIPT"
+  [[ "$output" == "::error::namespace is not a Docker Hub namespace" ]]
+  USERNAME=Bad run "$SCRIPT"
+  [[ "$output" == "::error::username is not a Docker Hub username" ]]
   [ ! -s "$CURL_LOG" ]
 }
 

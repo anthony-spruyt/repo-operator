@@ -24,9 +24,14 @@ release_env() {
   [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
-@test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release, and adds the integration ones" {
+@test "the dockerhub group defines a main-only container-retention environment for the retention job" {
+  run yq -o=json -I0 'explode(.) | .groups.dockerhub.settings.environments["container-retention"]' "$SRC/groups.yaml"
+  [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$MAIN_ONLY")" ]
+}
+
+@test "only the release-please and dockerhub groups define environments, only release and container-retention, and only xfg overrides one, release, and adds the integration ones" {
   run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings.environments != null) | {(.key): (.value.settings.environments | keys)}]' "$SRC/groups.yaml"
-  [ "$output" = '[{"dockerhub":["release"]},{"release-please":["release"]}]' ]
+  [ "$output" = '[{"dockerhub":["release","container-retention"]},{"release-please":["release"]}]' ]
   local f
   for f in settings.yaml base.yaml; do
     run yq -r '[.. | select(tag == "!!map" and has("environments"))] | length' "$SRC/$f"
