@@ -31,8 +31,8 @@ This repository is a **GitHub Repository Operator** - a registry and orchestrato
 # Run MegaLinter locally with auto-fixes (Docker/podman required)
 ./lint.sh
 
-# Run MegaLinter in CI mode (no fixes)
-./lint.sh --ci
+# Run MegaLinter locally without fixes (--ci is for CI workflows, not local runs)
+APPLY_FIXES=none ./lint.sh
 
 # Run or skip some linters (ENABLE_LINTERS, DISABLE_LINTERS, ENABLE_DISABLE_LINTERS_PRIORITY pass through when set)
 DISABLE_LINTERS=SPELL_LYCHEE ENABLE_DISABLE_LINTERS_PRIORITY=DISABLE ./lint.sh
