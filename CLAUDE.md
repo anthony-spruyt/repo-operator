@@ -1,24 +1,10 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
-
 ## Project Purpose
 
-This repository is a **GitHub Repository Operator** - a registry and orchestrator that manages GitHub repositories to standardize developer experience across projects. Currently syncs configuration to existing repositories; will eventually create and fully configure new repositories.
+Registry and orchestrator that uses [xfg](https://github.com/anthony-spruyt/xfg) to sync shared config to GitHub repos, and to create missing ones, so every repo has the same developer experience.
 
-### Related Projects
-
-- **[xfg](https://github.com/anthony-spruyt/xfg)**: The underlying tool used to sync configuration files to target repositories
-- **[claude-config](https://github.com/anthony-spruyt/claude-config)**: Repository containing shared Claude configuration (`.claude/` directory contents)
-
-### Goals
-
-- Eliminate repetitive setup when creating new repositories
-- Standardize configuration and developer experience across all repositories
-- Centralize the distribution of new development experience features
-- Reduce hours of manual configuration work
-
-### Authentication
+## Authentication
 
 - **CI sync**: XFG Apply uses the `repo-operator` GitHub App (`APP_CLIENT_ID` / `APP_PRIVATE_KEY`), whose key lives only in the `production` and `plan-main` environments. XFG Plan on `main` uses the same key from `plan-main` (deployment branch `main`, no reviewer), because GitHub hides merge settings and ruleset `bypass_actors` from read-only tokens. PR previews (XFG Plan (preview)) and Lint
   Canary use a read-only Plan App (`PLAN_APP_CLIENT_ID` / `PLAN_APP_PRIVATE_KEY`) and never see a write key; the preview plan is partial.
@@ -36,12 +22,7 @@ APPLY_FIXES=none ./lint.sh
 
 # Run or skip some linters (ENABLE_LINTERS, DISABLE_LINTERS, ENABLE_DISABLE_LINTERS_PRIORITY pass through when set)
 DISABLE_LINTERS=SPELL_LYCHEE ENABLE_DISABLE_LINTERS_PRIORITY=DISABLE ./lint.sh
-
-# Run config sync manually (requires GH_TOKEN environment variable)
-GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 ```
-
-Dry-run before pushing any `src/` change; the command and the xfg mechanics are in the `repo-operator` skill.
 
 Pre-commit hooks run automatically on commit.
 
@@ -49,14 +30,13 @@ Pre-commit hooks run automatically on commit.
 
 ### XFG Configuration System
 
-xfg syncs `src/` to the target repos. Load the `repo-operator` skill (source: `src/templates/.claude/skills/repo-operator/SKILL.md`) for how `src/` is laid out, groups, `createOnly`, template variables, escaping, the managed-file guard, the dry-run command and the sync and approval flow. Repo specifics:
+Load the `repo-operator` skill (source `src/templates/.claude/skills/repo-operator/SKILL.md`) before changing `src/`. Repo specifics:
 
 - `.prettierrc.yaml` uses `requirePragma` overrides to skip md/json/yaml because prettier only reads `.prettierignore` from the cwd (subdirectory runs ignore it). `*.json` needs `parser: json5` since the `json` parser ignores `requirePragma`. mdformat owns markdown.
 - MegaLinter excludes live in `.mega-linter-base.yml` as `ADDITIONAL_EXCLUDED_DIRECTORIES`, which adds to MegaLinter's defaults (`.git`, `node_modules`, ...). Repos add more via the same key, listed in `CONFIG_PROPERTIES_TO_APPEND`. Setting `EXCLUDED_DIRECTORIES` in a repo replaces MegaLinter's defaults, not the base list.
 - Trivy scanners are set by `scan.scanners` in `trivy-mega-linter.yaml`; `.mega-linter-base.yml` only strips MegaLinter's default `--scanners vuln,misconfig` so the config file wins. Vulnerabilities are scanned by the daily Trivy workflow instead.
 - `prOptions.ai` in `base.yaml` asks LiteLLM first (host from the `LITELLM_HOST` secret, never written in the repo; XFG Apply builds `LITELLM_BASE_URL` as `https://<host>/v1` and allows `<host>:443` in harden-runner, and leaves both out when the secret is empty) and falls back to OpenRouter when LiteLLM or any of its env vars is missing, empty or fails; the guard pins both. `prOptions.ai.prompt`
   keeps sync commits to `chore`/`ci`/`build`/`docs`/`style`. Image repos hide those types from release-please, so a sync never cuts a release; a `feat` sync would bump the minor version.
-- `lint.sh` takes its `megalinterImage` pin from the `megalinter-flavor` conditional groups keyed on the language groups or a per-repo override in `repos.yaml`, which is where Renovate bumps the pins; the image groups set `language` for the managed CI/release callers. See `docs/ci.md`.
 - **PR approval gate** (design in [#581](https://github.com/anthony-spruyt/repo-operator/issues/581)). Each rule lives in one place:
   - `pr-rules` (`protected-main-branch`): one approval from someone who is neither the PR author nor the latest pusher; a real commit dismisses it, an "Update branch" keeps it. No CODEOWNERS.
   - `.mergify.yml` merge protections: `approval` (one approval on every PR, including repos without `pr-rules`), `outsider` (an author outside the trusted bot and owner list needs `anthony-spruyt`) and `gate-files` (`.github/`, `.mergify.yml`, root `renovate.json` and `renovate-overrides.json5`, and the repo's `gateFilesExtra` need `anthony-spruyt` unless the PR is pure Renovate or wholly the
@@ -96,8 +76,8 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`. Code tests: one `test/<name>.bats` per script in `.github/scripts/`, per action and per synced `.claude/*.sh` hook. Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate
-   files. Fixtures and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`. Code tests: one `test/<name>.bats` per script in `.github/scripts/`, per action and per synced script. Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate files. Fixtures
+   and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on PRs and dispatch from non-`main` refs. Partial: merge settings and ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply). This is the plan to read before approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo
    variable).
