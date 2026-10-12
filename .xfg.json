@@ -16,6 +16,7 @@
         ".claude/rules/progress.md",
         ".claude/rules/public-repos.md",
         ".claude/rules/research.md",
+        ".claude/rules/root-cause.md",
         ".claude/rules/tdd.md",
         ".claude/session-progress.sh",
         ".claude/settings.json",
