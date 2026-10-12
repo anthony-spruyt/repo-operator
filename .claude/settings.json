@@ -123,6 +123,17 @@
           }
         ]
       }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|MultiEdit|Write|NotebookEdit|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "[ ! -f \"$CLAUDE_PROJECT_DIR/.claude/xfg-managed.sh\" ] || bash \"$CLAUDE_PROJECT_DIR/.claude/xfg-managed.sh\" hook"
+          }
+        ]
+      }
     ]
   },
   "statusLine": {

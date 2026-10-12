@@ -63,3 +63,11 @@ repos:
         args:
           - "--whitespaces-count"
           - "2"
+  - repo: "local"
+    hooks:
+      - id: "xfg-managed"
+        name: "Block changes to files synced by repo-operator"
+        entry: "bash .claude/xfg-managed.sh staged"
+        language: "system"
+        pass_filenames: false
+        always_run: true
