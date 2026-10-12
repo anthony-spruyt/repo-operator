@@ -209,29 +209,6 @@ repos:
       .mergify.yml:
         vars:
           gateFilesExtra: "src/|test/ci/|"
-      .claude/xfg-managed.sh:
-        content: "@templates/.claude/xfg-managed.sh"
-      .claude/settings.json:
-        content:
-          hooks:
-            PreToolUse:
-              - matcher: "Edit|MultiEdit|Write|NotebookEdit|Bash"
-                hooks:
-                  - type: "command"
-                    command: '[ ! -f "$CLAUDE_PROJECT_DIR/.claude/xfg-managed.sh" ] || bash "$CLAUDE_PROJECT_DIR/.claude/xfg-managed.sh" hook'
-      .pre-commit-config.yaml:
-        content:
-          repos:
-            $arrayMerge: append
-            $values:
-              - repo: local
-                hooks:
-                  - id: xfg-managed
-                    name: Block changes to files synced by repo-operator
-                    entry: bash .claude/xfg-managed.sh staged
-                    language: system
-                    pass_filenames: false
-                    always_run: true
 
   - git: https://github.com/anthony-spruyt/security.git
     groups:

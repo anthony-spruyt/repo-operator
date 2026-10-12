@@ -42,6 +42,21 @@ groups:
         content: "@templates/.claude/settings.json"
       .claude/statusline.sh:
         content: "@templates/.claude/statusline.sh"
+      .claude/xfg-managed.sh:
+        content: "@templates/.claude/xfg-managed.sh"
+      .pre-commit-config.yaml:
+        content:
+          repos:
+            $arrayMerge: append
+            $values:
+              - repo: local
+                hooks:
+                  - id: xfg-managed
+                    name: Block changes to files synced by repo-operator
+                    entry: bash .claude/xfg-managed.sh staged
+                    language: system
+                    pass_filenames: false
+                    always_run: true
   cpp: {}
   eslint:
     files:
