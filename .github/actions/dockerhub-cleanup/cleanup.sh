@@ -40,7 +40,7 @@ jq -n '{identifier: env.LOGIN_USER, secret: env.DOCKERHUB_TOKEN}' >"$tmp/login"
 # shellcheck disable=SC2016
 readonly JQ_PLAN='
 def pushed: (.tag_last_pushed // .last_updated // "") | sub("\\.[0-9]+Z$"; "Z") | try fromdate catch null;
-group_by(.digest // "tag:\(.name)")
+group_by(if (.digest | type) == "string" and .digest != "" then .digest else "tag:\(.name)" end)
 | map(select(all(.name != "latest")) | {tags: map(.name), pushed: (map(pushed) | max)})
 | map(select(.pushed != null and .pushed < $cutoff))
 | sort_by(-.pushed)
@@ -74,16 +74,20 @@ login() {
   printf 'Authorization: Bearer %s\n' "$token" >"$tmp/auth"
 }
 
-# hub <curl args...> <url>: an authenticated request that logs in again once if the token, which lasts 10 minutes, expired
+# hub <curl args...> <url>: an authenticated request that logs in again once if the token, which lasts 10 minutes, expired.
+# Returns 3 when Hub rejects a fresh token too, so callers stop instead of logging in again per request.
 hub() {
   request -H "@$tmp/auth" "$@" && return 0
   [[ "$STATUS" == 401 ]] || return 1
-  login && request -H "@$tmp/auth" "$@"
+  login || return 3
+  request -H "@$tmp/auth" "$@" && return 0
+  [[ "$STATUS" != 401 ]] || return 3
+  return 1
 }
 
-# list_tags <repo>: writes every tag to $tmp/tags.json; returns 2 when the repository doesn't exist
+# list_tags <repo>: writes every tag to $tmp/tags.json; returns 2 when the repository doesn't exist, 3 as hub does
 list_tags() {
-  local url="$API/namespaces/$NAMESPACE/repositories/$1/tags?page_size=100" n=0
+  local url="$API/namespaces/$NAMESPACE/repositories/$1/tags?page_size=100" n=0 rc
   rm -rf "$tmp/pages" && mkdir "$tmp/pages"
   while [[ -n "$url" ]]; do
     [[ "$url" == "$API/namespaces/$NAMESPACE/repositories/$1/tags?"* ]] || {
@@ -91,7 +95,11 @@ list_tags() {
       return 1
     }
     n=$((n + 1))
-    if ! hub "$url"; then
+    rc=0
+    hub "$url" || rc=$?
+    if ((rc == 3)); then
+      return 3
+    elif ((rc)); then
       [[ "$n" == 1 && "$STATUS" == 404 ]] && return 2
       http_error "$url"
       return 1
@@ -106,16 +114,19 @@ list_tags() {
   jq -s 'map(.results[])' "$tmp/pages"/*.json >"$tmp/tags.json"
 }
 
+rejected() {
+  echo "::error::$1: Docker Hub rejected the token even after a fresh login" >&2
+}
+
 clean() {
   local repo="$NAMESPACE/$1" plan tag rc=0
-  if ! login; then
-    echo "::error::$repo: could not log in to Docker Hub" >&2
-    return 1
-  fi
   list_tags "$1" || rc=$?
   if ((rc == 2)); then
-    echo "::notice::$repo: no such Docker Hub repository, skipping"
+    echo "::warning::$repo: no such Docker Hub repository, skipping"
     return 0
+  elif ((rc == 3)); then
+    rejected "$repo"
+    return 1
   elif ((rc)); then
     echo "::error::$repo: could not list tags" >&2
     return 1
@@ -125,21 +136,25 @@ clean() {
     echo "$repo: nothing to delete"
     return 0
   fi
-  while IFS= read -r tag; do
-    [[ "$tag" =~ $TAG_RE ]] || {
-      echo "::error::$repo: tag name not allowed: $(tr -d '\000-\037\177' <<<"$tag" | head -c 200)" >&2
-      return 1
-    }
-  done <<<"$plan"
   local failed=0 url
   while IFS= read -r tag; do
+    if ! [[ "$tag" =~ $TAG_RE ]]; then
+      echo "::error::$repo: tag name not allowed: $(tr -d '\000-\037\177' <<<"$tag" | head -c 200)" >&2
+      failed=1
+      continue
+    fi
     url="$API/namespaces/$NAMESPACE/repositories/$1/tags/$tag"
     if [[ "$DRY_RUN" == true ]]; then
       echo "$repo: would delete $tag"
-    elif hub -X DELETE "$url"; then
+      continue
+    fi
+    rc=0
+    hub -X DELETE "$url" || rc=$?
+    if ((rc == 0)); then
       echo "$repo: deleted $tag"
-    elif [[ "$STATUS" == 404 ]]; then
-      echo "$repo: $tag already gone"
+    elif ((rc == 3)); then
+      rejected "$repo"
+      return 1
     else
       http_error "$url"
       failed=1
@@ -148,6 +163,7 @@ clean() {
   return "$failed"
 }
 
+login || die "could not log in to Docker Hub"
 failed=0
 for p in "${packages[@]}"; do
   clean "$p" || failed=1

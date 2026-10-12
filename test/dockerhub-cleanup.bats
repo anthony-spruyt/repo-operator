@@ -247,7 +247,7 @@ FAKE
   run ! grep -q '^DELETE ' "$CURL_LOG"
 }
 
-@test "cleans each package with its own token" {
+@test "cleans every package with one login" {
   tags app latest:d1:1 a:d2:40 b:d3:41
   tags tool latest:d1:1 x:d2:40 y:d3:41
   PACKAGES="app,tool" KEEP_N_TAGGED=1 run "$SCRIPT"
@@ -255,8 +255,18 @@ FAKE
   [ "$status" -eq 0 ]
   [ "$(remaining app)" = "a latest" ]
   [ "$(remaining tool)" = "latest x" ]
-  [ "$(grep -c '^POST https://hub.docker.com/v2/auth/token ' "$CURL_LOG")" = "2" ]
-  grep -q '^DELETE .*/repositories/tool/tags/y auth=jwt-2$' "$CURL_LOG"
+  [ "$(grep -c '^POST https://hub.docker.com/v2/auth/token ' "$CURL_LOG")" = "1" ]
+  grep -q '^DELETE .*/repositories/tool/tags/y auth=jwt-1$' "$CURL_LOG"
+}
+
+@test "a token Hub still rejects after a fresh login stops the package without a login per tag" {
+  tags app latest:d1:1 a:d2:40 b:d3:41 c:d4:42 d:d5:43
+  tags tool latest:d1:1 x:d2:40 y:d3:41
+  PACKAGES="app,tool" KEEP_N_TAGGED=1 FAKE_DELETE_STATUS=b=401 run "$SCRIPT"
+  echo "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::aspruyt/app: Docker Hub rejected the token"* ]]
+  [ "$(grep -c '^POST ' "$CURL_LOG")" -le 3 ]
 }
 
 @test "logs in as dockerhub-username when it is set" {
@@ -270,7 +280,7 @@ FAKE
   PACKAGES="app,tool" KEEP_N_TAGGED=1 run "$SCRIPT"
   echo "$output"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::notice::aspruyt/app: no such Docker Hub repository, skipping"* ]]
+  [[ "$output" == *"::warning::aspruyt/app: no such Docker Hub repository, skipping"* ]]
   [ "$(remaining tool)" = "latest x" ]
 }
 
@@ -294,14 +304,27 @@ FAKE
   [ "$(remaining app)" = "a b latest" ]
 }
 
-@test "a tag already gone counts as deleted" {
-  tags app latest:d1:1 a:d2:40 b:d3:41
+@test "a 404 on delete fails the run, so a delete that never lands can't pass" {
+  tags app latest:d1:1 a:d2:40 b:d3:41 c:d4:42
   KEEP_N_TAGGED=1 FAKE_DELETE_STATUS=b=404 run "$SCRIPT"
   echo "$output"
-  [ "$status" -eq 0 ]
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::error::HTTP 404"* ]]
+  [ "$(remaining app)" = "a b latest" ]
 }
 
-@test "a failed login fails the package without listing it" {
+@test "a tag with an empty digest counts as its own version" {
+  local t
+  t="$(date -u -d "@$(($(date -u +%s) - 50 * 86400))" +%Y-%m-%dT%H:%M:%SZ)"
+  jq -n --arg t "$t" '[{name: "latest", digest: "", tag_last_pushed: $t}, {name: "a", digest: "", tag_last_pushed: $t}, {name: "b", digest: "", tag_last_pushed: $t}]' >"$STATE/app.json"
+  KEEP_N_TAGGED=1 run "$SCRIPT"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(jq length "$STATE/app.json")" = "2" ]
+  [ "$(jq -r 'any(.name == "latest")' "$STATE/app.json")" = "true" ]
+}
+
+@test "a failed login fails the run without listing anything" {
   tags app latest:d1:1 a:d2:40 b:d3:41
   KEEP_N_TAGGED=1 FAKE_AUTH_STATUS=401 run "$SCRIPT"
   echo "$output"
@@ -311,13 +334,14 @@ FAKE
   run ! grep -q '^GET ' "$CURL_LOG"
 }
 
-@test "refuses a tag name the registry never produces" {
-  tags app latest:d1:1 a:d2:40 '..%2Fx:d3:41'
+@test "refuses a tag name the registry never produces, and still deletes the other tags" {
+  tags app latest:d1:1 a:d2:40 '..%2Fx:d3:41' b:d4:42
   KEEP_N_TAGGED=1 run "$SCRIPT"
   echo "$output"
   [ "$status" -eq 1 ]
   [[ "$output" == *"aspruyt/app: tag name not allowed"* ]]
-  run ! grep -q '^DELETE ' "$CURL_LOG"
+  [ "$(remaining app)" = "..%2Fx a latest" ]
+  run ! grep -q '%2F' "$CURL_LOG"
 }
 
 @test "refuses bad inputs before calling the API" {

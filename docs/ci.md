@@ -111,8 +111,9 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 Deletes old tags from `docker.io/<namespace>/<package>` with the same rules as the GHCR cleanup (see [Container retention](#container-retention)). A version is a digest with all its tags; it is as old as its most recent tag push. The version tagged `latest` stays, and so does every version pushed within `older-than`. Of the rest, the newest `keep-n-tagged` stay and every tag of the others is
 deleted. A month is 30 days and a year 365, as in the GHCR cleanup.
 
-It logs in through `POST /v2/auth/token` for each package, and again whenever the Hub token, which lasts 10 minutes, expires. The token reaches `curl` and `jq` only through files and the environment, never their arguments. Each page of tags goes to a file, so a repository with thousands of tags lists fine. A package whose repository is missing on the first page is skipped with a notice; a 404 on a
-later page fails. A tag already gone counts as deleted. Any other failure fails the run, after the remaining packages and tags are tried.
+It logs in once through `POST /v2/auth/token`, and again when the Hub token, which lasts 10 minutes, expires. If Hub rejects a fresh token too, it stops that package. The token reaches `curl` and `jq` only through files and the environment, never their arguments. Each page of tags goes to a file, so a repository with thousands of tags lists fine.
+
+A package whose repository is missing on the first page is skipped with a warning. Every other failure fails the run, after the remaining packages and tags are tried: a 404 on a later page or on a delete, and a tag name the registry never produces, which is not deleted.
 
 - `namespace` (required): Docker Hub namespace
 - `username` (default: `namespace`): Docker Hub login
@@ -228,7 +229,7 @@ jobs:
 On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-run` is `false` without reading `inputs.dry-run`. Before a new repo's first scheduled run:
 
 1. Give the calling repo the **Admin** role on each package.
-2. Dispatch with `dry-run` on, and check the logged deletions.
+2. Dispatch with `dry-run` on, and check the logged deletions. Dispatch from `main`: `Docker Hub Cleanup` runs in the main-only `container-retention` environment even for a dry run.
 3. Dispatch once with `dry-run` off.
 4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
 

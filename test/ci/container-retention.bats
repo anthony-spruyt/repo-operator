@@ -28,6 +28,23 @@ step_script() {
   [ "$output" = '["packages","needs.packages.outputs.list != '"''"' && inputs.dockerhub-namespace != '"''"'","container-retention",{}]' ]
 }
 
+@test "the workflow and the Docker Hub action accept the same older-than and keep-n-tagged values" {
+  local action="$REPO_ROOT/.github/actions/dockerhub-cleanup/cleanup.sh" pair older keep wf_ok act_ok
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  printf '#!/bin/sh\nexit 7\n' >"$BATS_TEST_TMPDIR/bin/curl"
+  chmod +x "$BATS_TEST_TMPDIR/bin/curl"
+  for pair in "4 weeks|5" "30 days|1" "1 year|007" "99999 seconds|999999999" "0 days|5" "100000 days|5" "4 fortnights|5" "|5" \
+    "4 weeks|0" "4 weeks|1000000000" "4 weeks|-1" "4 weeks|x" "4 weeks|"; do
+    older="${pair%|*}" keep="${pair#*|}"
+    wf_ok=yes act_ok=yes
+    env PACKAGES="" OLDER_THAN="$older" KEEP_N_TAGGED="$keep" bash -c "$(step_script "Validate inputs")" >/dev/null 2>&1 || wf_ok=no
+    run env PATH="$BATS_TEST_TMPDIR/bin:$PATH" NAMESPACE=aspruyt DOCKERHUB_TOKEN=t PACKAGES=app DRY_RUN=true OLDER_THAN="$older" KEEP_N_TAGGED="$keep" "$action"
+    [[ "$output" != *"::error::older-than"* && "$output" != *"::error::keep-n-tagged"* ]] || act_ok=no
+    echo "'$older' '$keep': workflow=$wf_ok action=$act_ok"
+    [ "$wf_ok" = "$act_ok" ]
+  done
+}
+
 @test "Docker Hub runs for the same repo queue rather than overlap" {
   run yq -o=json -I0 '.jobs.dockerhub.concurrency' "$WF"
   [ "$output" = '{"group":"container-retention-dockerhub-${{ github.repository }}","cancel-in-progress":false}' ]
