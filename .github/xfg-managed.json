@@ -453,6 +453,7 @@
     ".claude/session-progress.sh",
     ".claude/settings.json",
     ".claude/statusline.sh",
+    ".claude/xfg-managed.sh",
     ".devcontainer/.gitignore",
     ".devcontainer/Dockerfile",
     ".devcontainer/README.md",
