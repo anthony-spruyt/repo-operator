@@ -8,7 +8,8 @@ ttl=$(printenv XFG_MANAGED_TTL || echo 900)
 self_repo=anthony-spruyt/repo-operator
 
 repo_name() {
-  git -C "$1" remote get-url origin 2>/dev/null |
+  local dir=$1
+  git -C "$dir" remote get-url origin 2>/dev/null |
     sed -nE 's#^(https://|ssh://git@|git@)github\.com[:/]([A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+)$#\2#p' |
     sed 's/\.git$//'
 }
@@ -64,7 +65,10 @@ explain() {
 }
 
 # shellcheck disable=SC2001,SC2016
-ere_escape() { sed 's#[]\.[*^$()+?{}|]#\\&#g' <<<"$1"; }
+ere_escape() {
+  local text=$1
+  sed 's#[]\.[*^$()+?{}|]#\\&#g' <<<"$text"
+}
 
 block_managed_writes() {
   local root=$1 cmd=$2 files pairs segments seg first second last p re before after redirect in_place
@@ -121,6 +125,7 @@ run_hook() {
     root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || exit 0
     block_managed_writes "$root" "$(jq -r '.tool_input.command // empty' <<<"$input")"
     ;;
+  *) ;;
   esac
   exit 0
 }
