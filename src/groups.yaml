@@ -591,6 +591,24 @@ conditionalGroups:
           PYTHON_RUFF_CONFIG_FILE: "pyproject.toml"
           PYTHON_RUFF_FORMAT_CONFIG_FILE: "pyproject.toml"
   - when:
+      allOf: [megalinter, docker]
+    files:
+      .mega-linter-base.yml:
+        content:
+          ENABLE_LINTERS:
+            $arrayMerge: append
+            $values:
+              - "DOCKERFILE_HADOLINT"
+  - when:
+      allOf: [megalinter, terraform]
+    files:
+      .mega-linter-base.yml:
+        content:
+          ENABLE_LINTERS:
+            $arrayMerge: append
+            $values:
+              - "TERRAFORM_TFLINT"
+  - when:
       allOf: [claude, terraform]
     files:
       .claude/settings.json:

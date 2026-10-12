@@ -348,6 +348,7 @@ The canary renders against each repo's current `main`, so it also lints changes 
 
 ### Lint config
 
+- **Docker and Terraform**: the `docker` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
 
@@ -384,7 +385,8 @@ files:
 
 The job is `image` in `ci.yaml` and `release` in `release-please.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
-`container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in `repos.yaml`; no repo needs one today.
+`container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in
+`repos.yaml`; no repo needs one today.
 
 ## Caller example (Go)
 
