@@ -106,6 +106,19 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `include-hotspots` (default `"true"`): also fail on hotspots to review
 - `timeout-seconds` (default `900`): how long to wait for SonarQube Cloud
 
+### `dockerhub-cleanup`
+
+Deletes old tags from `docker.io/<namespace>/<package>` with the same rules as the GHCR cleanup (see [Container retention](#container-retention)). A version is a digest with all its tags; it is as old as its most recent tag push. The version tagged `latest` stays, and so does every version pushed within `older-than`. Of the rest, the newest `keep-n-tagged` stay and every tag of the others is
+deleted. A month is 30 days and a year 365, as in the GHCR cleanup.
+
+It logs in once per package through `POST /v2/auth/token`, because the Hub token lasts 10 minutes, and keeps the token out of `curl`'s arguments. A package with no Docker Hub repository is skipped with a notice. A tag already gone counts as deleted. Any other failure fails the run, after the remaining packages and tags are tried.
+
+- `namespace` (required): Docker Hub namespace
+- `username` (default: `namespace`): Docker Hub login
+- `token` (required): personal access token with the **Read, Write, Delete** scope; Read & Write cannot delete
+- `packages` (required): comma-separated repository names
+- `older-than` (default `4 weeks`), `keep-n-tagged` (default `5`), `dry-run` (default `"false"`): as in `_container-retention.yaml`
+
 ## Reusable workflows
 
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
@@ -115,7 +128,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
   `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
-- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
+- `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
@@ -173,14 +186,18 @@ Untagged versions are kept: setting `keep-n-tagged` turns off the action's defau
 - `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
+- `dockerhub-namespace` (default empty): also clean `docker.io/<namespace>/<package>` for every package, with the same rules, through [`dockerhub-cleanup`](#dockerhub-cleanup). Empty skips Docker Hub
+- `dockerhub-username` (default: `dockerhub-namespace`): Docker Hub login
 
-Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+A `Find Packages` job resolves the package list once; `GHCR Cleanup` and `Docker Hub Cleanup` then run side by side and skip when the list is empty. GHCR runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+
+`Docker Hub Cleanup` needs the `DOCKERHUB_RETENTION_TOKEN` secret, a Docker Hub personal access token with the **Read, Write, Delete** scope, and fails without it. It is the only job that reads the secret, runs in the main-only `container-retention` environment, and reaches only `hub.docker.com`.
 
 The calling job needs `packages: write`, and `contents: read` so the job can check out the repo to find its images. Each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
 
 A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
 
-The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Only GHCR is cleaned; Docker Hub tags are kept, and so are old GitHub releases and git tags.
+The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Old GitHub releases and git tags are kept.
 
 The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 

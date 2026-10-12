@@ -1,0 +1,47 @@
+---
+name: Docker Hub Cleanup
+description: >-
+  Delete old tags from docker.io/<namespace>/<package> with the GHCR cleanup's
+  rules: the version tagged latest and versions younger than older-than stay,
+  and so do the newest keep-n-tagged of the rest.
+inputs:
+  namespace:
+    description: Docker Hub namespace that holds the repositories
+    required: true
+  username:
+    description: Docker Hub login. Empty uses namespace
+    required: false
+    default: ""
+  token:
+    description: Docker Hub personal access token with the Read, Write, Delete scope
+    required: true
+  packages:
+    description: Comma-separated repository names under namespace
+    required: true
+  older-than:
+    description: Only consider versions pushed longer ago than this (e.g. 4 weeks, 30 days)
+    required: false
+    default: 4 weeks
+  keep-n-tagged:
+    description: Newest old versions to keep
+    required: false
+    default: "5"
+  dry-run:
+    description: List what would be deleted without deleting it
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Clean up Docker Hub tags
+      shell: bash
+      env:
+        NAMESPACE: ${{ inputs.namespace }}
+        USERNAME: ${{ inputs.username }}
+        DOCKERHUB_TOKEN: ${{ inputs.token }}
+        PACKAGES: ${{ inputs.packages }}
+        OLDER_THAN: ${{ inputs.older-than }}
+        KEEP_N_TAGGED: ${{ inputs.keep-n-tagged }}
+        DRY_RUN: ${{ inputs.dry-run }}
+        CLEANUP_SCRIPT: ${{ github.action_path }}/cleanup.sh
+      run: '"$CLEANUP_SCRIPT"'

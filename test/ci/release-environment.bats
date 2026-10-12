@@ -129,7 +129,12 @@ secret_jobs() {
   echo "secret jobs: $secret_jobs"
   echo "environment jobs: $env_jobs"
   [ "$secret_jobs" = $'_build-image.yaml:publish\n_release-please.yaml:release-please' ]
-  [ "$env_jobs" = $'_build-image.yaml:publish=release\n_release-please.yaml:release-please=release' ]
+  [ "$env_jobs" = $'_build-image.yaml:publish=release\n_container-retention.yaml:dockerhub=container-retention\n_release-please.yaml:release-please=release' ]
+}
+
+@test "only the Docker Hub retention job reads the retention token, from its own environment" {
+  run bash -c "cd '$WF' && yq --no-doc -r '.jobs | to_entries[] | select([.value | .. | select(tag == \"!!str\")] | any_c(test(\"DOCKERHUB_RETENTION_TOKEN\"))) | filename + \":\" + .key' *.yaml | sort -u"
+  [ "$output" = "_container-retention.yaml:dockerhub" ]
 }
 
 @test "a release secret in a job-level env block counts as a read" {

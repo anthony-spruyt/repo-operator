@@ -30,20 +30,31 @@ on:
         required: false
         type: boolean
         default: false
+      dockerhub-namespace:
+        description: Also clean docker.io/<namespace>/<package> with the same rules. Empty skips Docker Hub
+        required: false
+        type: string
+        default: ""
+      dockerhub-username:
+        description: Docker Hub login. Defaults to dockerhub-namespace
+        required: false
+        type: string
+        default: ""
+    secrets:
+      DOCKERHUB_RETENTION_TOKEN:
+        description: Docker Hub token with the Read, Write, Delete scope; required with dockerhub-namespace
+        required: false
 
 permissions: {}
 
 jobs:
-  cleanup:
-    name: GHCR Cleanup
+  packages:
+    name: Find Packages
     runs-on: ubuntu-latest
     permissions:
       contents: read
-      packages: write
-    # ghcr-cleanup-action is not safe to run in parallel against one package
-    concurrency:
-      group: container-retention-${{ github.repository }}
-      cancel-in-progress: false
+    outputs:
+      list: ${{ steps.packages.outputs.list }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
@@ -103,14 +114,56 @@ jobs:
           fi
           echo "list=$PACKAGES" >> "$GITHUB_OUTPUT"
 
+  cleanup:
+    name: GHCR Cleanup
+    needs: packages
+    if: needs.packages.outputs.list != ''
+    runs-on: ubuntu-latest
+    permissions:
+      packages: write
+    # ghcr-cleanup-action is not safe to run in parallel against one package
+    concurrency:
+      group: container-retention-${{ github.repository }}
+      cancel-in-progress: false
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: audit
+
       - name: Clean up package versions
-        if: steps.packages.outputs.list != ''
         uses: dataaxiom/ghcr-cleanup-action@d52806a0dc70b430571a37da1fde39733ffd640f # v1.2.2
         with:
           token: ${{ github.token }}
-          package: ${{ steps.packages.outputs.list }}
+          package: ${{ needs.packages.outputs.list }}
           older-than: ${{ inputs.older-than }}
           keep-n-tagged: ${{ inputs.keep-n-tagged }}
           exclude-tags: latest
           delete-ghost-images: true
+          dry-run: ${{ inputs.dry-run }}
+
+  dockerhub:
+    name: Docker Hub Cleanup
+    needs: packages
+    if: needs.packages.outputs.list != '' && inputs.dockerhub-namespace != ''
+    runs-on: ubuntu-latest
+    environment: container-retention
+    permissions: {}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
+        with:
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: hub.docker.com:443
+
+      - name: Clean up Docker Hub tags
+        uses: $/.github/actions/dockerhub-cleanup
+        with:
+          namespace: ${{ inputs.dockerhub-namespace }}
+          username: ${{ inputs.dockerhub-username }}
+          token: ${{ secrets.DOCKERHUB_RETENTION_TOKEN }}
+          packages: ${{ needs.packages.outputs.list }}
+          older-than: ${{ inputs.older-than }}
+          keep-n-tagged: ${{ inputs.keep-n-tagged }}
           dry-run: ${{ inputs.dry-run }}
