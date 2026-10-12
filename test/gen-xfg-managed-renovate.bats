@@ -233,3 +233,31 @@ anthony-spruyt/b .editorconfig" ]
   run "$SCRIPT" "$CFG/nope"
   [ "$status" -ne 0 ]
 }
+
+@test "committed file map matches src/" {
+  run "$SCRIPT" --map "$REPO_ROOT/src"
+  [ "$status" -eq 0 ]
+  diff <(printf '%s\n' "$output") "$REPO_ROOT/.github/xfg-managed.json"
+}
+
+@test "--map lists managed files per repo, repo-operator included" {
+  cat >"$CFG/files.yaml" <<'YAML'
+files:
+  .editorconfig:
+    content: "root = true"
+  .gitignore:
+    createOnly: true
+    content: "x"
+YAML
+  cat >"$CFG/repos.yaml" <<'YAML'
+repos:
+  - git: https://github.com/anthony-spruyt/repo-operator.git
+  - git: https://github.com/anthony-spruyt/a.git
+    files:
+      .mcp.json:
+        content: {}
+YAML
+  run "$SCRIPT" --map "$CFG"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c . <<<"$output")" = '{"anthony-spruyt/a":[".editorconfig",".mcp.json"],"anthony-spruyt/repo-operator":[".editorconfig"]}' ]
+}
