@@ -1,4 +1,5 @@
 #!/bin/bash
+# No ${...} here - xfg would substitute it on sync.
 set -uo pipefail
 
 # ~/.claude persists across rebuilds (host bind mount locally, home PVC on Coder), so `claude plugin install` never upgrades it.
@@ -15,6 +16,7 @@ refreshed_marketplaces=""
 
 claude_timed() {
   timeout --foreground 120 claude "$@" </dev/null
+  return $?
 }
 
 any_path_exists() {
@@ -43,7 +45,8 @@ plugin_installed() {
 }
 
 install_plugin() {
-  local plugin="$1" marketplace="${1##*@}"
+  local plugin="$1" marketplace
+  IFS=@ read -r _ marketplace <<<"$plugin"
   claude_timed plugin install "$plugin" --scope user && return 0
   # A marketplace clone kept from an earlier run can predate the plugin
   grep -qxF -- "$marketplace" <<<"$refreshed_marketplaces" && return 1
@@ -93,7 +96,7 @@ install_missing_plugins() {
 
 bootstrap_plugins() {
   local settings_file="$1" project_scope_counts="$2"
-  [ -f "$settings_file" ] || return 0
+  [[ -f "$settings_file" ]] || return 0
   jq empty "$settings_file" 2>/dev/null || {
     echo "WARNING: invalid JSON in $settings_file, skipping"
     return 0
