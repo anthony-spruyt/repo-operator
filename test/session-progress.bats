@@ -221,3 +221,16 @@ hook() {
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }
+
+@test "ignores a symlinked project notes folder when cwd moves to a worktree" {
+  rmdir "$ROOT/.agent-progress"
+  mkdir "${BATS_TEST_TMPDIR}/elsewhere-notes"
+  printf 'linked notes\n' >"${BATS_TEST_TMPDIR}/elsewhere-notes/$SID.md"
+  ln -s "${BATS_TEST_TMPDIR}/elsewhere-notes" "$ROOT/.agent-progress"
+  WT="$ROOT/.claude/worktrees/wt"
+  git -C "$ROOT" worktree add -q -b wt "$WT"
+  CLAUDE_PROJECT_DIR="$ROOT" hook "$WT"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"linked notes"* ]]
+  [ "$output" == "Keep progress notes for this session in $WT/.agent-progress/$SID.md (none written yet)." ]
+}
