@@ -32,6 +32,8 @@ groups:
         content: "@templates/.claude/rules/tdd.md"
       .claude/pull-default-branch.sh:
         content: "@templates/.claude/pull-default-branch.sh"
+      .claude/restore-shell-tools.sh:
+        content: "@templates/.claude/restore-shell-tools.sh"
       .claude/session-progress.sh:
         content: "@templates/.claude/session-progress.sh"
       .claude/settings.json:
