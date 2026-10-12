@@ -67,3 +67,11 @@ setup() {
   run grep -c 'dummy-token-value' "$ARGS"
   [ "$output" = "0" ]
 }
+
+@test "ci mode runs the container as the invoking user with HOME=/tmp" {
+  run "$WORK/lint.sh" --ci
+  [ "$status" -eq 0 ]
+  grep -qx -- '-u' "$ARGS"
+  grep -qx "$(id -u):$(id -g)" "$ARGS"
+  grep -qx 'HOME=/tmp' "$ARGS"
+}
