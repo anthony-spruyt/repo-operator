@@ -87,11 +87,13 @@ hub() {
 
 # list_tags <repo>: writes every tag to $tmp/tags.json; returns 2 when the repository doesn't exist, 3 as hub does
 list_tags() {
-  local url="$API/namespaces/$NAMESPACE/repositories/$1/tags?page_size=100" n=0 rc
+  local name="$1"
+  local prefix="$API/namespaces/$NAMESPACE/repositories/$name/tags?" n=0 rc
+  local url="${prefix}page_size=100"
   rm -rf "$tmp/pages" && mkdir "$tmp/pages"
   while [[ -n "$url" ]]; do
-    [[ "$url" == "$API/namespaces/$NAMESPACE/repositories/$1/tags?"* ]] || {
-      echo "::error::$1: next page is not on the Hub API" >&2
+    [[ "$url" == "$prefix"* ]] || {
+      echo "::error::$name: next page is not on the Hub API" >&2
       return 1
     }
     n=$((n + 1))
@@ -105,7 +107,7 @@ list_tags() {
       return 1
     fi
     jq -e '.results | type == "array"' "$tmp/body" >/dev/null || {
-      echo "::error::$1: page $n is not a tag list" >&2
+      echo "::error::$name: page $n is not a tag list" >&2
       return 1
     }
     mv "$tmp/body" "$tmp/pages/$n.json"
@@ -119,8 +121,9 @@ rejected() {
 }
 
 clean() {
-  local repo="$NAMESPACE/$1" plan tag rc=0
-  list_tags "$1" || rc=$?
+  local name="$1"
+  local repo="$NAMESPACE/$name" plan tag rc=0
+  list_tags "$name" || rc=$?
   if ((rc == 2)); then
     echo "::warning::$repo: no such Docker Hub repository, skipping"
     return 0
@@ -143,7 +146,7 @@ clean() {
       failed=1
       continue
     fi
-    url="$API/namespaces/$NAMESPACE/repositories/$1/tags/$tag"
+    url="$API/namespaces/$NAMESPACE/repositories/$name/tags/$tag"
     if [[ "$DRY_RUN" == true ]]; then
       echo "$repo: would delete $tag"
       continue
