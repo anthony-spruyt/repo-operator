@@ -193,8 +193,7 @@ Untagged versions are kept: setting `keep-n-tagged` turns off the action's defau
 
 A `Find Packages` job resolves the package list once; `GHCR Cleanup` and `Docker Hub Cleanup` then run side by side and skip when the list is empty. Runs for the same repo queue rather than overlap, per registry: the GHCR action is not safe to run in parallel, and two Docker Hub runs would plan from different snapshots.
 
-`Docker Hub Cleanup` needs the `DOCKERHUB_RETENTION_TOKEN` secret, a Docker Hub personal access token with the **Read, Write, Delete** scope, and fails without it. It is the only job that reads the secret, runs in the `container-retention` environment, and reaches only `hub.docker.com`. The `dockerhub` group creates that environment in each image repo with a deployment branch policy that allows
-only `main`.
+`Docker Hub Cleanup` runs in the main-only `release` environment with the `DOCKERHUB_TOKEN` secret that the `dockerhub` group syncs there, and fails without it. The caller must pass the secret by name. The job reaches only `hub.docker.com`.
 
 The calling job needs `packages: write`, and `contents: read` so the job can check out the repo to find its images. Each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
 
@@ -229,7 +228,7 @@ jobs:
 On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-run` is `false` without reading `inputs.dry-run`. Before a new repo's first scheduled run:
 
 1. Give the calling repo the **Admin** role on each package.
-2. Dispatch with `dry-run` on, and check the logged deletions. Dispatch from `main`: `Docker Hub Cleanup` runs in the main-only `container-retention` environment even for a dry run.
+2. Dispatch with `dry-run` on, and check the logged deletions. Dispatch from `main`: `Docker Hub Cleanup` runs in the main-only `release` environment even for a dry run.
 3. Dispatch once with `dry-run` off.
 4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
 

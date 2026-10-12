@@ -41,8 +41,8 @@ on:
         type: string
         default: ""
     secrets:
-      DOCKERHUB_RETENTION_TOKEN:
-        description: Docker Hub token with the Read, Write, Delete scope; required with dockerhub-namespace
+      DOCKERHUB_TOKEN:
+        description: Docker Hub token that can delete tags; required with dockerhub-namespace
         required: false
 
 permissions: {}
@@ -147,7 +147,8 @@ jobs:
     needs: packages
     if: needs.packages.outputs.list != '' && inputs.dockerhub-namespace != ''
     runs-on: ubuntu-latest
-    environment: container-retention
+    # Callers must still pass DOCKERHUB_TOKEN by name, or it resolves empty even though the environment holds it.
+    environment: release
     permissions: {}
     concurrency:
       group: container-retention-dockerhub-${{ github.repository }}
@@ -165,7 +166,7 @@ jobs:
         with:
           namespace: ${{ inputs.dockerhub-namespace }}
           username: ${{ inputs.dockerhub-username }}
-          token: ${{ secrets.DOCKERHUB_RETENTION_TOKEN }}
+          token: ${{ secrets.DOCKERHUB_TOKEN }}
           packages: ${{ needs.packages.outputs.list }}
           older-than: ${{ inputs.older-than }}
           keep-n-tagged: ${{ inputs.keep-n-tagged }}

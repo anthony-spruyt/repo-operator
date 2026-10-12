@@ -23,9 +23,9 @@ step_script() {
   [ "$output" = '${{ needs.packages.outputs.list }}' ]
 }
 
-@test "the Docker Hub job runs only with a namespace, in its own main-only environment, with no GitHub token" {
+@test "the Docker Hub job runs only with a namespace, in the main-only release environment, with no GitHub token" {
   run yq -o=json -I0 '.jobs.dockerhub | [.needs, .if, .environment, .permissions]' "$WF"
-  [ "$output" = '["packages","needs.packages.outputs.list != '"''"' && inputs.dockerhub-namespace != '"''"'","container-retention",{}]' ]
+  [ "$output" = '["packages","needs.packages.outputs.list != '"''"' && inputs.dockerhub-namespace != '"''"'","release",{}]' ]
 }
 
 @test "the workflow and the Docker Hub action accept the same older-than and keep-n-tagged values" {
@@ -55,13 +55,13 @@ step_script() {
   [ "$output" = '["step-security/harden-runner@<sha>","block","hub.docker.com:443"]' ]
 }
 
-@test "the Docker Hub job passes every cleanup input and the retention token to the action" {
+@test "the Docker Hub job passes every cleanup input and the Docker Hub token to the action" {
   run yq -o=json -I0 '.jobs.dockerhub.steps[1] | [.uses, .with]' "$WF"
-  [ "$output" = '["$/.github/actions/dockerhub-cleanup",{"namespace":"${{ inputs.dockerhub-namespace }}","username":"${{ inputs.dockerhub-username }}","token":"${{ secrets.DOCKERHUB_RETENTION_TOKEN }}","packages":"${{ needs.packages.outputs.list }}","older-than":"${{ inputs.older-than }}","keep-n-tagged":"${{ inputs.keep-n-tagged }}","dry-run":"${{ inputs.dry-run }}"}]' ]
+  [ "$output" = '["$/.github/actions/dockerhub-cleanup",{"namespace":"${{ inputs.dockerhub-namespace }}","username":"${{ inputs.dockerhub-username }}","token":"${{ secrets.DOCKERHUB_TOKEN }}","packages":"${{ needs.packages.outputs.list }}","older-than":"${{ inputs.older-than }}","keep-n-tagged":"${{ inputs.keep-n-tagged }}","dry-run":"${{ inputs.dry-run }}"}]' ]
   run yq -o=json -I0 '[.on.workflow_call.inputs | (.["dockerhub-namespace"], .["dockerhub-username"]) | [.required, .type, .default]]' "$WF"
   [ "$output" = '[[false,"string",""],[false,"string",""]]' ]
   run yq -o=json -I0 '.on.workflow_call.secrets' "$WF"
-  [ "$output" = '{"DOCKERHUB_RETENTION_TOKEN":{"description":"Docker Hub token with the Read, Write, Delete scope; required with dockerhub-namespace","required":false}}' ]
+  [ "$output" = '{"DOCKERHUB_TOKEN":{"description":"Docker Hub token that can delete tags; required with dockerhub-namespace","required":false}}' ]
 }
 
 @test "no job but the Docker Hub job reads a secret" {

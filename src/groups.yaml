@@ -90,11 +90,6 @@ groups:
           secrets:
             DOCKERHUB_TOKEN:
               env: DOCKERHUB_TOKEN
-        container-retention:
-          deploymentBranchPolicy:
-            custom:
-              - type: branch
-                name: main
   github:
     files:
       .github/actionlint.yaml:
