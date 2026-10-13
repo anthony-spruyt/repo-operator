@@ -158,11 +158,11 @@ no_commit_matches() {
   [ "$output" = '[["author = renovate[bot]"],{"dismiss_reviews":{"approved":true,"changes_requested":false}}]' ]
 }
 
-@test "the merge queue and blocked label are kept" {
+@test "the merge queue and the blocking labels are kept" {
   run yq -o=json -I0 '.queue_rules[0] | [.name, .merge_method, .merge_conditions]' "$TEMPLATE"
   [ "$output" = '["default","squash",["-draft","check-success = summary / Check Results"]]' ]
   run yq -o=json -I0 '.merge_protections_settings.auto_merge_conditions' "$TEMPLATE"
-  [ "$output" = '["-label = blocked"]' ]
+  [ "$output" = '["-label = blocked","-label = agent/needs-human-review","-label = agent/needs-review"]' ]
 }
 
 @test "the agent/revert and emergency/merge labels stay defined" {
