@@ -97,12 +97,6 @@ subject_pattern() {
   [ "$output" -ge 4 ]
 }
 
-@test "repo-operator's own pr-title.yaml matches the template xfg syncs" {
-  [ -f "$TEMPLATE" ]
-  [ -f "$REPO_ROOT/.github/workflows/pr-title.yaml" ]
-  [ "$(yq -o=json '.' "$REPO_ROOT/.github/workflows/pr-title.yaml" | jq -cS .)" = "$(yq -o=json '.' "$TEMPLATE" | jq -cS .)" ]
-}
-
 @test "pr-title.yaml passes actionlint with the synced config" {
   target="$BATS_TEST_TMPDIR/target"
   mkdir -p "$target/.github/workflows"

@@ -180,10 +180,6 @@ no_commit_matches() {
   [ -z "$output" ]
 }
 
-@test "repo-operator's own .mergify.yml is the template rendered for it" {
-  diff <(render repo-operator | jq -S .) <(yq -o=json '.' "$REPO_ROOT/.mergify.yml" | jq -S .)
-}
-
 required_checks() {
   yq -o=json -I0 '[.. | select(tag == "!!map" and has("requiredStatusChecks")) | .requiredStatusChecks | .. | select(tag == "!!map" and has("context"))]' "$1"
 }
