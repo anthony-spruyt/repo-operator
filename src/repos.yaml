@@ -480,7 +480,7 @@ repos:
           features:
             "ghcr.io/devcontainers/features/azure-cli":
               # renovate: datasource=github-releases depName=Azure/azure-cli
-              version: "2.90.0"
+              version: "2.91.0"
           runArgs:
             $arrayMerge: append
             $values:
