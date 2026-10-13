@@ -300,9 +300,15 @@ groups:
         "agent/fixing":
           color: "#e4e669"
           description: "Agent is working on fixes"
+        "agent/needs-human-review":
+          color: "#d93f0b"
+          description: "Needs review by the owner"
         "agent/needs-review":
           color: "#d93f0b"
           description: "Agent flagged for human review"
+        "agent/needs-triage":
+          color: "#bfd4f2"
+          description: "Queued for agent triage"
         "agent/revert":
           color: "#b60205"
           description: "Automated revert PR"

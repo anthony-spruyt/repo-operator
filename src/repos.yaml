@@ -208,7 +208,7 @@ repos:
         createOnly: true
       .mergify.yml:
         vars:
-          gateFilesExtra: "src/|test/ci/|"
+          gateFilesExtra: 'src/|test/ci/|lint\.sh$|'
 
   - git: https://github.com/anthony-spruyt/security.git
     groups:
