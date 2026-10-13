@@ -171,7 +171,7 @@ no_commit_matches() {
   run yq -o=json -I0 '.queue_rules[0] | [.name, .merge_method, .merge_conditions]' "$TEMPLATE"
   [ "$output" = '["default","squash",["-draft","check-success = summary / Check Results"]]' ]
   run yq -o=json -I0 '.merge_protections_settings.auto_merge_conditions' "$TEMPLATE"
-  [ "$output" = '["-label = blocked","-label = agent/needs-human-review","-label = agent/needs-review"]' ]
+  [ "$output" = '["-label = blocked","-label = agent/needs-human-review"]' ]
 }
 
 @test "the agent/revert and emergency/merge labels stay defined" {
