@@ -129,6 +129,15 @@ no_commit_matches() {
   done
 }
 
+@test "repo-operator gates its root lint.sh and no other repo does" {
+  gated repo-operator "lint.sh"
+  not_gated repo-operator "docs/lint.sh"
+  not_gated repo-operator "lint.sh.bak"
+  for repo in esphome spruyt-labs Chromance SunGather xfg litellm-middleware traefik-api-key-auth; do
+    not_gated "$repo" "lint.sh"
+  done
+}
+
 @test "traefik-api-key-auth gates its image test script" {
   gated traefik-api-key-auth "scripts/test-image.sh"
   not_gated traefik-api-key-auth "scripts/test-image.sh.bak"
@@ -139,7 +148,7 @@ no_commit_matches() {
 
 @test "only repo-operator and traefik-api-key-auth widen the gate files" {
   run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
+  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|lint\\.sh$|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }
