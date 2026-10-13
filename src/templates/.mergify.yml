@@ -29,7 +29,6 @@ pull_request_rules:
           - agent/triage
           - agent/fixing
           - agent/fixable
-          - agent/needs-review
           - agent/needs-human-review
           - agent/needs-triage
 
@@ -85,4 +84,3 @@ merge_protections_settings:
   auto_merge_conditions:
     - -label = blocked
     - -label = agent/needs-human-review
-    - -label = agent/needs-review
