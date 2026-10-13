@@ -18,27 +18,6 @@ setup() {
   ARGS="${BATS_TEST_TMPDIR}/docker-args"
 }
 
-@test "the root lint.sh is the template rendered with the base pin" {
-  pin=$(yq -r '.conditionalGroups[] | select(.when.allOf[0] == "megalinter-flavor" and (.when.allOf | length) == 1) | .files["lint.sh"].vars.megalinterImage' "$REPO_ROOT/src/groups.yaml")
-  diff <(sed -e "s|\\\${xfg:megalinterImage}|$pin|" -e 's/\$\$/$/g' "$REPO_ROOT/src/templates/lint.sh.tmpl") "$REPO_ROOT/lint.sh"
-}
-
-@test "repo-operator's Renovate bumps the root lint.sh pin with the base pin, so a base bump keeps the root lint.sh in step" {
-  pin=$(yq -r '.conditionalGroups[] | select(.when.allOf[0] == "megalinter-flavor" and (.when.allOf | length) == 1) | .files["lint.sh"].vars.megalinterImage' "$REPO_ROOT/src/groups.yaml")
-  manager=$(jq -c '[.customManagers[]? | select(any(.managerFilePatterns[]; . == "/^lint\\.sh$/"))] | first' "$REPO_ROOT/renovate-overrides.json5")
-  [ "$manager" != "null" ]
-  [ "$(jq -r '.datasourceTemplate' <<<"$manager")" = "docker" ]
-  run python3 -I -c '
-import json, re, sys
-m = json.loads(sys.argv[1])
-pattern = m["matchStrings"][0].replace("(?<", "(?P<")
-found = re.search(pattern, open(sys.argv[2]).read())
-print("{depName}:{currentValue}@{currentDigest}".format(**found.groupdict()))
-' "$manager" "$REPO_ROOT/lint.sh"
-  [ "$status" -eq 0 ]
-  [ "$output" = "$pin" ]
-}
-
 @test "ci mode passes linter selection when set" {
   ENABLE_LINTERS=SPELL_LYCHEE DISABLE_LINTERS=SPELL_LYCHEE ENABLE_DISABLE_LINTERS_PRIORITY=DISABLE run "$WORK/lint.sh" --ci
   [ "$status" -eq 0 ]

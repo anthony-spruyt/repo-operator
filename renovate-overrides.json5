@@ -2,15 +2,5 @@
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "github-actions": {
     "managerFilePatterns": ["/(^|/)src/groups\\.yaml$/"]
-  },
-  "customManagers": [
-    {
-      "customType": "regex",
-      "description": ["Root lint.sh MegaLinter image, bumped in the same PR as its pin in src/groups.yaml."],
-      "managerFilePatterns": ["/^lint\\.sh$/"],
-      "matchStrings": ["MEGALINTER_IMAGE=\"(?<depName>[^:\"\\n]+):(?<currentValue>[^@\"\\n]+)@(?<currentDigest>sha256:[a-f0-9]+)\""],
-      "datasourceTemplate": "docker",
-      "versioningTemplate": "docker"
-    }
-  ]
+  }
 }
