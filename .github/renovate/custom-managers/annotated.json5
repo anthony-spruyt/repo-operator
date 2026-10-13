@@ -282,6 +282,50 @@
       ],
       datasourceTemplate: "docker",
       versioningTemplate: "docker"
+    },
+    // C#: quoted string constant on the line after the annotation, or on the
+    // line after that when the first ends in "=". The Docker image managers
+    // must precede the plain-version ones, and the plain ones exclude "/", ":"
+    // and "@", for the same reason as the shell managers above.
+    {
+      customType: "regex",
+      description: ["Annotated C# Docker image (depName first)."],
+      managerFilePatterns: ["/\\.cs$/"],
+      matchStrings: [
+        "//\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=docker\\n[^\\n\"]*(?:=[ \\t]*\\n[ \\t]*)?\"[^:\"\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
+      ],
+      datasourceTemplate: "docker",
+      versioningTemplate: "docker"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated C# Docker image (datasource first)."],
+      managerFilePatterns: ["/\\.cs$/"],
+      matchStrings: [
+        "//\\s*renovate:\\s*datasource=docker\\s+depName=(?<depName>\\S+)\\n[^\\n\"]*(?:=[ \\t]*\\n[ \\t]*)?\"[^:\"\\n]+:(?<currentValue>[^@\"\\n]+)(?:@(?<currentDigest>sha256:[^\"\\n]+))?\""
+      ],
+      datasourceTemplate: "docker",
+      versioningTemplate: "docker"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated C# string constant (depName first)."],
+      managerFilePatterns: ["/\\.cs$/"],
+      matchStrings: [
+        "//\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n[^\\n\"]*(?:=[ \\t]*\\n[ \\t]*)?\"(?<currentValue>v?[^\"/:@\\s]+)\""
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated C# string constant (datasource first)."],
+      managerFilePatterns: ["/\\.cs$/"],
+      matchStrings: [
+        "//\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n[^\\n\"]*(?:=[ \\t]*\\n[ \\t]*)?\"(?<currentValue>v?[^\"/:@\\s]+)\""
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     }
   ]
 }
