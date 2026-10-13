@@ -148,9 +148,9 @@ EOF
   [ "$output" = '[true,false]' ]
 }
 
-@test "the 8 image repos all get the image group, directly or through go-image or python-image" {
+@test "the 8 image repos and claude-plugins all get the image group, directly or through go-image or python-image" {
   run yq -r '[.repos[] | select(.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "SunGather agent-platform container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
+  [ "$output" = "SunGather agent-platform claude-plugins container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
 }
 
 @test "the image group defaults the release caller's language to none, and no repo repeats it" {

@@ -60,19 +60,11 @@ repos:
       - megalinter-flavor
       - mergify
       - protected-main-branch
+      - image
       - python
       - release-please
       - renovate
       - sonar
-    files:
-      # No package holds a Dockerfile, so the shared workflow only cuts the plugin releases
-      .github/workflows/release-please.yaml:
-        template: true
-        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
-        header: This file is automatically updated - do not modify directly
-        vars:
-          language: none
-        content: "@templates/.github/workflows/image-release-please.yaml"
 
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
