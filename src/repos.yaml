@@ -80,7 +80,7 @@ repos:
     files:
       .mergify.yml:
         vars:
-          gateFilesExtra: '[^/]+/test\.sh$|megalinter-factory/|'
+          gateFilesExtra: '[^/]+/(test\.sh|flavor\.yaml)$|megalinter-factory/|devcontainer-common/|'
     settings:
       labels:
         "renovate/upstream":

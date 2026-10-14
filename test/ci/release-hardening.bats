@@ -4,15 +4,16 @@
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WF="$REPO_ROOT/.github/workflows"
+  export PR_TRIGGERS='^(pull_request(_target|_review|_review_comment)?|merge_group|issue_comment|workflow_run|check_run|check_suite|status|deployment_status)$'
   RELEASE_ENTRIES=(.github/workflows/_release-please.yaml .github/workflows/_release-images.yaml src/templates/.github/workflows/release-please.yaml src/templates/.github/workflows/image-release-please.yaml)
 }
 
-# local_target <root> <from> <uses> - prints the repo path a same-repo uses: in <from> points at, or nothing for another repo's action
+# local_target <root> <from> <uses> - prints the repo path a same-repo uses: in <from> points at, or nothing for another repo's action; a template's $/ and ./ are its target repo
 local_target() {
   local root="$1" from="$2" ref="${3%@*}"
   case "$ref" in
-    '$/'*) ref="${ref#\$/}" ;;
-    ./*)
+    '$/'* | ./*)
+      ref="${ref#\$/}"
       ref="${ref#./}"
       [[ "$from" != src/templates/* ]] || ref="src/templates/$ref"
       ;;
@@ -80,26 +81,40 @@ unpinned() {
 
 # pr_triggered <file> - true when a pull request, its review or comments, or a run one finished can start <file>
 pr_triggered() {
-  yq -r '.on | (if tag == "!!map" then keys elif tag == "!!str" then [.] else . end) | .[] | select(test("^(pull_request(_target|_review|_review_comment)?|merge_group|issue_comment|workflow_run)$"))' "$1" | grep -q .
+  yq -r '.on | (if tag == "!!map" then keys elif tag == "!!str" then [.] else . end) | .[] | select(test(strenv(PR_TRIGGERS)))' "$1" | grep -q .
+}
+
+# release_jobs <root> <file> - prints file:job for each job <file> reaches that calls a release workflow or a pushing image build
+release_jobs() {
+  local root="$1" file
+  while IFS= read -r file; do
+    yq -r '(.jobs // {}) | to_entries[] | select(.value.uses != null) | select((.value.uses | test("/_release-(please|images)\.yaml(@|$)")) or ((.value.uses | test("/_build-image\.yaml(@|$)")) and ((.value.with.push // false) != false))) | .key' "$root/$file" | sed "s|^|$file:|"
+  done < <(reachable "$root" "$2")
 }
 
 # pr_release_calls <root> - prints start -> file:job for each call a pull request run reaches that releases
 pr_release_calls() {
-  local root="$1" start file
+  local root="$1" start
   while IFS= read -r start; do
     pr_triggered "$root/$start" || continue
-    while IFS= read -r file; do
-      yq -r '(.jobs // {}) | to_entries[] | select(.value.uses != null) | select((.value.uses | test("/_release-(please|images)\.yaml(@|$)")) or ((.value.uses | test("/_build-image\.yaml(@|$)")) and ((.value.with.push // false) != false))) | .key' "$root/$file" | sed "s|^|$start -> $file:|"
-    done < <(reachable "$root" "$start")
+    release_jobs "$root" "$start" | sed "s|^|$start -> |"
   done < <(cd "$root" && find .github/workflows src/templates/.github/workflows -maxdepth 1 -name '*.y*ml' 2>/dev/null | sort)
 }
 
-# overlay_release_calls <src> - prints file: workflow for each workflow content overlay that calls a release workflow or sets push
+# overlay_release_calls <src> - prints file: workflow for each workflow content overlay that calls a release or sets push, or adds a pull request trigger to a workflow whose template releases
 overlay_release_calls() {
-  local file
-  for file in groups.yaml repos.yaml; do
-    yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$1/$file" | sed "s|^|$file: |"
-  done
+  local src="$1" file key tpl
+  for file in "$src"/*.yaml; do
+    yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$file" | sed "s|^|${file##*/}: |"
+    while IFS= read -r key; do
+      while IFS= read -r tpl; do
+        if [ -n "$(release_jobs "$src/.." "src/templates/$tpl")" ]; then
+          echo "${file##*/}: $key"
+          break
+        fi
+      done < <(KEY="$key" yq -r 'explode(.) | .. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | .[strenv(KEY)].content | select(tag == "!!str") | select(test("^@templates/")) | sub("^@templates/"; "")' "$src"/*.yaml | sort -u)
+    done < <(yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select(.value.content | has("on")) | select(.value.content.on | (if tag == "!!map" then keys elif tag == "!!str" then [.] else . end) | map(select(test(strenv(PR_TRIGGERS)))) | length > 0) | .key] | unique | .[]' "$file")
+  done | sort -u
 }
 
 @test "reachable follows same-repo workflows and actions, once each" {
@@ -122,8 +137,8 @@ YAML
   [ "$output" = $'.github/workflows/top.yaml\n.github/workflows/mid.yaml\n.github/actions/a/action.yaml' ]
 }
 
-@test "reachable resolves ./ in a template inside the template tree, and finds action.yml" {
-  mkdir -p "$BATS_TEST_TMPDIR/src/templates/.github/workflows" "$BATS_TEST_TMPDIR/.github/actions/b"
+@test "reachable resolves ./ and $/ in a template inside the template tree, and finds action.yml" {
+  mkdir -p "$BATS_TEST_TMPDIR/src/templates/.github/workflows" "$BATS_TEST_TMPDIR/src/templates/.github/actions/b"
   cat >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/ci.yaml" <<'YAML'
 jobs:
   repo:
@@ -134,9 +149,9 @@ jobs:
       - uses: $/.github/actions/b
 YAML
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/ci-repo.yaml"
-  printf 'runs:\n  using: composite\n  steps: []\n' >"$BATS_TEST_TMPDIR/.github/actions/b/action.yml"
+  printf 'runs:\n  using: composite\n  steps: []\n' >"$BATS_TEST_TMPDIR/src/templates/.github/actions/b/action.yml"
   run reachable "$BATS_TEST_TMPDIR" src/templates/.github/workflows/ci.yaml
-  [ "$output" = $'src/templates/.github/workflows/ci.yaml\nsrc/templates/.github/workflows/ci-repo.yaml\n.github/actions/b/action.yml' ]
+  [ "$output" = $'src/templates/.github/workflows/ci.yaml\nsrc/templates/.github/workflows/ci-repo.yaml\nsrc/templates/.github/actions/b/action.yml' ]
 }
 
 @test "the guards catch an unhardened job, a persisted checkout and a tag pin" {
@@ -213,7 +228,7 @@ YAML
   [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
 }
 
-@test "overlay_release_calls catches a workflow overlay that adds a release call or a push" {
+@test "overlay_release_calls catches an overlay that adds a release call or a push, or a pull request trigger to a release caller" {
   mkdir -p "$BATS_TEST_TMPDIR/src"
   cat >"$BATS_TEST_TMPDIR/src/groups.yaml" <<'YAML'
 groups:
@@ -249,8 +264,42 @@ repos:
               with:
                 test-command: ./t.sh
 YAML
+  cat >"$BATS_TEST_TMPDIR/src/files.yaml" <<'YAML'
+files:
+  .github/workflows/ci.yaml:
+    content:
+      jobs:
+        images:
+          uses: $/.github/workflows/_release-images.yaml
+YAML
+  cat >>"$BATS_TEST_TMPDIR/src/groups.yaml" <<'YAML'
+  rp:
+    files:
+      .github/workflows/release-please.yaml:
+        content: "@templates/.github/workflows/rp.yaml"
+  rp-pr:
+    files:
+      .github/workflows/release-please.yaml:
+        content:
+          "on":
+            pull_request_target: {}
+  other-pr:
+    files:
+      .github/workflows/other.yaml:
+        content:
+          "on": [pull_request]
+YAML
+  mkdir -p "$BATS_TEST_TMPDIR/src/templates/.github/workflows" "$BATS_TEST_TMPDIR/.github/workflows"
+  cat >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/rp.yaml" <<'YAML'
+on: push
+jobs:
+  release:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0123456789abcdef0123456789abcdef01234567
+YAML
+  echo 'jobs: {}' >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/other.yaml"
+  echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-please.yaml"
   run overlay_release_calls "$BATS_TEST_TMPDIR/src"
-  [ "$output" = $'groups.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/release-please.yaml' ]
+  [ "$output" = $'files.yaml: .github/workflows/ci.yaml\ngroups.yaml: .github/workflows/ci.yaml\ngroups.yaml: .github/workflows/release-please.yaml\nrepos.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/release-please.yaml' ]
 }
 
 @test "no workflow overlay in src adds a release call or a push" {
