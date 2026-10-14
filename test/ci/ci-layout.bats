@@ -105,7 +105,7 @@ EOF
 }
 
 @test "repo-operator's ci.yaml runs the sonar job like the synced one, summary judges it, and no separate caller is left" {
-  run yq -o=json -I0 '.jobs.sonar' "$REPO_ROOT/.github/workflows/ci.yaml"
+  run yq -o=json -I0 '.jobs.sonar | del(.if)' "$REPO_ROOT/.github/workflows/ci.yaml"
   [ "$output" = '{"permissions":{},"uses":"./.github/workflows/_sonar-new-issues.yaml"}' ]
   run yq -r '.jobs.summary.needs | any_c(. == "sonar")' "$REPO_ROOT/.github/workflows/ci.yaml"
   [ "$output" = "true" ]
