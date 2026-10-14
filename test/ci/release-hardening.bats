@@ -4,21 +4,24 @@
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WF="$REPO_ROOT/.github/workflows"
-  RELEASE_ENTRIES=(.github/workflows/_release-please.yaml .github/workflows/_release-images.yaml)
+  RELEASE_ENTRIES=(.github/workflows/_release-please.yaml .github/workflows/_release-images.yaml src/templates/.github/workflows/release-please.yaml src/templates/.github/workflows/image-release-please.yaml)
 }
 
-# local_target <uses> - prints the repo path a same-repo uses: points at, or nothing for another repo's action
+# local_target <root> <from> <uses> - prints the repo path a same-repo uses: in <from> points at, or nothing for another repo's action
 local_target() {
-  local ref="${1%@*}"
+  local root="$1" from="$2" ref="${3%@*}"
   case "$ref" in
     '$/'*) ref="${ref#\$/}" ;;
-    ./*) ref="${ref#./}" ;;
+    ./*)
+      ref="${ref#./}"
+      [[ "$from" != src/templates/* ]] || ref="src/templates/$ref"
+      ;;
     anthony-spruyt/repo-operator/*) ref="${ref#anthony-spruyt/repo-operator/}" ;;
     *) return 0 ;;
   esac
   case "$ref" in
     *.yaml | *.yml) echo "$ref" ;;
-    *) echo "$ref/action.yaml" ;;
+    *) if [ -f "$root/$ref/action.yml" ]; then echo "$ref/action.yml"; else echo "$ref/action.yaml"; fi ;;
   esac
 }
 
@@ -39,7 +42,7 @@ reachable() {
     seen[$file]=1
     echo "$file"
     while IFS= read -r use; do
-      target=$(local_target "$use")
+      target=$(local_target "$root" "$file" "$use")
       [ -n "$target" ] && queue+=("$target")
     done < <(uses_of "$root/$file")
   done
@@ -63,20 +66,21 @@ persisted_checkouts() {
   done
 }
 
-# unpinned <root> <file>... - prints file:uses for each other-repo action not pinned to a full commit SHA
+# unpinned <root> <file>... - prints file:uses for each action not pinned to a full commit SHA, other than a $/ or ./ path
 unpinned() {
   local root="$1" file use
   shift
   for file in "$@"; do
     while IFS= read -r use; do
-      [ -z "$(local_target "$use")" ] || continue
+      [[ "$use" != '$/'* && "$use" != ./* ]] || continue
       [[ "$use" =~ @[0-9a-f]{40}$ ]] || echo "$file:$use"
     done < <(uses_of "$root/$file")
   done
 }
 
+# pr_triggered <file> - true when a pull request, its review or comments, or a run one finished can start <file>
 pr_triggered() {
-  yq -r '.on | (if tag == "!!map" then keys elif tag == "!!str" then [.] else . end) | .[] | select(. == "pull_request" or . == "pull_request_target")' "$1" | grep -q .
+  yq -r '.on | (if tag == "!!map" then keys elif tag == "!!str" then [.] else . end) | .[] | select(test("^(pull_request(_target|_review|_review_comment)?|merge_group|issue_comment|workflow_run)$"))' "$1" | grep -q .
 }
 
 # pr_release_calls <root> - prints start -> file:job for each call a pull request run reaches that releases
@@ -88,6 +92,14 @@ pr_release_calls() {
       yq -r '(.jobs // {}) | to_entries[] | select(.value.uses != null) | select((.value.uses | test("/_release-(please|images)\.yaml(@|$)")) or ((.value.uses | test("/_build-image\.yaml(@|$)")) and ((.value.with.push // false) != false))) | .key' "$root/$file" | sed "s|^|$start -> $file:|"
     done < <(reachable "$root" "$start")
   done < <(cd "$root" && find .github/workflows src/templates/.github/workflows -maxdepth 1 -name '*.y*ml' 2>/dev/null | sort)
+}
+
+# overlay_release_calls <src> - prints file: workflow for each workflow content overlay that calls a release workflow or sets push
+overlay_release_calls() {
+  local file
+  for file in groups.yaml repos.yaml; do
+    yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$1/$file" | sed "s|^|$file: |"
+  done
 }
 
 @test "reachable follows same-repo workflows and actions, once each" {
@@ -110,6 +122,23 @@ YAML
   [ "$output" = $'.github/workflows/top.yaml\n.github/workflows/mid.yaml\n.github/actions/a/action.yaml' ]
 }
 
+@test "reachable resolves ./ in a template inside the template tree, and finds action.yml" {
+  mkdir -p "$BATS_TEST_TMPDIR/src/templates/.github/workflows" "$BATS_TEST_TMPDIR/.github/actions/b"
+  cat >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/ci.yaml" <<'YAML'
+jobs:
+  repo:
+    uses: "./.github/workflows/ci-repo.yaml"
+  step:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: $/.github/actions/b
+YAML
+  echo 'jobs: {}' >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/ci-repo.yaml"
+  printf 'runs:\n  using: composite\n  steps: []\n' >"$BATS_TEST_TMPDIR/.github/actions/b/action.yml"
+  run reachable "$BATS_TEST_TMPDIR" src/templates/.github/workflows/ci.yaml
+  [ "$output" = $'src/templates/.github/workflows/ci.yaml\nsrc/templates/.github/workflows/ci-repo.yaml\n.github/actions/b/action.yml' ]
+}
+
 @test "the guards catch an unhardened job, a persisted checkout and a tag pin" {
   mkdir -p "$BATS_TEST_TMPDIR/.github/workflows"
   cat >"$BATS_TEST_TMPDIR/.github/workflows/w.yaml" <<'YAML'
@@ -125,13 +154,15 @@ jobs:
       - uses: actions/checkout@v7
   call:
     uses: $/.github/workflows/x.yaml
+  branch:
+    uses: anthony-spruyt/repo-operator/.github/workflows/x.yaml@main
 YAML
   run unhardened "$BATS_TEST_TMPDIR" .github/workflows/w.yaml
   [ "$output" = ".github/workflows/w.yaml:bad" ]
   run persisted_checkouts "$BATS_TEST_TMPDIR" .github/workflows/w.yaml
   [ "$output" = ".github/workflows/w.yaml:actions/checkout@v7" ]
   run unpinned "$BATS_TEST_TMPDIR" .github/workflows/w.yaml
-  [ "$output" = ".github/workflows/w.yaml:actions/checkout@v7" ]
+  [ "$output" = $'.github/workflows/w.yaml:anthony-spruyt/repo-operator/.github/workflows/x.yaml@main\n.github/workflows/w.yaml:actions/checkout@v7' ]
 }
 
 @test "pr_release_calls catches a pull request run that reaches a release, directly or through another workflow" {
@@ -167,10 +198,76 @@ jobs:
   release:
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0123456789abcdef0123456789abcdef01234567
 YAML
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/after.yaml" <<'YAML'
+on:
+  workflow_run:
+    workflows: [CI]
+jobs:
+  images:
+    uses: $/.github/workflows/_release-images.yaml
+YAML
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_build-image.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-please.yaml"
+  echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-images.yaml"
   run pr_release_calls "$BATS_TEST_TMPDIR"
-  [ "$output" = $'.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
+  [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
+}
+
+@test "overlay_release_calls catches a workflow overlay that adds a release call or a push" {
+  mkdir -p "$BATS_TEST_TMPDIR/src"
+  cat >"$BATS_TEST_TMPDIR/src/groups.yaml" <<'YAML'
+groups:
+  g:
+    files:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            release:
+              uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0123456789abcdef0123456789abcdef01234567
+      .github/workflows/other.yaml:
+        content: "@templates/.github/workflows/other.yaml"
+YAML
+  cat >"$BATS_TEST_TMPDIR/src/repos.yaml" <<'YAML'
+repos:
+  - git: https://github.com/anthony-spruyt/r.git
+    files:
+      .github/workflows/ci.yaml:
+        content:
+          jobs:
+            image:
+              with: &w
+                push: true
+      .github/workflows/release-please.yaml:
+        content:
+          jobs:
+            images:
+              with: *w
+      .github/workflows/lint.yaml:
+        content:
+          jobs:
+            image:
+              with:
+                test-command: ./t.sh
+YAML
+  run overlay_release_calls "$BATS_TEST_TMPDIR/src"
+  [ "$output" = $'groups.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/release-please.yaml' ]
+}
+
+@test "no workflow overlay in src adds a release call or a push" {
+  run overlay_release_calls "$REPO_ROOT/src"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}
+
+@test "shared workflows and actions never use ./, which resolves in the caller's repo" {
+  local file
+  for file in "$WF"/_*.y*ml "$REPO_ROOT"/.github/actions/*/action.y*ml; do
+    run uses_of "$file"
+    [[ "$output" != *"./"* ]] || {
+      echo "$file: $output"
+      return 1
+    }
+  done
 }
 
 @test "no workflow a pull request triggers reaches a release" {

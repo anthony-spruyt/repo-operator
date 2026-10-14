@@ -77,6 +77,10 @@ repos:
       - mergify
       - renovate
       - sonar
+    files:
+      .mergify.yml:
+        vars:
+          gateFilesExtra: '[^/]+/test\.sh$|megalinter-factory/|'
     settings:
       labels:
         "renovate/upstream":
