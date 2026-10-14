@@ -17,7 +17,7 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 2. Template files in `src/templates/` are synced to target repos
 3. CI runs a **plan/apply** pipeline on push to main:
    - **Lint** — MegaLinter validation
-   - **XFG Plan (preview)** — partial dry-run on PRs, using the read-only Plan App
+   - **XFG Plan (preview)** — partial dry-run on PRs, using the read-only Plan App. Runs only when the PR has the `xfg/plan` label or changes the plan's workflow or scripts, and never on merge queue PRs
    - **XFG Plan** — full dry-run on `main`, the plan to read before approving Apply
    - **XFG Apply** — pushes changes to target repos (requires production environment approval)
    - **Summary** — aggregates results for branch protection
