@@ -114,12 +114,15 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
   `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
-- `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
+- `_release-please.yaml`: release-please alone. It acts with the app token, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
+- `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
+
+Neither release workflow sets `concurrency`; the caller sets it once at the top, so release-please and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
-`_images.yaml` and `_release-please.yaml` share these inputs, which apply to every image:
+`_images.yaml` and `_release-images.yaml` share these inputs, which apply to every image:
 
 - `language` (default `none`): for images whose `metadata.yaml` sets none
 - `image`: the name of an image at the repo root (default: the lowercased repository name)
@@ -129,7 +132,7 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 `_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`.
 
-Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`.
+Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
 The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
 them. No job on the pull request path (`_images.yaml`, the `build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
@@ -157,7 +160,7 @@ files changed: build and test, no push. A repo without images, or a change that 
 
 Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-images`](#detect-images)), so a new image needs no change here. The `with:` inputs on the `image` job apply to every image.
 
-`_release-please.yaml` runs release-please, then `detect-images` in `released` mode, and publishes every released image with its own version and tag; one merge that releases several packages publishes them all.
+`_release-images.yaml` runs `detect-images` in `released` mode on the releases `_release-please.yaml` made, and publishes every released image with its own version and tag; one merge that releases several packages publishes them all.
 
 ### Container retention
 
@@ -438,19 +441,30 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-permissions:
-  contents: write
-  packages: write
-  id-token: write
-  attestations: write
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+permissions: {}
 jobs:
   release:
+    permissions:
+      contents: read
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha> # main
-    with:
-      language: go
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
       RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+  images:
+    needs: release
+    if: needs.release.outputs.release-created == 'true'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha> # main
+    with:
+      releases: ${{ needs.release.outputs.releases }}
+      language: go
 ```
 
 `release-please-config.json` for a single root package with plain `vX.Y.Z` tags:
