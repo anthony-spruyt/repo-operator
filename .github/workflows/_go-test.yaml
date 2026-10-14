@@ -10,6 +10,16 @@ on:
         required: false
         type: string
         default: "."
+      egress:
+        description: Space-separated host:port endpoints this image's jobs reach besides the shared list (metadata.yaml egress)
+        required: false
+        type: string
+        default: ""
+      egress-policy:
+        description: harden-runner egress-policy, block once the image's metadata.yaml lists its egress
+        required: false
+        type: string
+        default: audit
 
 permissions:
   contents: read
@@ -25,7 +35,20 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.egress-policy }}
+          allowed-endpoints: >-
+            api.github.com:443
+            dl.google.com:443
+            github.com:443
+            go.dev:443
+            objects.githubusercontent.com:443
+            proxy.golang.org:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+            *.blob.core.windows.net:443
+            ${{ inputs.egress }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1

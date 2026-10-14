@@ -72,6 +72,9 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
   elif ($et | type) == "string" then $et
   else error("extra-tags must be a string or a list of strings") end
 | . as $tags
+| ($m | has("egress")) as $has_eg
+| ($m.egress // []) as $eg
+| if $has_eg and (($m.egress | type) != "array" or ($eg | all(type == "string" and test("^(\\*\\.)?[A-Za-z0-9]([A-Za-z0-9.-]*[A-Za-z0-9])?:[0-9]{1,5}$")) | not)) then error("egress must be a list of host:port endpoints") else . end
 | ($m | str_or_empty("language")) as $lang
 | if ["", "go", "node", "python", "none"] | index($lang) | not then error("language must be go, node, python or none") else . end
 | {
@@ -85,7 +88,9 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
     "extra-tags": $tags,
     "test-command": ($m | str_or_empty("test-command")),
     language: $lang,
-    workdir: (if $wd == "" then $path else $wd end)
+    workdir: (if $wd == "" then $path else $wd end),
+    egress: ($eg | join(" ")),
+    "egress-policy": (if $has_eg then "block" else "audit" end)
   }
 '
 

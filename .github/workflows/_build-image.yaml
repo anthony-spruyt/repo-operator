@@ -113,6 +113,16 @@ on:
         required: false
         type: string
         default: ""
+      egress:
+        description: Space-separated host:port endpoints this image's jobs reach besides the shared list (metadata.yaml egress)
+        required: false
+        type: string
+        default: ""
+      egress-policy:
+        description: harden-runner egress-policy, block once the image's metadata.yaml lists its egress
+        required: false
+        type: string
+        default: audit
     secrets:
       DOCKERHUB_TOKEN:
         required: false
@@ -132,6 +142,8 @@ jobs:
     uses: $/.github/workflows/_go-test.yaml
     with:
       workdir: ${{ inputs.workdir }}
+      egress: ${{ inputs.egress }}
+      egress-policy: ${{ inputs.egress-policy }}
 
   test-python:
     name: Test
@@ -144,6 +156,8 @@ jobs:
       extras: ${{ inputs.python-extras }}
       test-paths: ${{ inputs.python-test-paths }}
       extra-commands: ${{ inputs.python-extra-commands }}
+      egress: ${{ inputs.egress }}
+      egress-policy: ${{ inputs.egress-policy }}
 
   test-node:
     name: Test
@@ -156,7 +170,16 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.egress-policy }}
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            nodejs.org:443
+            registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
+            results-receiver.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            ${{ inputs.egress }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -207,7 +230,18 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.egress-policy }}
+          allowed-endpoints: >-
+            api.github.com:443
+            auth.docker.io:443
+            ghcr.io:443
+            github.com:443
+            pkg-containers.githubusercontent.com:443
+            production.cloudfront.docker.com:443
+            registry-1.docker.io:443
+            results-receiver.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            ${{ inputs.egress }}
 
       - name: Validate inputs
         env:
@@ -302,7 +336,21 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: ${{ inputs.egress-policy }}
+          allowed-endpoints: >-
+            api.github.com:443
+            auth.docker.io:443
+            fulcio.sigstore.dev:443
+            ghcr.io:443
+            github.com:443
+            pkg-containers.githubusercontent.com:443
+            production.cloudfront.docker.com:443
+            registry-1.docker.io:443
+            rekor.sigstore.dev:443
+            results-receiver.actions.githubusercontent.com:443
+            token.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
+            ${{ inputs.egress }}
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
