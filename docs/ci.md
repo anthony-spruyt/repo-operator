@@ -52,14 +52,14 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 
 - `build_context`: build context directory (default: the package path); the Dockerfile stays `<path>/Dockerfile`
 - `watch`: extra paths whose changes rebuild the image; each matches that file or anything under that directory
-- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile
+- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile. What it writes must be inside `context`
 - `free-disk` (default `false`): free runner disk space before building
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
-`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
+`prepare-command` and `test-command` run as shell on the runner only in `_build-image.yaml`'s `build` job, which has `contents: read` and no environment, for pull requests and releases alike. On a release it packs the prepared `context` as a tar artifact; `publish` waits for `build`, restores that tar (plain files and directories only) and builds and pushes from it without running either command.
 
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.

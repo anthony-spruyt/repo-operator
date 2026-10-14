@@ -195,7 +195,7 @@ jobs:
       - test-node
     # At most one test job runs; a skipped need makes the implicit success() false.
     if: >-
-      !cancelled() && !inputs.push
+      !cancelled()
       && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
       && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
@@ -237,6 +237,22 @@ jobs:
           PREPARE_COMMAND: ${{ inputs.prepare-command }}
         run: bash -euo pipefail -c "$PREPARE_COMMAND"
 
+      # publish runs no repository commands, so it builds from what prepare left in the context
+      - name: Pack prepared context
+        if: inputs.push && inputs.prepare-command != ''
+        env:
+          CONTEXT: ${{ inputs.context }}
+        run: tar -C "$CONTEXT" --exclude=./.git -cf "$RUNNER_TEMP/prepared-context.tar" .
+
+      - name: Upload prepared context
+        if: inputs.push && inputs.prepare-command != ''
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
+        with:
+          name: prepared-context-${{ inputs.image || github.event.repository.name }}
+          path: ${{ runner.temp }}/prepared-context.tar
+          if-no-files-found: error
+          retention-days: 1
+
       - name: Build image
         uses: $/.github/actions/build-image
         with:
@@ -256,11 +272,13 @@ jobs:
       - test-go
       - test-python
       - test-node
+      - build
     if: >-
       !cancelled() && inputs.push
       && (needs.test-go.result == 'success' || needs.test-go.result == 'skipped')
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
       && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
+      && needs.build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 30
     environment: release
@@ -326,11 +344,29 @@ jobs:
           docker system prune -af
           df -h
 
-      - name: Prepare build
+      - name: Download prepared context
+        if: steps.verify.outputs.published != 'true' && inputs.prepare-command != ''
+        uses: actions/download-artifact@9000827ccba6bdab643e8b6fd33ac0654aef8333 # v8
+        with:
+          name: prepared-context-${{ inputs.image || github.event.repository.name }}
+          path: ${{ runner.temp }}/prepared
+
+      - name: Restore prepared context
         if: steps.verify.outputs.published != 'true' && inputs.prepare-command != ''
         env:
-          PREPARE_COMMAND: ${{ inputs.prepare-command }}
-        run: bash -euo pipefail -c "$PREPARE_COMMAND"
+          CONTEXT: ${{ inputs.context }}
+        run: |
+          TARBALL="$RUNNER_TEMP/prepared/prepared-context.tar"
+          LISTING=$(tar -tvf "$TARBALL")
+          if grep -qv '^[-d]' <<<"$LISTING"; then
+            echo "::error::The prepared context may hold only files and directories"
+            exit 1
+          fi
+          if tar -tf "$TARBALL" | grep -qE '^/|(^|/)\.\.(/|$)'; then
+            echo "::error::The prepared context holds a path outside it"
+            exit 1
+          fi
+          tar -xf "$TARBALL" -C "$CONTEXT" --no-same-owner
 
       - name: Build and push image
         id: build
@@ -348,7 +384,6 @@ jobs:
           dockerhub-namespace: ${{ inputs.dockerhub-namespace }}
           dockerhub-username: ${{ inputs.dockerhub-username }}
           dockerhub-token: ${{ secrets.DOCKERHUB_TOKEN }}
-          test-command: ${{ inputs.test-command }}
 
       # Must stay last: on failure the release stays a draft, so a published release always has an image.
       - name: Publish release

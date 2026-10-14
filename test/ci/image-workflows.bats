@@ -60,10 +60,11 @@ setup() {
 
 @test "_build-image.yaml's build and publish wait for test-node like the other test jobs" {
   local job
+  run yq -o=json -I0 ".jobs.build.needs" "$WF/_build-image.yaml"
+  [ "$output" = '["test-go","test-python","test-node"]' ]
+  run yq -o=json -I0 ".jobs.publish.needs" "$WF/_build-image.yaml"
+  [ "$output" = '["test-go","test-python","test-node","build"]' ]
   for job in build publish; do
-    run yq -o=json -I0 ".jobs.$job.needs" "$WF/_build-image.yaml"
-    echo "$job needs: $output"
-    [ "$output" = '["test-go","test-python","test-node"]' ]
     run yq -r ".jobs.$job.if" "$WF/_build-image.yaml"
     echo "$job if: $output"
     [[ "$output" == *"(needs.test-node.result == 'success' || needs.test-node.result == 'skipped')"* ]]
@@ -117,4 +118,85 @@ setup() {
     .github/workflows/_release-please.yaml .github/workflows/_release-images.yaml
   echo "$output"
   [ "$status" -eq 0 ]
+}
+
+restore_script() {
+  yq -r '.jobs.publish.steps[] | select(.name == "Restore prepared context") | .run' "$WF/_build-image.yaml"
+}
+
+# restore <dir> - runs the publish job's restore step on <dir>/prepared/prepared-context.tar, into <dir>/ctx
+restore() {
+  mkdir -p "$1/ctx"
+  env -C "$1" RUNNER_TEMP="$1" CONTEXT=ctx bash -euo pipefail -c "$(restore_script)"
+}
+
+@test "_build-image.yaml builds and tests every image, releases included, in a read-only job" {
+  run yq -o=json -I0 '.jobs.build | [has("environment"), .permissions, (.if | test("inputs\\.push"))]' "$WF/_build-image.yaml"
+  [ "$output" = '[false,{"contents":"read"},false]' ]
+  run yq -o=json -I0 '[.jobs.build.steps[] | select(.uses == "$/.github/actions/build-image") | .with | [has("push"), .["test-command"]]]' "$WF/_build-image.yaml"
+  [ "$output" = '[[false,"${{ inputs.test-command }}"]]' ]
+}
+
+@test "_build-image.yaml's publish job runs neither the prepare nor the test command" {
+  run yq -r '[.jobs.publish.steps[] | select(.run != null) | (.["env"] // {} | keys[])] | unique | .[]' "$WF/_build-image.yaml"
+  [[ "$output" != *PREPARE_COMMAND* && "$output" != *TEST_COMMAND* ]]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/build-image") | .with | has("test-command")' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
+}
+
+@test "_build-image.yaml publishes only after the build and its tests pass" {
+  run yq -r '.jobs.publish.if' "$WF/_build-image.yaml"
+  [[ "$output" == *"&& needs.build.result == 'success'"* ]]
+}
+
+@test "_build-image.yaml packs the prepared context after prepare, and publish restores it before its build" {
+  run yq -o=json -I0 '[.jobs.build.steps[].name]' "$WF/_build-image.yaml"
+  [[ "$output" == *'"Prepare build","Pack prepared context","Upload prepared context","Build image"'* ]]
+  run yq -o=json -I0 '[.jobs.build.steps[] | select(.name == "Pack prepared context" or .name == "Upload prepared context") | .if] | unique' "$WF/_build-image.yaml"
+  [ "$output" = "[\"inputs.push && inputs.prepare-command != ''\"]" ]
+  run yq -o=json -I0 '[.jobs.publish.steps[].name]' "$WF/_build-image.yaml"
+  [[ "$output" == *'"Download prepared context","Restore prepared context","Build and push image"'* ]]
+  run yq -o=json -I0 '[.jobs.publish.steps[] | select(.name == "Download prepared context" or .name == "Restore prepared context") | .if] | unique' "$WF/_build-image.yaml"
+  [ "$output" = "[\"steps.verify.outputs.published != 'true' && inputs.prepare-command != ''\"]" ]
+  run yq -r '[(.jobs.build.steps[] | select(.name == "Upload prepared context") | .with.name), (.jobs.publish.steps[] | select(.name == "Download prepared context") | .with.name)] | unique | .[]' "$WF/_build-image.yaml"
+  [ "$output" = 'prepared-context-${{ inputs.image || github.event.repository.name }}' ]
+}
+
+@test "the restore step unpacks plain files and directories into the context, keeping modes" {
+  local src="$BATS_TEST_TMPDIR/src"
+  mkdir -p "$src/sub" "$BATS_TEST_TMPDIR/prepared"
+  printf 'FROM scratch\n' >"$src/Dockerfile"
+  printf '#!/bin/sh\n' >"$src/sub/run.sh"
+  chmod 755 "$src/sub/run.sh"
+  tar -C "$src" -cf "$BATS_TEST_TMPDIR/prepared/prepared-context.tar" .
+  run restore "$BATS_TEST_TMPDIR"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/ctx/Dockerfile")" = "FROM scratch" ]
+  [ -x "$BATS_TEST_TMPDIR/ctx/sub/run.sh" ]
+}
+
+@test "the restore step refuses a link or a path outside the context" {
+  local src="$BATS_TEST_TMPDIR/src" tarball="$BATS_TEST_TMPDIR/prepared/prepared-context.tar" kind
+  for kind in symlink hardlink parent absolute; do
+    rm -rf "$src" "$BATS_TEST_TMPDIR/prepared" "$BATS_TEST_TMPDIR/ctx"
+    mkdir -p "$src" "$BATS_TEST_TMPDIR/prepared"
+    printf 'x\n' >"$src/f"
+    case "$kind" in
+      symlink)
+        ln -s /usr "$src/link"
+        tar -C "$src" -cf "$tarball" .
+        ;;
+      hardlink)
+        ln "$src/f" "$src/g"
+        tar -C "$src" -cf "$tarball" .
+        ;;
+      parent) tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ;;
+      absolute) tar -C "$src" -cf "$tarball" -P --transform 's|^\./f$|/tmp/escape|' ./f ;;
+    esac
+    run restore "$BATS_TEST_TMPDIR"
+    echo "$kind: $status $output"
+    [ "$status" -ne 0 ]
+    [ -z "$(ls -A "$BATS_TEST_TMPDIR/ctx")" ]
+  done
 }
