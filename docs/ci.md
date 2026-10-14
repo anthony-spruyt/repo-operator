@@ -168,6 +168,10 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 The `megalinter` allowlist comes from egress logged across all repos: GitHub, GHCR (the image pull), Trivy's database mirrors, the Go module proxy (golangci-lint), `registry.coder.com` (Trivy on spruyt-labs' Terraform), and the artifact service. A new linter that downloads at runtime fails there until its host is added.
 
+### Egress
+
+Shared jobs run harden-runner with `egress-policy: block` and their own allowlist, built from the egress logged across all repos. A job that reaches a host off its list fails, so a new download needs its host added. `test/ci/harden-runner.bats` keeps every job on `block` but the ones it lists.
+
 ### Images
 
 The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. It runs when `lint` succeeded and `repo` succeeded or was skipped (the seeded `ci-repo.yaml` has no job that runs, so `repo` is skipped); a failed `lint` or `repo`, or a cancelled run, skips it. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose
@@ -371,7 +375,7 @@ affected repo. Don't fix it in the downstream repo: the next sync overwrites man
 `.github/workflows/lint-canary.yaml` catches a bad bump before it merges. `ci.yaml` calls it on every PR, and `.github/scripts/lint-canary-needed.sh` skips it unless the PR touches a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`). It never runs on merge queue PRs:
 
 1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
-2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase.
+2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase, behind the `megalinter` job's allowlist and without lychee, as in `_lint.yaml`.
 
 A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. `summary` judges the canary, so a failure blocks the merge and a skip passes. A repo whose `main` is already red fails it too; fix that repo first.
 
