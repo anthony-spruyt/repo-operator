@@ -13,11 +13,11 @@ decide() {
   echo "$1"
 }
 
-if [ "$EVENT_NAME" != "pull_request" ]; then
+if [[ "$EVENT_NAME" != "pull_request" ]]; then
   decide true "Not a PR: plan runs"
 elif [[ "${HEAD_REF:-}" == mergify/merge-queue/* ]]; then
   decide false "Merge queue PR: the PR already planned this change"
-elif [ "${HAS_LABEL:-false}" = "true" ]; then
+elif [[ "${HAS_LABEL:-false}" == "true" ]]; then
   decide true "PR has the xfg/plan label: plan runs"
 elif grep -qE "$PLAN_FILES" <<<"$changed"; then
   decide true "PR changes the plan's workflow or scripts: plan runs"
