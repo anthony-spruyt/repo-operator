@@ -365,12 +365,12 @@ affected repo. Don't fix it in the downstream repo: the next sync overwrites man
 
 ### Lint canary
 
-`.github/workflows/lint-canary.yaml` catches a bad bump before it merges. It runs on PRs here that touch a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`):
+`.github/workflows/lint-canary.yaml` catches a bad bump before it merges. `ci.yaml` calls it on every PR, and `.github/scripts/lint-canary-needed.sh` skips it unless the PR touches a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`). It never runs on merge queue PRs:
 
 1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
 2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase.
 
-A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. The canary is not a required check: read its result before merging. A failure can also come from a repo whose `main` is already red; compare with that repo's last CI run.
+A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. `summary` judges the canary, so a failure blocks the merge and a skip passes. A repo whose `main` is already red fails it too; fix that repo first.
 
 The canary renders against each repo's current `main`, so it also lints changes merged here but not yet synced.
 

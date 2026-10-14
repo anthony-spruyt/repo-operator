@@ -43,6 +43,14 @@ jobs:
     permissions: {}
     uses: "./.github/workflows/_sonar-new-issues.yaml"
 
+  # Lints each affected repo with the planned lint files; skips unless the PR changes a lint path
+  lint-canary:
+    if: "github.event.action != 'labeled' || github.event.label.name == 'xfg/plan'"
+    permissions:
+      contents: "read"
+    uses: "./.github/workflows/lint-canary.yaml"
+    secrets: "inherit"
+
   # PR code is untrusted, so it plans with the read-only Plan App. GitHub hides merge settings
   # and ruleset bypass_actors from read-only tokens, so this plan is a partial preview.
   xfg-preview:
@@ -312,6 +320,7 @@ jobs:
       - "xfg-plan"
       - "xfg-apply"
       - "sonar"
+      - "lint-canary"
     if: "always() && (github.event.action != 'labeled' || github.event.label.name == 'xfg/plan')"
     permissions:
       actions: "read"
