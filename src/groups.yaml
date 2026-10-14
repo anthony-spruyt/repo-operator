@@ -551,7 +551,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.1@sha256:6b1947e0c180233933a54b1754b92e1cb34660be35da2a5ba9507ccd1a640e73"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.2@sha256:d2a8a3cef17a6b32d875bdc38484b2b1111214de94e12769c4f4ec73bfe2f73d"
   - when:
       allOf: [megalinter-flavor, python]
       noneOf: [cpp, go, typescript]
