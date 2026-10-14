@@ -140,6 +140,8 @@ restore() {
 @test "_build-image.yaml's publish job runs neither the prepare nor the test command" {
   run yq -r '[.jobs.publish.steps[] | select(.run != null) | (.["env"] // {} | keys[])] | unique | .[]' "$WF/_build-image.yaml"
   [[ "$output" != *PREPARE_COMMAND* && "$output" != *TEST_COMMAND* ]]
+  run yq -r '[.jobs.publish.steps[] | .run // "" | test("inputs\\.(prepare|test)-command")] | any' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
   run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/build-image") | .with | has("test-command")' "$WF/_build-image.yaml"
   [ "$output" = "false" ]
 }
@@ -151,7 +153,11 @@ restore() {
 
 @test "_build-image.yaml packs the prepared context after prepare, and publish restores it before its build" {
   run yq -o=json -I0 '[.jobs.build.steps[].name]' "$WF/_build-image.yaml"
-  [[ "$output" == *'"Prepare build","Pack prepared context","Upload prepared context","Build image"'* ]]
+  [[ "$output" == *'"Check the Dockerfile is in the context","Prepare build","Pack prepared context","Upload prepared context","Build image"'* ]]
+  run yq -r '.jobs.build.steps[] | select(.name == "Check the Dockerfile is in the context") | .if' "$WF/_build-image.yaml"
+  [ "$output" = "inputs.prepare-command != ''" ]
+  run yq -r '.jobs.build.steps[] | select(.name == "Upload prepared context") | .with["retention-days"]' "$WF/_build-image.yaml"
+  [ "$output" = "7" ]
   run yq -o=json -I0 '[.jobs.build.steps[] | select(.name == "Pack prepared context" or .name == "Upload prepared context") | .if] | unique' "$WF/_build-image.yaml"
   [ "$output" = "[\"inputs.push && inputs.prepare-command != ''\"]" ]
   run yq -o=json -I0 '[.jobs.publish.steps[].name]' "$WF/_build-image.yaml"
@@ -178,7 +184,7 @@ restore() {
 
 @test "the restore step refuses a link or a path outside the context" {
   local src="$BATS_TEST_TMPDIR/src" tarball="$BATS_TEST_TMPDIR/prepared/prepared-context.tar" kind
-  for kind in symlink hardlink parent absolute; do
+  for kind in symlink hardlink parent absolute parent-long; do
     rm -rf "$src" "$BATS_TEST_TMPDIR/prepared" "$BATS_TEST_TMPDIR/ctx"
     mkdir -p "$src" "$BATS_TEST_TMPDIR/prepared"
     printf 'x\n' >"$src/f"
@@ -193,10 +199,39 @@ restore() {
         ;;
       parent) tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ;;
       absolute) tar -C "$src" -cf "$tarball" -P --transform 's|^\./f$|/tmp/escape|' ./f ;;
+      parent-long)
+        # A listing longer than the pipe buffer, so a piped grep -q exits before tar does
+        mkdir "$src/d"
+        for i in $(seq 400); do : >"$src/d/$(printf 'n%.0s' $(seq 200))$i"; done
+        tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ./d
+        ;;
     esac
     run restore "$BATS_TEST_TMPDIR"
     echo "$kind: $status $output"
     [ "$status" -ne 0 ]
     [ -z "$(ls -A "$BATS_TEST_TMPDIR/ctx")" ]
   done
+}
+
+dockerfile_check_script() {
+  yq -r '.jobs.build.steps[] | select(.name == "Check the Dockerfile is in the context") | .run' "$WF/_build-image.yaml"
+}
+
+@test "with a prepare-command, the build fails unless the Dockerfile is in the context" {
+  local ctx dockerfile want
+  mkdir -p "$BATS_TEST_TMPDIR/llm-guard" "$BATS_TEST_TMPDIR/llm-guard-cuda"
+  while IFS='|' read -r ctx dockerfile want; do
+    run env -C "$BATS_TEST_TMPDIR" CONTEXT="$ctx" DOCKERFILE="$dockerfile" bash -euo pipefail -c "$(dockerfile_check_script)"
+    echo "$ctx|$dockerfile: $status $output"
+    [ "$status" -eq "$want" ]
+  done <<'EOF'
+llm-guard||0
+./llm-guard/||0
+.||0
+llm-guard|llm-guard/sub/Dockerfile|0
+.|llm-guard-cuda/Dockerfile|0
+llm-guard|llm-guard-cuda/Dockerfile|1
+llm-guard|llm-guard/../llm-guard-cuda/Dockerfile|1
+llm-guard|/tmp/Dockerfile|1
+EOF
 }
