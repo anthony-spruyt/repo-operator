@@ -117,6 +117,20 @@ no_commit_matches() {
   done
 }
 
+@test "image metadata and the release-please config are gate files everywhere" {
+  for repo in container-images mcp-header-proxy claude-plugins SunGather xfg repo-operator traefik-api-key-auth spruyt-labs litellm-middleware agent-platform kata-tap-qdisc-fix; do
+    gated "$repo" "metadata.yaml"
+    gated "$repo" "chrony/metadata.yaml"
+    gated "$repo" "cmd/shutdown-orchestrator/metadata.yaml"
+    gated "$repo" "release-please-config.json"
+    not_gated "$repo" "chrony/metadata.yaml.bak"
+    not_gated "$repo" "chrony/old-metadata.yaml"
+    not_gated "$repo" "chrony/Dockerfile"
+    not_gated "$repo" "docs/release-please-config.json"
+    not_gated "$repo" ".release-please-manifest.json"
+  done
+}
+
 @test "src/ and test/ci/ are gate paths only in repo-operator, and the rest of test/ is not" {
   gated repo-operator "src/groups.yaml"
   gated repo-operator "test/ci/merge-gate.bats"
@@ -138,6 +152,23 @@ no_commit_matches() {
   done
 }
 
+@test "container-images gates the scripts its image metadata runs" {
+  gated container-images "chrony/test.sh"
+  gated container-images "megalinter-factory/generate.py"
+  gated container-images "megalinter-factory/requirements.txt"
+  gated container-images "megalinter-go/flavor.yaml"
+  gated container-images "devcontainer-common/Dockerfile"
+  gated container-images "devcontainer-common/assets/bin/agent-run"
+  not_gated container-images "megalinter-go/x/flavor.yaml"
+  not_gated container-images "docs/devcontainer-common/x"
+  not_gated container-images "chrony/test.sh.bak"
+  not_gated container-images "chrony/scripts/test.sh"
+  not_gated container-images "chrony/Dockerfile"
+  not_gated container-images "docs/megalinter-factory/x"
+  not_gated repo-operator "chrony/test.sh"
+  not_gated repo-operator "megalinter-factory/generate.py"
+}
+
 @test "traefik-api-key-auth gates its image test script" {
   gated traefik-api-key-auth "scripts/test-image.sh"
   not_gated traefik-api-key-auth "scripts/test-image.sh.bak"
@@ -146,9 +177,9 @@ no_commit_matches() {
   not_gated repo-operator "scripts/test-image.sh"
 }
 
-@test "only repo-operator and traefik-api-key-auth widen the gate files" {
+@test "only container-images, repo-operator and traefik-api-key-auth widen the gate files" {
   run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|lint\\.sh$|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
+  [ "$output" = '{"https://github.com/anthony-spruyt/container-images.git":"[^/]+/(test\\.sh|flavor\\.yaml)$|megalinter-factory/|devcontainer-common/|","https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|lint\\.sh$|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }
