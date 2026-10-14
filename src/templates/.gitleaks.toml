@@ -29,7 +29,7 @@ paths = ['''(?:^|/)uv\.lock$''']
 regexTarget = "line"
 regexes = [
   '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
-  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download(?:-r2)?\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
 ]
 
 [[rules]]
@@ -52,7 +52,7 @@ paths = ['''(?:^|/)uv\.lock$''']
 regexTarget = "line"
 regexes = [
   '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
-  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download(?:-r2)?\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
 ]
 
 [[rules]]
@@ -75,7 +75,7 @@ paths = ['''(?:^|/)uv\.lock$''']
 regexTarget = "line"
 regexes = [
   '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
-  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download(?:-r2)?\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
 ]
 
 # --- Generated Secrets ---
