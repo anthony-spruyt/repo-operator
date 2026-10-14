@@ -108,6 +108,10 @@ overlay_release_calls() {
     yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$file" | sed "s|^|${file##*/}: |"
     while IFS= read -r key; do
       while IFS= read -r tpl; do
+        [ -f "$src/templates/$tpl" ] || {
+          echo "${file##*/}: $key: no src/templates/$tpl"
+          continue
+        }
         if [ -n "$(release_jobs "$src/.." "src/templates/$tpl")" ]; then
           echo "${file##*/}: $key"
           break
@@ -221,11 +225,17 @@ jobs:
   images:
     uses: $/.github/workflows/_release-images.yaml
 YAML
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/check.yaml" <<'YAML'
+on: [check_run]
+jobs:
+  images:
+    uses: $/.github/workflows/_release-images.yaml
+YAML
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_build-image.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-please.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-images.yaml"
   run pr_release_calls "$BATS_TEST_TMPDIR"
-  [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
+  [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/check.yaml -> .github/workflows/check.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
 }
 
 @test "overlay_release_calls catches an overlay that adds a release call or a push, or a pull request trigger to a release caller" {
@@ -271,18 +281,16 @@ files:
       jobs:
         images:
           uses: $/.github/workflows/_release-images.yaml
+  .github/workflows/release-please.yaml:
+    content:
+      "on":
+        pull_request_target: {}
 YAML
   cat >>"$BATS_TEST_TMPDIR/src/groups.yaml" <<'YAML'
   rp:
     files:
       .github/workflows/release-please.yaml:
         content: "@templates/.github/workflows/rp.yaml"
-  rp-pr:
-    files:
-      .github/workflows/release-please.yaml:
-        content:
-          "on":
-            pull_request_target: {}
   other-pr:
     files:
       .github/workflows/other.yaml:
@@ -299,10 +307,10 @@ YAML
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/src/templates/.github/workflows/other.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-please.yaml"
   run overlay_release_calls "$BATS_TEST_TMPDIR/src"
-  [ "$output" = $'files.yaml: .github/workflows/ci.yaml\ngroups.yaml: .github/workflows/ci.yaml\ngroups.yaml: .github/workflows/release-please.yaml\nrepos.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/release-please.yaml' ]
+  [ "$output" = $'files.yaml: .github/workflows/ci.yaml\nfiles.yaml: .github/workflows/release-please.yaml\ngroups.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/ci.yaml\nrepos.yaml: .github/workflows/release-please.yaml' ]
 }
 
-@test "no workflow overlay in src adds a release call or a push" {
+@test "no workflow overlay in src adds a release call, a push, or a pull request trigger to a release caller" {
   run overlay_release_calls "$REPO_ROOT/src"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
