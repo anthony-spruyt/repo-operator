@@ -12,6 +12,7 @@
     "npm",
     "nuget",
     "pep621",
+    "pip-compile",
     "pip_requirements",
     "pre-commit",
     "terraform"
