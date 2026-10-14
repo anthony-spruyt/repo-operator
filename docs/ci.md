@@ -204,7 +204,7 @@ A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` al
 
 The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Old GitHub releases and git tags are kept.
 
-The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
+The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It cleans GHCR and Docker Hub (`aspruyt/<package>`, where the image release publishes), deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 
 ```yaml
 name: Container Retention
@@ -226,6 +226,9 @@ jobs:
     uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@<sha> # main
     with:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      dockerhub-namespace: aspruyt
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 ```
 
 On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-run` is `false` without reading `inputs.dry-run`. Before a new repo's first scheduled run:
