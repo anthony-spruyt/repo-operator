@@ -32,7 +32,7 @@ Config is split across multiple files in `src/`:
 | --------------- | -------------------------------------------------------------------------------- |
 | `base.yaml`     | Core config: `id`, `deleteOrphaned`, `prOptions`                                 |
 | `files.yaml`    | Default files synced to all repos                                                |
-| `groups.yaml`   | Reusable groups (e.g. `image`, `megalinter`, `renovate`) and conditional groups |
+| `groups.yaml`   | Reusable groups (e.g. `image`, `megalinter`, `renovate`) and conditional groups  |
 | `repos.yaml`    | Target repositories with group assignments and per-repo overrides                |
 | `settings.yaml` | Global settings: labels, repo defaults, rulesets, code scanning                  |
 

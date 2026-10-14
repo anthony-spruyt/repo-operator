@@ -13,7 +13,7 @@ repo() {
   echo ".repos[] | select(.git == \"https://github.com/anthony-spruyt/$1.git\")"
 }
 
-@test "the release-please group syncs the plain release caller, and the image group replaces it with the image caller" {
+@test "the release-please group syncs the plain release caller, and the image group merges the image caller over it" {
   run yq -r '.groups["release-please"].files[".github/workflows/release-please.yaml"].content' "$SRC/groups.yaml"
   [ "$output" = "@templates/.github/workflows/release-please.yaml" ]
   run yq -r '.groups.image.files[".github/workflows/release-please.yaml"].content' "$SRC/groups.yaml"
@@ -34,6 +34,11 @@ repo() {
   [ "$output" = '[["release"],{"contents":"read"},"anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha>",false]' ]
   run yq -o=json -I0 '.jobs.release.secrets' "$WORKFLOWS/release-please.yaml"
   [ "$output" = "$APP_SECRETS" ]
+}
+
+@test "the image caller is the plain caller plus the images job, since xfg deep-merges the two" {
+  run yq -o=json -I0 'del(.jobs.images)' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = "$(yq -o=json -I0 '.' "$WORKFLOWS/release-please.yaml")" ]
 }
 
 @test "the image release caller runs the same release job, then images with the publishing permissions and only the Docker Hub secret" {
