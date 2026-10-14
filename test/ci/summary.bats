@@ -52,6 +52,8 @@ page() {
     '{total_count: 0, jobs: [range($first; $last + 1) | {name: "job \(.)", conclusion: (if . == $fail then "failure" else "success" end)}]}' >"$BATS_TEST_TMPDIR/$1"
 }
 
+one_page() { export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"; }
+
 two_pages() {
   page p1.json 1 30
   page p2.json 31 34 "${1:-0}"
@@ -82,7 +84,10 @@ two_pages() {
 @test "judges one job list merged from every page, not one list per page" {
   two_pages 33
   export JOBS_DUMP="$BATS_TEST_TMPDIR/jobs.json"
-  { echo 'trap '\''printf "%s" "$jobs_json" >"$JOBS_DUMP"'\'' EXIT'; cat "$SCRIPT"; } >"$BATS_TEST_TMPDIR/traced.sh"
+  {
+    echo 'trap '\''printf "%s" "$jobs_json" >"$JOBS_DUMP"'\'' EXIT'
+    cat "$SCRIPT"
+  } >"$BATS_TEST_TMPDIR/traced.sh"
   run bash -e "$BATS_TEST_TMPDIR/traced.sh"
   [ "$status" -eq 1 ]
   run jq -c '[length, (map(type) | unique)]' "$JOBS_DUMP"
@@ -92,7 +97,7 @@ two_pages() {
 @test "passes when the sonar job is skipped, as on a merge-queue PR" {
   page p1.json 1 3
   jq '.jobs += [{name: "sonar / New Issues", conclusion: "skipped"}]' "$BATS_TEST_TMPDIR/p1.json" >"$BATS_TEST_TMPDIR/p1.tmp" && mv "$BATS_TEST_TMPDIR/p1.tmp" "$BATS_TEST_TMPDIR/p1.json"
-  export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"
+  one_page
   run bash -e "$SCRIPT"
   [ "$status" -eq 0 ]
   grep -qF '| sonar / New Issues | ⏭️ skipped |' "$GITHUB_STEP_SUMMARY"
@@ -100,7 +105,7 @@ two_pages() {
 
 @test "fails on a failed job on the first page" {
   page p1.json 1 30 2
-  export FAKE_GH_PAGES="$BATS_TEST_TMPDIR/p1.json"
+  one_page
   run bash -e "$SCRIPT"
   [ "$status" -eq 1 ]
 }
