@@ -80,6 +80,8 @@ setup() {
   [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
   run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-please.yaml"
   [ "$output" = '["${{ jobs.release-please.outputs.release-created }}","${{ jobs.release-please.outputs.releases }}"]' ]
+  run yq -o=json -I0 '.jobs["release-please"].outputs' "$WF/_release-please.yaml"
+  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created }}","releases":"${{ toJSON(steps.release.outputs) }}"}' ]
 }
 
 @test "_release-images.yaml detects the images in the releases it is given" {
@@ -89,6 +91,8 @@ setup() {
   [ "$output" = '["$/.github/actions/detect-images",{"mode":"released","releases":"${{ inputs.releases }}","root-name":"${{ inputs.image }}"}]' ]
   run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-images.yaml"
   [ "$output" = '[["detect","build"],["DOCKERHUB_TOKEN"],["images"]]' ]
+  run yq -o=json -I0 '.jobs.build | [.needs, .if, .strategy.matrix]' "$WF/_release-images.yaml"
+  [ "$output" = '["detect","needs.detect.outputs.has-images == '"'true'"'","${{ fromJSON(needs.detect.outputs.matrix) }}"]' ]
 }
 
 @test "_release-images.yaml publishes each image with its own language and workdir" {
@@ -101,9 +105,9 @@ setup() {
 @test "the release workflows leave concurrency to their caller, which runs both" {
   local wf
   for wf in _release-please.yaml _release-images.yaml; do
-    run yq -r 'has("concurrency")' "$WF/$wf"
+    run yq -r '[.. | select(tag == "!!map" and has("concurrency"))] | length' "$WF/$wf"
     echo "$wf: $output"
-    [ "$output" = "false" ]
+    [ "$output" = "0" ]
   done
 }
 

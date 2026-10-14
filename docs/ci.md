@@ -116,9 +116,9 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
   `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please alone. It acts with the app token, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
+- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Neither release workflow sets `concurrency`; the caller sets it once at the top, so release-please and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
-- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
