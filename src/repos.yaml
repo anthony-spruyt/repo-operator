@@ -10,10 +10,8 @@ repos:
       - megalinter
       - megalinter-flavor
       - protected-main-branch
-      - docker
       - image
       - dotnet
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -61,6 +59,7 @@ repos:
       - mergify
       - protected-main-branch
       - python
+      - release-please
       - renovate
       - sonar
 
@@ -73,10 +72,8 @@ repos:
       - megalinter
       - megalinter-flavor
       - protected-main-branch
-      - docker
       - image
       - python
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -130,9 +127,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -148,9 +143,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - python-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -166,7 +159,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *litellm-middleware-with
     settings:
       repo:
@@ -180,9 +173,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -233,10 +224,8 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - docker
       - go
       - image
-      - release-please
       - terraform
       - mergify
       - renovate
@@ -359,9 +348,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - python-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -377,7 +364,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *sungather-with
       .mcp.json:
         content:
@@ -397,7 +384,6 @@ repos:
       - megalinter
       - protected-main-branch
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -416,7 +402,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *traefik-api-key-auth-with
       .golangci.yml:
         content:
@@ -454,6 +440,8 @@ repos:
       - renovate
       - sonar
     files:
+      # Publishes from its own release.yaml, the filename npm Trusted Publishing matches
+      .github/workflows/release-please.yaml: false
       # A label other than run-integration must not post a green summary over a failed run
       .github/workflows/ci.yaml:
         content:

@@ -60,11 +60,6 @@ groups:
     files:
       eslint.config.js:
         content: "@templates/eslint.config.js"
-  docker:
-    files:
-      .hadolint.yaml:
-        createOnly: true
-        content: "@templates/.hadolint.yaml"
   dotnet:
     files:
       .devcontainer/devcontainer.json:
@@ -150,6 +145,9 @@ groups:
         vars:
           language: none
         content: "@templates/.github/workflows/image-release-please.yaml"
+      .hadolint.yaml:
+        createOnly: true
+        content: "@templates/.hadolint.yaml"
       .github/workflows/container-retention.yaml:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
@@ -377,6 +375,11 @@ groups:
           target: branch
   python: {}
   release-please:
+    files:
+      .github/workflows/release-please.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/release-please.yaml"
     settings:
       environments:
         release:
@@ -594,7 +597,7 @@ conditionalGroups:
           PYTHON_RUFF_CONFIG_FILE: "pyproject.toml"
           PYTHON_RUFF_FORMAT_CONFIG_FILE: "pyproject.toml"
   - when:
-      allOf: [megalinter, docker]
+      allOf: [megalinter, image]
     files:
       .mega-linter-base.yml:
         content:

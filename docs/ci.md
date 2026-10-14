@@ -310,14 +310,17 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 | Group               | Extends                                    | Syncs                                                                                                                   |
 | ------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
 | `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list      |
-| `image`             | `github-ci`, `release-please`, `dockerhub` | `.github/workflows/release-please.yaml` with `language: none`, `container-retention.yaml`; the `DOCKERHUB_TOKEN` secret |
+| `release-please`    |                                            | `.github/workflows/release-please.yaml`, which runs `_release-please.yaml` only; the release App secrets                |
+| `image`             | `github-ci`, `release-please`, `dockerhub` | the image `release-please.yaml` with `language: none`, `container-retention.yaml`, `.hadolint.yaml`; `DOCKERHUB_TOKEN`  |
 | `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                            |
 | `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
 
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
-tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`.
+tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and lists neither `release-please` nor `dockerhub` beside it.
 
-Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
+A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own `release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
+
+Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-images.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
@@ -351,7 +354,7 @@ The canary renders against each repo's current `main`, so it also lints changes 
 
 ### Lint config
 
-- **Docker and Terraform**: the `docker` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
+- **Docker and Terraform**: the `image` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
 

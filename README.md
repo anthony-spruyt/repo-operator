@@ -8,7 +8,7 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 
 - Syncs standardized configuration files (linting, CI/CD, devcontainer, editor settings, security scanning) to target repositories
 - Manages GitHub repository settings: labels, branch rulesets, code scanning configuration
-- Uses a group system for composable, reusable configuration (e.g. `docker`, `python`, `megalinter`, `mergify`)
+- Uses a group system for composable, reusable configuration (e.g. `image`, `python`, `megalinter`, `mergify`)
 - Distributes modular Renovate configuration that target repos extend via `github>` references
 
 ## How It Works
@@ -32,7 +32,7 @@ Config is split across multiple files in `src/`:
 | --------------- | -------------------------------------------------------------------------------- |
 | `base.yaml`     | Core config: `id`, `deleteOrphaned`, `prOptions`                                 |
 | `files.yaml`    | Default files synced to all repos                                                |
-| `groups.yaml`   | Reusable groups (e.g. `docker`, `megalinter`, `renovate`) and conditional groups |
+| `groups.yaml`   | Reusable groups (e.g. `image`, `megalinter`, `renovate`) and conditional groups |
 | `repos.yaml`    | Target repositories with group assignments and per-repo overrides                |
 | `settings.yaml` | Global settings: labels, repo defaults, rulesets, code scanning                  |
 

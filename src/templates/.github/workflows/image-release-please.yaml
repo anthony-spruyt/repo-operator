@@ -8,19 +8,32 @@ on:
       - "main"
   workflow_dispatch: {}
 
-permissions:
-  contents: "write"
-  packages: "write"
-  id-token: "write"
-  attestations: "write"
+concurrency:
+  group: "release-please-${{ github.ref }}"
+  cancel-in-progress: false
+
+permissions: {}
 
 jobs:
   release:
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@58760deeba256c916d091d1b46a2a60ae23684a1" # main
-    with:
-      language: "${xfg:language}"
-      dockerhub-namespace: "aspruyt"
+    permissions:
+      contents: "read"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@8358ffc12a6b1175ea15aecc37543bfbfa34e3e9" # main
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
       RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
+  images:
+    needs: "release"
+    if: "needs.release.outputs.release-created == 'true'"
+    permissions:
+      contents: "write"
+      packages: "write"
+      id-token: "write"
+      attestations: "write"
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@8358ffc12a6b1175ea15aecc37543bfbfa34e3e9" # main
+    with:
+      releases: "${{ needs.release.outputs.releases }}"
+      language: "${xfg:language}"
+      dockerhub-namespace: "aspruyt"
+    secrets:
       DOCKERHUB_TOKEN: "${{ secrets.DOCKERHUB_TOKEN }}"
