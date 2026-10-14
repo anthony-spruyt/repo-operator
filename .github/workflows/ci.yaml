@@ -7,6 +7,11 @@ on:
   pull_request:
     branches:
       - "main"
+    types:
+      - "opened"
+      - "synchronize"
+      - "reopened"
+      - "labeled"
   push:
     branches:
       - "main"
@@ -15,8 +20,9 @@ on:
 permissions: {}
 
 jobs:
+  # A label other than xfg/plan must not post a green summary over a failed run
   lint:
-    if: "github.event_name != 'workflow_dispatch'"
+    if: "github.event_name != 'workflow_dispatch' && (github.event.action != 'labeled' || github.event.label.name == 'xfg/plan')"
     permissions:
       actions: "read"
       contents: "read"
@@ -33,6 +39,7 @@ jobs:
     secrets: "inherit"
 
   sonar:
+    if: "github.event.action != 'labeled' || github.event.label.name == 'xfg/plan'"
     permissions: {}
     uses: "./.github/workflows/_sonar-new-issues.yaml"
 
@@ -45,6 +52,7 @@ jobs:
       - "lint"
     if: >-
       always() &&
+      (github.event.action != 'labeled' || github.event.label.name == 'xfg/plan') &&
       (github.event_name == 'pull_request' ||
       (github.event_name == 'workflow_dispatch' && github.ref != 'refs/heads/main'))
     permissions:
@@ -69,12 +77,24 @@ jobs:
       - name: "Checkout"
         uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
         with:
+          fetch-depth: 2
           persist-credentials: false
 
       - name: "Check xfg config"
         run: ".github/scripts/check-xfg-config.sh src"
 
+      # The plan costs Plan App rate limit across every repo, so a PR opts in with the xfg/plan label
+      - name: "Decide"
+        id: "needed"
+        env:
+          EVENT_NAME: "${{ github.event_name }}"
+          HEAD_REF: "${{ github.head_ref }}"
+          HAS_LABEL: "${{ contains(github.event.pull_request.labels.*.name, 'xfg/plan') }}"
+        run: |
+          echo "run=$(git diff --name-only HEAD^1 HEAD | .github/scripts/xfg-preview-needed.sh)" >> "$GITHUB_OUTPUT"
+
       - name: "Preview notice"
+        if: "steps.needed.outputs.run == 'true'"
         run: |
           {
             echo "> [!WARNING]"
@@ -84,6 +104,7 @@ jobs:
           echo "::warning::Partial preview: merge settings and ruleset bypass_actors are not visible to the read-only Plan App"
 
       - name: "Preview Sync"
+        if: "steps.needed.outputs.run == 'true'"
         uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           config: "./src"
@@ -92,6 +113,7 @@ jobs:
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
 
       - name: "Preview Secrets Sync"
+        if: "steps.needed.outputs.run == 'true'"
         uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           command: "secrets-sync"
@@ -290,7 +312,7 @@ jobs:
       - "xfg-plan"
       - "xfg-apply"
       - "sonar"
-    if: "always()"
+    if: "always() && (github.event.action != 'labeled' || github.event.label.name == 'xfg/plan')"
     permissions:
       actions: "read"
       contents: "read"

@@ -204,6 +204,11 @@ repos:
       .mergify.yml:
         vars:
           gateFilesExtra: 'src/|test/ci/|lint\.sh$|'
+    settings:
+      labels:
+        "xfg/plan":
+          color: "#0E8A16"
+          description: "Run XFG Plan (preview) on this PR"
 
   - git: https://github.com/anthony-spruyt/security.git
     groups:
