@@ -12,17 +12,17 @@ setup() {
 local_target() {
   local root="$1" from="$2" ref="${3%@*}"
   case "$ref" in
-    '$/'* | ./*)
-      ref="${ref#\$/}"
-      ref="${ref#./}"
-      [[ "$from" != src/templates/* ]] || ref="src/templates/$ref"
-      ;;
-    anthony-spruyt/repo-operator/*) ref="${ref#anthony-spruyt/repo-operator/}" ;;
-    *) return 0 ;;
+  '$/'* | ./*)
+    ref="${ref#\$/}"
+    ref="${ref#./}"
+    [[ "$from" != src/templates/* ]] || ref="src/templates/$ref"
+    ;;
+  anthony-spruyt/repo-operator/*) ref="${ref#anthony-spruyt/repo-operator/}" ;;
+  *) return 0 ;;
   esac
   case "$ref" in
-    *.yaml | *.yml) echo "$ref" ;;
-    *) if [ -f "$root/$ref/action.yml" ]; then echo "$ref/action.yml"; else echo "$ref/action.yaml"; fi ;;
+  *.yaml | *.yml) echo "$ref" ;;
+  *) if [ -f "$root/$ref/action.yml" ]; then echo "$ref/action.yml"; else echo "$ref/action.yaml"; fi ;;
   esac
 }
 

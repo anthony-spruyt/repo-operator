@@ -189,22 +189,22 @@ restore() {
     mkdir -p "$src" "$BATS_TEST_TMPDIR/prepared"
     printf 'x\n' >"$src/f"
     case "$kind" in
-      symlink)
-        ln -s /usr "$src/link"
-        tar -C "$src" -cf "$tarball" .
-        ;;
-      hardlink)
-        ln "$src/f" "$src/g"
-        tar -C "$src" -cf "$tarball" .
-        ;;
-      parent) tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ;;
-      absolute) tar -C "$src" -cf "$tarball" -P --transform 's|^\./f$|/tmp/escape|' ./f ;;
-      parent-long)
-        # A listing longer than the pipe buffer, so a piped grep -q exits before tar does
-        mkdir "$src/d"
-        for i in $(seq 400); do : >"$src/d/$(printf 'n%.0s' $(seq 200))$i"; done
-        tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ./d
-        ;;
+    symlink)
+      ln -s /usr "$src/link"
+      tar -C "$src" -cf "$tarball" .
+      ;;
+    hardlink)
+      ln "$src/f" "$src/g"
+      tar -C "$src" -cf "$tarball" .
+      ;;
+    parent) tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ;;
+    absolute) tar -C "$src" -cf "$tarball" -P --transform 's|^\./f$|/tmp/escape|' ./f ;;
+    parent-long)
+      # A listing longer than the pipe buffer, so a piped grep -q exits before tar does
+      mkdir "$src/d"
+      for i in $(seq 400); do : >"$src/d/$(printf 'n%.0s' $(seq 200))$i"; done
+      tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ./d
+      ;;
     esac
     run restore "$BATS_TEST_TMPDIR"
     echo "$kind: $status $output"
