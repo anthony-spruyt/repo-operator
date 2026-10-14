@@ -314,5 +314,14 @@ check_pins() {
 
 @test "the retention template passes no packages and grants contents: read next to packages: write" {
   run yq -o=json -I0 '.jobs.cleanup | [.permissions, (.with | keys)]' "$WORKFLOWS/image-container-retention.yaml"
-  [ "$output" = '[{"contents":"read","packages":"write"},["dry-run"]]' ]
+  [ "$output" = '[{"contents":"read","packages":"write"},["dry-run","dockerhub-namespace"]]' ]
+}
+
+@test "the retention template cleans Docker Hub as aspruyt with the DOCKERHUB_TOKEN secret, at a pin that accepts both" {
+  local pin
+  run yq -o=json -I0 '.jobs.cleanup | [.with["dockerhub-namespace"], .secrets]' "$WORKFLOWS/image-container-retention.yaml"
+  [ "$output" = '["aspruyt",{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}]' ]
+  pin=$(yq -r '.jobs.cleanup.uses | sub(".*@"; "")' "$WORKFLOWS/image-container-retention.yaml")
+  run bash -c "git -C '$REPO_ROOT' show '$pin:.github/workflows/_container-retention.yaml' | yq -o=json -I0 '.on.workflow_call | [(.inputs | has(\"dockerhub-namespace\")), (.secrets | has(\"DOCKERHUB_TOKEN\"))]'"
+  [ "$output" = '[true,true]' ]
 }
