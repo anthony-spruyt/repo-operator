@@ -23,7 +23,15 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            objects.githubusercontent.com:443
+            registry.npmjs.org:443
+            results-receiver.actions.githubusercontent.com:443
+            *.blob.core.windows.net:443
 
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
@@ -90,7 +98,22 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          # The MegaLinter job's allowlist in _lint.yaml, which lychee is kept out of for the same reason
+          allowed-endpoints: >-
+            api.github.com:443
+            check.trivy.dev:443
+            ghcr.io:443
+            github.com:443
+            mirror.gcr.io:443
+            pkg-containers.githubusercontent.com:443
+            proxy.golang.org:443
+            registry.coder.com:443
+            results-receiver.actions.githubusercontent.com:443
+            storage.googleapis.com:443
+            sum.golang.org:443
+            trivy.dev:443
+            *.blob.core.windows.net:443
 
       - name: Generate app token
         id: app-token
@@ -135,4 +158,6 @@ jobs:
         working-directory: target
         env:
           VALIDATE_ALL_CODEBASE: true
+          DISABLE_LINTERS: SPELL_LYCHEE
+          ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
         run: ./lint.sh --ci

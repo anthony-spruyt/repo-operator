@@ -33,7 +33,11 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
 
       # GITHUB_TOKEN pull requests do not trigger the status checks that pr-rules requires.
       - name: Mint app token

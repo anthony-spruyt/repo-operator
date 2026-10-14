@@ -73,7 +73,12 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: audit
+          egress-policy: block
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            results-receiver.actions.githubusercontent.com:443
 
       # Strings, not numbers: 0 is falsy in expressions, so a numeric && 0 || 2 would always be 2
       - name: Checkout
