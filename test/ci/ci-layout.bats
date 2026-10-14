@@ -172,7 +172,7 @@ EOF
 @test "the image release caller publishes to Docker Hub as aspruyt with the DOCKERHUB_TOKEN secret" {
   run yq -o=json -I0 '.jobs.release | [.with["dockerhub-namespace"], .secrets.DOCKERHUB_TOKEN]' "$WORKFLOWS/image-release-please.yaml"
   [ "$output" = '["aspruyt","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
-  run yq -o=json -I0 '[(.on.workflow_call.inputs["dockerhub-namespace"].type), (.on.workflow_call.secrets | has("DOCKERHUB_TOKEN")), .jobs.build.with["dockerhub-namespace"], .jobs.build.secrets.DOCKERHUB_TOKEN]' "$REPO_ROOT/.github/workflows/_release-please.yaml"
+  run yq -o=json -I0 '[(.on.workflow_call.inputs["dockerhub-namespace"].type), (.on.workflow_call.secrets | has("DOCKERHUB_TOKEN")), .jobs.build.with["dockerhub-namespace"], .jobs.build.secrets.DOCKERHUB_TOKEN]' "$REPO_ROOT/.github/workflows/_release-images.yaml"
   [ "$output" = '["string",true,"${{ inputs.dockerhub-namespace }}","${{ secrets.DOCKERHUB_TOKEN }}"]' ]
 }
 
