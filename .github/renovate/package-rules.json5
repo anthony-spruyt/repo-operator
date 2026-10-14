@@ -253,7 +253,7 @@
       addLabels: ["renovate/nuget"]
     },
     {
-      matchManagers: ["pep621", "pip_requirements"],
+      matchManagers: ["pep621", "pip-compile", "pip_requirements"],
       addLabels: ["renovate/python"]
     },
     {
