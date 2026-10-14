@@ -14,11 +14,25 @@ description = "RFC1918 private IP address (10.x.x.x)"
 regex = '''(?:^|[^0-9])10\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
 tags = ["ip-leakage"]
 
+[[rules.allowlists]]
+description = "Python requirement pins that look like RFC1918 addresses"
+condition = "AND"
+paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
+regexTarget = "line"
+regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
+
 [[rules]]
 id = "private-ip-rfc1918-172"
 description = "RFC1918 private IP address (172.16-31.x.x)"
 regex = '''(?:^|[^0-9])172\.(?:1[6-9]|2[0-9]|3[01])\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
 tags = ["ip-leakage"]
+
+[[rules.allowlists]]
+description = "Python requirement pins that look like RFC1918 addresses"
+condition = "AND"
+paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
+regexTarget = "line"
+regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
 
 [[rules]]
 id = "private-ip-rfc1918-192"
@@ -26,9 +40,8 @@ description = "RFC1918 private IP address (192.168.x.x)"
 regex = '''(?:^|[^0-9])192\.168\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
 tags = ["ip-leakage"]
 
-[[allowlists]]
+[[rules.allowlists]]
 description = "Python requirement pins that look like RFC1918 addresses"
-targetRules = ["private-ip-rfc1918-10", "private-ip-rfc1918-172", "private-ip-rfc1918-192"]
 condition = "AND"
 paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
 regexTarget = "line"
