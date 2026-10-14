@@ -52,14 +52,14 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 
 - `build_context`: build context directory (default: the package path); the Dockerfile stays `<path>/Dockerfile`
 - `watch`: extra paths whose changes rebuild the image; each matches that file or anything under that directory
-- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile
+- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile. What the build needs from it must be inside `context`, and so must the Dockerfile
 - `free-disk` (default `false`): free runner disk space before building
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
-`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
+`prepare-command` and `test-command` run as shell on the runner only in `_build-image.yaml`'s `build` job, which has `contents: read` and no environment, for pull requests and releases alike. On a release it packs the prepared `context` as a tar artifact; `publish` waits for `build`, restores that tar (plain files and directories only) and builds and pushes from it without running either command.
 
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
@@ -113,7 +113,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
-  `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
+  `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
@@ -135,7 +135,7 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
 The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
-them. No job on the pull request path (`_images.yaml`, the `build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
+them. Neither `_images.yaml` nor `_build-image.yaml`'s `build` job uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
 xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag, and `docs.yaml` deploys on a push of the floating `vN` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*`, which covers both. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from
 the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.

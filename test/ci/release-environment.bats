@@ -166,8 +166,8 @@ YAML
   [ "$output" = "false" ]
   run yq -r '.on.workflow_call.inputs.push.default' "$WF/_build-image.yaml"
   [ "$output" = "false" ]
-  run yq -r '.jobs.build | [has("environment"), (.if | test("!inputs\.push"))] | @tsv' "$WF/_build-image.yaml"
-  [ "$output" = $'false\ttrue' ]
+  run yq -r '.jobs.build | [has("environment"), .permissions.contents] | @tsv' "$WF/_build-image.yaml"
+  [ "$output" = $'false\tread' ]
   run yq -r '.jobs.publish.if | test("&& inputs\.push\s")' "$WF/_build-image.yaml"
   [ "$output" = "true" ]
   run yq -r '[.jobs[] | select(.environment != null)] | length' "$TEMPLATES/ci.yaml" "$REPO_ROOT/.github/workflows/ci-repo.yaml"
