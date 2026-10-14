@@ -203,6 +203,7 @@
         ".editorconfig",
         ".github/workflows/ci.yaml",
         ".github/workflows/pr-title.yaml",
+        ".github/workflows/release-please.yaml",
         ".github/workflows/trivy-scan.yaml",
         ".markdownlint.json",
         ".mcp.json",
