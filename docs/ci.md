@@ -106,6 +106,21 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `include-hotspots` (default `"true"`): also fail on hotspots to review
 - `timeout-seconds` (default `900`): how long to wait for SonarQube Cloud
 
+### `dockerhub-cleanup`
+
+Deletes old tags from `docker.io/<namespace>/<package>` with the same rules as the GHCR cleanup (see [Container retention](#container-retention)). A version is a digest with all its tags; it is as old as its most recent tag push. The version tagged `latest` stays, and so does every version pushed within `older-than`. Of the rest, the newest `keep-n-tagged` stay and every tag of the others is
+deleted. A month is 30 days and a year 365, as in the GHCR cleanup.
+
+It logs in once through `POST /v2/auth/token`, and again when the Hub token, which lasts 10 minutes, expires. If Hub rejects a fresh token too, it stops that package. The token reaches `curl` and `jq` only through files and the environment, never their arguments. Each page of tags goes to a file, so a repository with thousands of tags lists fine.
+
+A package whose repository is missing on the first page is skipped with a warning. Every other failure fails the run, after the remaining packages and tags are tried: a 404 on a later page or on a delete, and a tag name the registry never produces, which is not deleted.
+
+- `namespace` (required): Docker Hub namespace
+- `username` (default: `namespace`): Docker Hub login
+- `token` (required): personal access token with the **Read, Write, Delete** scope; Read & Write cannot delete
+- `packages` (required): comma-separated repository names
+- `older-than` (default `4 weeks`), `keep-n-tagged` (default `5`), `dry-run` (default `"false"`): as in `_container-retention.yaml`
+
 ## Reusable workflows
 
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). Needs `contents: read`.
@@ -116,7 +131,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
   `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
 - `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
-- `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
+- `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
 
 Neither release workflow sets `concurrency`; the caller sets it once at the top, so release-please and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
 
@@ -176,16 +191,20 @@ Untagged versions are kept: setting `keep-n-tagged` turns off the action's defau
 - `older-than` (default `4 weeks`): must be a positive interval of at most 99999 units, such as `4 weeks` or `30 days`
 - `keep-n-tagged` (default `5`): must be at least `1`
 - `dry-run` (default `false`): log what would be deleted, delete nothing
+- `dockerhub-namespace` (default empty): also clean `docker.io/<namespace>/<package>` for every package, with the same rules, through [`dockerhub-cleanup`](#dockerhub-cleanup). Empty skips Docker Hub
+- `dockerhub-username` (default: `dockerhub-namespace`): Docker Hub login
 
-Runs for the same repo queue rather than overlap, because the action is not safe to run in parallel.
+A `Find Packages` job resolves the package list once; `GHCR Cleanup` and `Docker Hub Cleanup` then run side by side and skip when the list is empty. Runs for the same repo queue rather than overlap, per registry: the GHCR action is not safe to run in parallel, and two Docker Hub runs would plan from different snapshots.
+
+`Docker Hub Cleanup` runs in the main-only `release` environment with the `DOCKERHUB_TOKEN` secret that the `dockerhub` group syncs there, and fails without it. The caller must pass the secret by name. The job reaches only `hub.docker.com`.
 
 The calling job needs `packages: write`, and `contents: read` so the job can check out the repo to find its images. Each package must give the calling repo the **Admin** role under its Actions access settings. Write is enough to push but not to delete versions. The role is set in the package settings; there is no API for it, and the packages API does not report it.
 
 A package first pushed by the calling repo's own workflow with `GITHUB_TOKEN` already gives that repo Admin. A package first pushed from another repo keeps that repo's link and roles, so grant the role by hand at `https://github.com/users/<owner>/packages/container/<package>/settings`. mcp-header-proxy and kata-tap-qdisc-fix were first pushed from spruyt-labs, for example.
 
-The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Only GHCR is cleaned; Docker Hub tags are kept, and so are old GitHub releases and git tags.
+The packages come from the repo's own `release-please-config.json`, so a new image is cleaned without any change here. Old GitHub releases and git tags are kept.
 
-The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
+The `image` group syncs a caller to each image repo as `container-retention.yaml` (see [Managed image repos](#managed-image-repos)). It cleans GHCR and Docker Hub (`aspruyt/<package>`, where the image release publishes), deletes for real every Saturday at 17:00 UTC, and a dispatch defaults to a dry run. A caller looks like this:
 
 ```yaml
 name: Container Retention
@@ -207,12 +226,15 @@ jobs:
     uses: anthony-spruyt/repo-operator/.github/workflows/_container-retention.yaml@<sha> # main
     with:
       dry-run: ${{ github.event_name == 'workflow_dispatch' && inputs.dry-run }}
+      dockerhub-namespace: aspruyt
+    secrets:
+      DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
 ```
 
 On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-run` is `false` without reading `inputs.dry-run`. Before a new repo's first scheduled run:
 
 1. Give the calling repo the **Admin** role on each package.
-2. Dispatch with `dry-run` on, and check the logged deletions.
+2. Dispatch with `dry-run` on, and check the logged deletions. Dispatch from `main`: `Docker Hub Cleanup` runs in the main-only `release` environment even for a dry run.
 3. Dispatch once with `dry-run` off.
 4. Confirm that `latest`, the newest `keep-n-tagged` tags and every digest a consumer pins still pull.
 
@@ -307,18 +329,19 @@ the same on fork PRs, whose `GITHUB_TOKEN` is read-only. Renaming a PR re-runs o
 
 Image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
 
-| Group               | Extends                                    | Syncs                                                                                                                   |
-| ------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list      |
-| `release-please`    |                                            | `.github/workflows/release-please.yaml`, which runs `_release-please.yaml` only; the release App secrets                |
-| `image`             | `github-ci`, `release-please`, `dockerhub` | the image `release-please.yaml` with `language: none`, `container-retention.yaml`, `.hadolint.yaml`; `DOCKERHUB_TOKEN`  |
-| `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                            |
-| `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
+| Group               | Extends                                    | Syncs                                                                                                                  |
+| ------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list     |
+| `release-please`    |                                            | `.github/workflows/release-please.yaml`, which runs `_release-please.yaml` only; the release App secrets               |
+| `image`             | `github-ci`, `release-please`, `dockerhub` | the image `release-please.yaml` with `language: none`, `container-retention.yaml`, `.hadolint.yaml`; `DOCKERHUB_TOKEN` |
+| `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                           |
+| `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                   |
 
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
 tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and lists neither `release-please` nor `dockerhub` beside it.
 
-A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own `release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
+A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own
+`release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
 
 xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus the `images` job; a key only the plain caller has would reach every image repo.
 
