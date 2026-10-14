@@ -22,6 +22,16 @@ paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
 regexTarget = "line"
 regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
 
+[[rules.allowlists]]
+description = "Dotted versions and wheel URLs in uv.lock that look like RFC1918 addresses"
+condition = "AND"
+paths = ['''(?:^|/)uv\.lock$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+]
+
 [[rules]]
 id = "private-ip-rfc1918-172"
 description = "RFC1918 private IP address (172.16-31.x.x)"
@@ -35,6 +45,16 @@ paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
 regexTarget = "line"
 regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
 
+[[rules.allowlists]]
+description = "Dotted versions and wheel URLs in uv.lock that look like RFC1918 addresses"
+condition = "AND"
+paths = ['''(?:^|/)uv\.lock$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+]
+
 [[rules]]
 id = "private-ip-rfc1918-192"
 description = "RFC1918 private IP address (192.168.x.x)"
@@ -47,6 +67,16 @@ condition = "AND"
 paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
 regexTarget = "line"
 regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
+
+[[rules.allowlists]]
+description = "Dotted versions and wheel URLs in uv.lock that look like RFC1918 addresses"
+condition = "AND"
+paths = ['''(?:^|/)uv\.lock$''']
+regexTarget = "line"
+regexes = [
+  '''^\s*version = "[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\+[A-Za-z0-9.]+)?"\s*$''',
+  '''^\s*(?:sdist = )?\{ url = "https://(?:files\.pythonhosted\.org|download\.pytorch\.org)/[^"\s]+", hash = "sha256:[0-9a-f]{64}"(?:, size = [0-9]+)?(?:, upload-time = "[^"]*")? \},?\s*$''',
+]
 
 # --- Generated Secrets ---
 # Must match spruyt-labs LiteLLM secret_masking.py and `task sops:gen-key`.
