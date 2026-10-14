@@ -235,3 +235,33 @@ img|img/../img-other/Dockerfile|1
 img|/tmp/Dockerfile|1
 EOF
 }
+
+@test "the image workflows hand each image's egress from detect-images to _build-image" {
+  local f
+  for f in _images.yaml _release-images.yaml; do
+    run yq -o=json -I0 '.jobs.build.with | [.egress, ."egress-policy"]' "$WF/$f"
+    [ "$output" = '["${{ matrix.egress }}","${{ matrix.egress-policy }}"]' ]
+  done
+}
+
+@test "_build-image.yaml passes its egress to the Go and Python tests" {
+  local job
+  for job in test-go test-python; do
+    run yq -o=json -I0 ".jobs.$job.with | [.egress, .\"egress-policy\"]" "$WF/_build-image.yaml"
+    [ "$output" = '["${{ inputs.egress }}","${{ inputs.egress-policy }}"]' ]
+  done
+}
+
+@test "every image chain job sets harden-runner's policy from egress-policy and appends egress to its allowlist" {
+  local f job
+  for f in _build-image.yaml:test-node _build-image.yaml:build _build-image.yaml:publish _go-test.yaml:test _python-uv-test.yaml:test; do
+    job="${f#*:}"
+    run yq -r ".on.workflow_call.inputs | [.egress.default, .\"egress-policy\".default] | join(\",\")" "$WF/${f%%:*}"
+    [ "$output" = ",audit" ]
+    run yq -o=json -I0 ".jobs.$job.steps[0].with | [.\"egress-policy\", (.\"allowed-endpoints\" | test(\" \\\\$\\\\{\\\\{ inputs\\\\.egress }}$\"))]" "$WF/${f%%:*}"
+    [ "$output" = '["${{ inputs.egress-policy }}",true]' ] || {
+      echo "$f: $output"
+      return 1
+    }
+  done
+}

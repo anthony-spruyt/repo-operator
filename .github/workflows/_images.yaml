@@ -120,3 +120,5 @@ jobs:
       python-extras: ${{ inputs.python-extras }}
       python-test-paths: ${{ inputs.python-test-paths }}
       python-extra-commands: ${{ inputs.python-extra-commands }}
+      egress: ${{ matrix.egress }}
+      egress-policy: ${{ matrix.egress-policy }}
