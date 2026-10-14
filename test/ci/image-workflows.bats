@@ -219,19 +219,19 @@ dockerfile_check_script() {
 
 @test "with a prepare-command, the build fails unless the Dockerfile is in the context" {
   local ctx dockerfile want
-  mkdir -p "$BATS_TEST_TMPDIR/llm-guard" "$BATS_TEST_TMPDIR/llm-guard-cuda"
+  mkdir -p "$BATS_TEST_TMPDIR/img" "$BATS_TEST_TMPDIR/img-other"
   while IFS='|' read -r ctx dockerfile want; do
     run env -C "$BATS_TEST_TMPDIR" CONTEXT="$ctx" DOCKERFILE="$dockerfile" bash -euo pipefail -c "$(dockerfile_check_script)"
     echo "$ctx|$dockerfile: $status $output"
     [ "$status" -eq "$want" ]
   done <<'EOF'
-llm-guard||0
-./llm-guard/||0
+img||0
+./img/||0
 .||0
-llm-guard|llm-guard/sub/Dockerfile|0
-.|llm-guard-cuda/Dockerfile|0
-llm-guard|llm-guard-cuda/Dockerfile|1
-llm-guard|llm-guard/../llm-guard-cuda/Dockerfile|1
-llm-guard|/tmp/Dockerfile|1
+img|img/sub/Dockerfile|0
+.|img-other/Dockerfile|0
+img|img-other/Dockerfile|1
+img|img/../img-other/Dockerfile|1
+img|/tmp/Dockerfile|1
 EOF
 }
