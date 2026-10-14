@@ -32,7 +32,7 @@ targetRules = ["private-ip-rfc1918-10", "private-ip-rfc1918-172", "private-ip-rf
 condition = "AND"
 paths = ['''(?:^|/)(?:[^/]*requirements[^/]*|constraints[^/]*)\.(?:txt|in)$''']
 regexTarget = "line"
-regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s|;|\\|$)''']
+regexes = ['''^\s*[A-Za-z0-9][A-Za-z0-9._-]*(?:\[[^\]]*\])?\s*===?\s*[0-9]+\.[0-9]+\.[0-9]+\.[0-9]+(?:\s*;[^#]*?)?(?:\s+--hash=[A-Za-z0-9]+:[0-9a-fA-F]+)*\s*\\?\s*$''']
 
 # --- Generated Secrets ---
 # Must match spruyt-labs LiteLLM secret_masking.py and `task sops:gen-key`.
