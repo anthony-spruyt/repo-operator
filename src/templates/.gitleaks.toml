@@ -7,7 +7,7 @@ useDefault = true
 
 # --- IP/CIDR Leakage Prevention ---
 # Prevents private IP addresses from being committed to public repositories.
-# Pin allowlists sit in each rule: a global targetRules allowlist is lost on [extend] (betterleaks/betterleaks#300).
+# Per-rule pin allowlists: global targetRules allowlists are dropped on [extend]; fold back once betterleaks/betterleaks#300 is fixed.
 
 [[rules]]
 id = "private-ip-rfc1918-10"
