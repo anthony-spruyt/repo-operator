@@ -117,6 +117,20 @@ no_commit_matches() {
   done
 }
 
+@test "image metadata and the release-please config are gate files everywhere" {
+  for repo in container-images mcp-header-proxy claude-plugins SunGather xfg repo-operator traefik-api-key-auth; do
+    gated "$repo" "metadata.yaml"
+    gated "$repo" "chrony/metadata.yaml"
+    gated "$repo" "cmd/shutdown-orchestrator/metadata.yaml"
+    gated "$repo" "release-please-config.json"
+    not_gated "$repo" "chrony/metadata.yaml.bak"
+    not_gated "$repo" "chrony/old-metadata.yaml"
+    not_gated "$repo" "chrony/Dockerfile"
+    not_gated "$repo" "docs/release-please-config.json"
+    not_gated "$repo" ".release-please-manifest.json"
+  done
+}
+
 @test "src/ and test/ci/ are gate paths only in repo-operator, and the rest of test/ is not" {
   gated repo-operator "src/groups.yaml"
   gated repo-operator "test/ci/merge-gate.bats"

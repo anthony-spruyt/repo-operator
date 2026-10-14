@@ -114,7 +114,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
   `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
-- `_release-please.yaml`: release-please alone. It acts with the app token, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
+- `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions. See [Container retention](#container-retention).
 
