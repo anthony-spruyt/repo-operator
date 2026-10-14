@@ -3,26 +3,10 @@
 name: Lint Canary
 
 on:
-  pull_request:
-    branches:
-      - main
-    paths:
-      - .github/workflows/lint-canary.yaml
-      - src/groups.yaml
-      - src/repos.yaml
-      - src/templates/.golangci.yml
-      - src/templates/.mega-linter-base.yml
-      - src/templates/.mega-linter.yml
-      - src/templates/lint.sh.tmpl
-      - src/templates/ruff-base.toml
-      - src/templates/trivy-mega-linter.yaml
+  workflow_call:
 
 permissions:
   contents: read
-
-concurrency:
-  group: lint-canary-${{ github.ref }}
-  cancel-in-progress: true
 
 env:
   LINT_FILES: >-
@@ -34,7 +18,7 @@ jobs:
     name: Render
     runs-on: ubuntu-latest
     outputs:
-      repos: ${{ steps.affected.outputs.repos }}
+      repos: ${{ steps.affected.outputs.repos || '[]' }}
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
@@ -44,9 +28,19 @@ jobs:
       - name: Checkout
         uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          fetch-depth: 2
           persist-credentials: false
 
+      - name: Decide
+        id: needed
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          HEAD_REF: ${{ github.head_ref }}
+        run: |
+          echo "run=$(git diff --name-only HEAD^1 HEAD | .github/scripts/lint-canary-needed.sh)" >> "$GITHUB_OUTPUT"
+
       - name: Render planned files
+        if: steps.needed.outputs.run == 'true'
         uses: anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5 # v8.5.1
         with:
           config: ./src
@@ -56,6 +50,7 @@ jobs:
           github-app-private-key: ${{ secrets.PLAN_APP_PRIVATE_KEY }}
 
       - name: Find repos whose lint files change
+        if: steps.needed.outputs.run == 'true'
         id: affected
         env:
           RENDER: ${{ runner.temp }}/render
@@ -74,6 +69,7 @@ jobs:
           tar -C "$RENDER" -czf "$RUNNER_TEMP/render.tgz" .
 
       - name: Upload render
+        if: steps.needed.outputs.run == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
           name: render

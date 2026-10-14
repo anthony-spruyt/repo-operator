@@ -14,7 +14,7 @@ setup() {
 
 @test "a label other than xfg/plan runs no job, so it never posts a green summary over a failed run" {
   run yq -o=json -I0 '.jobs | to_entries | map(select(.value | has("needs") | not) | .key)' "$CI"
-  [ "$output" = '["lint","sonar"]' ]
+  [ "$output" = '["lint","sonar","lint-canary"]' ]
   run yq -r '.jobs.lint.if' "$CI"
   [ "$output" = "github.event_name != 'workflow_dispatch' && ($GUARD)" ]
   run yq -r '.jobs.sonar.if' "$CI"
