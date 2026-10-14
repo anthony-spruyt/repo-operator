@@ -84,7 +84,7 @@ jobs:
           echo "::warning::Partial preview: merge settings and ruleset bypass_actors are not visible to the read-only Plan App"
 
       - name: "Preview Sync"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           config: "./src"
           dry-run: true
@@ -92,7 +92,7 @@ jobs:
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
 
       - name: "Preview Secrets Sync"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           command: "secrets-sync"
           config: "./src"
@@ -178,7 +178,7 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           config: "./src"
           dry-run: true
@@ -187,7 +187,7 @@ jobs:
 
       - name: "Plan Secrets Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         with:
           command: "secrets-sync"
           config: "./src"
@@ -240,7 +240,7 @@ jobs:
         run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         env:
           OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
           LITELLM_BASE_URL: "${{ secrets.LITELLM_HOST != '' && format('https://{0}/v1', secrets.LITELLM_HOST) || '' }}"
@@ -253,7 +253,7 @@ jobs:
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Apply Secrets Sync"
-        uses: "anthony-spruyt/xfg@11c1f30119d40e676211153f6d470a0dab56badc" # v8.5.0
+        uses: "anthony-spruyt/xfg@fa100c9d5c18e093bd1c0df9101c52fb1d05c5b5" # v8.5.1
         env:
           RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
@@ -271,7 +271,7 @@ jobs:
 
       - name: "Generate app token"
         id: "app-token"
-        uses: "actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1" # v3
+        uses: "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" # v3
         with:
           client-id: "${{ vars.APP_CLIENT_ID }}"
           private-key: "${{ secrets.APP_PRIVATE_KEY }}"

@@ -22,7 +22,8 @@ pull_request_rules:
           - "agent/triage"
           - "agent/fixing"
           - "agent/fixable"
-          - "agent/needs-review"
+          - "agent/needs-human-review"
+          - "agent/needs-triage"
   - name: "dismiss stale approvals on Renovate PRs"
     conditions:
       - "author = renovate[bot]"
@@ -51,7 +52,7 @@ merge_protections:
   - name: "gate-files"
     if:
       - "base = main"
-      - "files~=^(src/|test/ci/|\\.github/|\\.mergify\\.yml$|renovate\\.json$|renovate-overrides\\.json5$)"
+      - "files~=^(src/|test/ci/|lint\\.sh$|\\.github/|\\.mergify\\.yml$|renovate\\.json$|renovate-overrides\\.json5$|(.*/)?metadata\\.yaml$|release-please-config\\.json$)"
     success_conditions:
       - or:
           - "approved-reviews-by = anthony-spruyt"
@@ -70,3 +71,4 @@ merge_protections_settings:
   reporting_method: "check-runs"
   auto_merge_conditions:
     - "-label = blocked"
+    - "-label = agent/needs-human-review"

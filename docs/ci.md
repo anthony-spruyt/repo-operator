@@ -52,14 +52,14 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 
 - `build_context`: build context directory (default: the package path); the Dockerfile stays `<path>/Dockerfile`
 - `watch`: extra paths whose changes rebuild the image; each matches that file or anything under that directory
-- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile
+- `prepare-command`: shell command the build runs before building, such as generating a Dockerfile. What the build needs from it must be inside `context`, and so must the Dockerfile
 - `free-disk` (default `false`): free runner disk space before building
 - `extra-tags`: extra `docker/metadata-action` tag rules, as a string or a list
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
 
-`prepare-command` and `test-command` run as shell on the runner, in the pull request build and in the release `publish` job, which holds the publishing permissions (`id-token: write` and `packages: write` among them). Treat them as code with that access.
+`prepare-command` and `test-command` run as shell on the runner only in `_build-image.yaml`'s `build` job, which has `contents: read` and no environment, for pull requests and releases alike. On a release it packs the prepared `context` as a tar artifact; `publish` waits for `build`, restores that tar (plain files and directories only) and builds and pushes from it without running either command.
 
 In `changed` mode each changed file belongs to the package with the longest matching path, so a change in a nested package does not rebuild its parent. A file under one of a package's `exclude-paths` (repo-relative, as in release-please) does not belong to that package and falls through to the next-longest match, or to none. An image builds when a file it owns changed, a `watch` path changed, or a
 file under its `build_context` changed. A pull request diffs against the merge base with `base-sha`; anything else diffs `HEAD~1`, which suits squash merges. Check out with `fetch-depth: 0` on pull requests and at least 2 on pushes.
@@ -128,13 +128,16 @@ A package whose repository is missing on the first page is skipped with a warnin
 - `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` and passes `<workdir>/go.mod` to the build; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then
-  `npm test` when `package.json` has a `test` script. The build waits for the tests. Without `push`, a `contents: read` job builds only. With `push: true`, a separate job pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
-- `_release-please.yaml`: release-please, then a matrix that publishes each released image with `push: true` on its own tag. release-please itself acts with the app token, so callers grant only the publishing permissions. Only the image job undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
+  `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `release` environment; only that job needs the publishing permissions.
+- `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
+- `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
+
+Neither release workflow sets `concurrency`; the caller sets it once at the top, so release-please and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
-`_images.yaml` and `_release-please.yaml` share these inputs, which apply to every image:
+`_images.yaml` and `_release-images.yaml` share these inputs, which apply to every image:
 
 - `language` (default `none`): for images whose `metadata.yaml` sets none
 - `image`: the name of an image at the repo root (default: the lowercased repository name)
@@ -144,10 +147,10 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 `_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`.
 
-Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` also needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`.
+Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
 The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
-them. No job on the pull request path (`_images.yaml`, the `build` job) uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
+them. Neither `_images.yaml` nor `_build-image.yaml`'s `build` job uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
 xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag, and `docs.yaml` deploys on a push of the floating `vN` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*`, which covers both. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from
 the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.
@@ -172,7 +175,7 @@ files changed: build and test, no push. A repo without images, or a change that 
 
 Per-image settings live in the repo, in `<path>/metadata.yaml` (see [`detect-images`](#detect-images)), so a new image needs no change here. The `with:` inputs on the `image` job apply to every image.
 
-`_release-please.yaml` runs release-please, then `detect-images` in `released` mode, and publishes every released image with its own version and tag; one merge that releases several packages publishes them all.
+`_release-images.yaml` runs `detect-images` in `released` mode on the releases `_release-please.yaml` made, and publishes every released image with its own version and tag; one merge that releases several packages publishes them all.
 
 ### Container retention
 
@@ -323,17 +326,23 @@ the same on fork PRs, whose `GITHUB_TOKEN` is read-only. Renaming a PR re-runs o
 
 Image repos don't write these callers themselves. The xfg groups in `src/groups.yaml` sync them, along with the lint image pin and lint config, and overwrite them on every sync:
 
-| Group               | Extends                                    | Syncs                                                                                                                   |
-| ------------------- | ------------------------------------------ | ----------------------------------------------------------------------------------------------------------------------- |
-| `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list      |
-| `image`             | `github-ci`, `release-please`, `dockerhub` | `.github/workflows/release-please.yaml` with `language: none`, `container-retention.yaml`; the `DOCKERHUB_TOKEN` secret |
-| `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                            |
-| `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                    |
+| Group               | Extends                                    | Syncs                                                                                                                  |
+| ------------------- | ------------------------------------------ | ---------------------------------------------------------------------------------------------------------------------- |
+| `megalinter-flavor` | `megalinter`                               | `lint.sh` with the language flavor pin; `.golangci.yml` (with `go`); `ruff-base.toml` (with `python`); linter list     |
+| `release-please`    |                                            | `.github/workflows/release-please.yaml`, which runs `_release-please.yaml` only; the release App secrets               |
+| `image`             | `github-ci`, `release-please`, `dockerhub` | the image `release-please.yaml` with `language: none`, `container-retention.yaml`, `.hadolint.yaml`; `DOCKERHUB_TOKEN` |
+| `go-image`          | `image`, `go`, `megalinter-flavor`         | the above with `language: go`, and `language: go` on `ci.yaml`'s `image` job                                           |
+| `python-image`      | `image`, `python`, `megalinter-flavor`     | the above with `language: python`, and `language: python` on `ci.yaml`'s `image` job                                   |
 
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
-tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`.
+tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and lists neither `release-please` nor `dockerhub` beside it.
 
-Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The release callers pass `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-please.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
+A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own
+`release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
+
+xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus the `images` job; a key only the plain caller has would reach every image repo.
+
+Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The image release caller passes `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-images.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
 Repos still own `release-please-config.json`, `.release-please-manifest.json` and `pyproject.toml`.
 
@@ -367,7 +376,7 @@ The canary renders against each repo's current `main`, so it also lints changes 
 
 ### Lint config
 
-- **Docker and Terraform**: the `docker` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
+- **Docker and Terraform**: the `image` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
 
@@ -398,11 +407,11 @@ files:
   .github/workflows/release-please.yaml:
     content:
       jobs:
-        release:
+        images:
           with: *my-repo-with
 ```
 
-The job is `image` in `ci.yaml` and `release` in `release-please.yaml`. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
+The job is `image` in `ci.yaml` and `images` in `release-please.yaml`; the `release` job takes no inputs. Anchors only resolve within one file, so give each repo's anchor a unique name in `repos.yaml`. The anchor may only hold inputs that both called workflows accept; put any other input in that file's own overlay, or GitHub rejects the callers that don't declare it.
 
 `container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in
 `repos.yaml`; no repo needs one today.
@@ -457,19 +466,30 @@ on:
   push:
     branches: [main]
   workflow_dispatch:
-permissions:
-  contents: write
-  packages: write
-  id-token: write
-  attestations: write
+concurrency:
+  group: release-please-${{ github.ref }}
+  cancel-in-progress: false
+permissions: {}
 jobs:
   release:
+    permissions:
+      contents: read
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha> # main
-    with:
-      language: go
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
       RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+  images:
+    needs: release
+    if: needs.release.outputs.release-created == 'true'
+    permissions:
+      contents: write
+      packages: write
+      id-token: write
+      attestations: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha> # main
+    with:
+      releases: ${{ needs.release.outputs.releases }}
+      language: go
 ```
 
 `release-please-config.json` for a single root package with plain `vX.Y.Z` tags:

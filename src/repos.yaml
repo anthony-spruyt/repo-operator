@@ -10,10 +10,8 @@ repos:
       - megalinter
       - megalinter-flavor
       - protected-main-branch
-      - docker
       - image
       - dotnet
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -61,6 +59,7 @@ repos:
       - mergify
       - protected-main-branch
       - python
+      - release-please
       - renovate
       - sonar
 
@@ -73,13 +72,15 @@ repos:
       - megalinter
       - megalinter-flavor
       - protected-main-branch
-      - docker
       - image
       - python
-      - release-please
       - mergify
       - renovate
       - sonar
+    files:
+      .mergify.yml:
+        vars:
+          gateFilesExtra: '[^/]+/(test\.sh|flavor\.yaml)$|megalinter-factory/|devcontainer-common/|'
     settings:
       labels:
         "renovate/upstream":
@@ -130,9 +131,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -148,9 +147,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - python-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -166,7 +163,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *litellm-middleware-with
     settings:
       repo:
@@ -180,9 +177,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -208,7 +203,7 @@ repos:
         createOnly: true
       .mergify.yml:
         vars:
-          gateFilesExtra: "src/|test/ci/|"
+          gateFilesExtra: 'src/|test/ci/|lint\.sh$|'
 
   - git: https://github.com/anthony-spruyt/security.git
     groups:
@@ -233,10 +228,8 @@ repos:
       - github-ci
       - github-trivy
       - megalinter
-      - docker
       - go
       - image
-      - release-please
       - terraform
       - mergify
       - renovate
@@ -254,7 +247,7 @@ repos:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v3.1.0@sha256:635c5020444ee7f62ce1562fd3da2b5c20576b66a6808a40b50361cd1c1c97fe"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v3.1.1@sha256:473df283b6d6f14cbe77e04545193c2058d24f98de246b31e92dac073984fe43"
       .devcontainer/devcontainer.json:
         content:
           customizations:
@@ -359,9 +352,7 @@ repos:
       - github-trivy
       - megalinter
       - protected-main-branch
-      - docker
       - python-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -377,7 +368,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *sungather-with
       .mcp.json:
         content:
@@ -397,7 +388,6 @@ repos:
       - megalinter
       - protected-main-branch
       - go-image
-      - release-please
       - mergify
       - renovate
       - sonar
@@ -416,7 +406,7 @@ repos:
       .github/workflows/release-please.yaml:
         content:
           jobs:
-            release:
+            images:
               with: *traefik-api-key-auth-with
       .golangci.yml:
         content:
@@ -454,6 +444,8 @@ repos:
       - renovate
       - sonar
     files:
+      # Publishes from its own release.yaml, the filename npm Trusted Publishing matches
+      .github/workflows/release-please.yaml: false
       # A label other than run-integration must not post a green summary over a failed run
       .github/workflows/ci.yaml:
         content:
@@ -480,7 +472,7 @@ repos:
           features:
             "ghcr.io/devcontainers/features/azure-cli":
               # renovate: datasource=github-releases depName=Azure/azure-cli
-              version: "2.90.0"
+              version: "2.91.0"
           runArgs:
             $arrayMerge: append
             $values:

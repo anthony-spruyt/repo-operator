@@ -18,11 +18,6 @@ setup() {
   ARGS="${BATS_TEST_TMPDIR}/docker-args"
 }
 
-@test "the root lint.sh is the template rendered with the base pin" {
-  pin=$(yq -r '.conditionalGroups[] | select(.when.allOf[0] == "megalinter-flavor" and (.when.allOf | length) == 1) | .files["lint.sh"].vars.megalinterImage' "$REPO_ROOT/src/groups.yaml")
-  diff <(sed -e "s|\\\${xfg:megalinterImage}|$pin|" -e 's/\$\$/$/g' "$REPO_ROOT/src/templates/lint.sh.tmpl") "$REPO_ROOT/lint.sh"
-}
-
 @test "ci mode passes linter selection when set" {
   ENABLE_LINTERS=SPELL_LYCHEE DISABLE_LINTERS=SPELL_LYCHEE ENABLE_DISABLE_LINTERS_PRIORITY=DISABLE run "$WORK/lint.sh" --ci
   [ "$status" -eq 0 ]

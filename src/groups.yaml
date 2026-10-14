@@ -60,11 +60,6 @@ groups:
     files:
       eslint.config.js:
         content: "@templates/eslint.config.js"
-  docker:
-    files:
-      .hadolint.yaml:
-        createOnly: true
-        content: "@templates/.hadolint.yaml"
   dotnet:
     files:
       .devcontainer/devcontainer.json:
@@ -150,6 +145,9 @@ groups:
         vars:
           language: none
         content: "@templates/.github/workflows/image-release-please.yaml"
+      .hadolint.yaml:
+        createOnly: true
+        content: "@templates/.hadolint.yaml"
       .github/workflows/container-retention.yaml:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: This file is automatically updated - do not modify directly
@@ -300,9 +298,12 @@ groups:
         "agent/fixing":
           color: "#e4e669"
           description: "Agent is working on fixes"
-        "agent/needs-review":
+        "agent/needs-human-review":
           color: "#d93f0b"
-          description: "Agent flagged for human review"
+          description: "Needs review by the owner"
+        "agent/needs-triage":
+          color: "#bfd4f2"
+          description: "Queued for agent triage"
         "agent/revert":
           color: "#b60205"
           description: "Automated revert PR"
@@ -374,6 +375,11 @@ groups:
           target: branch
   python: {}
   release-please:
+    files:
+      .github/workflows/release-please.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.github/workflows/release-please.yaml"
     settings:
       environments:
         release:
@@ -453,7 +459,7 @@ groups:
           jobs:
             sonar:
               permissions: {}
-              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@e9f51dcb1760c644c5ad7062ad3596a6d83e6b5f" # main
+              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@cd4daf3cd60f5d70e1edbdea21e4a9420dcfe714" # main
             summary:
               needs:
                 $arrayMerge: append
@@ -529,7 +535,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-base
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-base:1.0.0@sha256:9a6caa418d76d01d31a60b757100d05c09d1534ec5cb86101d47e6b6df90a113"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-base:1.0.1@sha256:4ffc215fbb73339d86beee8e0c2ac13b104d54aca1da73e90b211720b8863f22"
   - when:
       allOf: [megalinter-flavor, cpp]
       noneOf: [go, typescript]
@@ -537,7 +543,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-cpp
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-cpp:1.1.0@sha256:97a83d18bbf9ffee8bbeb0504e4617db715cece97a3839e95f1e766c6020b537"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-cpp:1.1.1@sha256:36e2ef49cecb4f635ca603dabce39691d4dc9119a00c99bcc9d0b09b584e3fbc"
   - when:
       allOf: [megalinter-flavor, go]
       noneOf: [cpp, python, typescript]
@@ -545,7 +551,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.0@sha256:0536ee18f7735790d2d3f33784c541af720d6dfddc38af97226f6ca5de255d17"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.1@sha256:6b1947e0c180233933a54b1754b92e1cb34660be35da2a5ba9507ccd1a640e73"
   - when:
       allOf: [megalinter-flavor, python]
       noneOf: [cpp, go, typescript]
@@ -553,7 +559,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.1.0@sha256:df5f11a511ce9d5830c8d7847ffac0c31be180f9d3c46ed9d3c05277fb273d2b"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.1.1@sha256:2a00afad736831473737c9e81aa36ea8f5b137a641c803b34e2ef302241e7257"
   - when:
       allOf: [megalinter-flavor, typescript]
       noneOf: [cpp, go, python]
@@ -561,7 +567,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-typescript
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-typescript:1.0.0@sha256:eff9e99ce247e889db56729df5695df7625c70d34b695dd91fcbf36e0197337b"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-typescript:1.0.1@sha256:682124b63c6eb600bbd6afe263d4bb8156b841f09cfd526ced738d99ced3c312"
   - when:
       allOf: [megalinter-flavor, go]
     files:
@@ -591,7 +597,7 @@ conditionalGroups:
           PYTHON_RUFF_CONFIG_FILE: "pyproject.toml"
           PYTHON_RUFF_FORMAT_CONFIG_FILE: "pyproject.toml"
   - when:
-      allOf: [megalinter, docker]
+      allOf: [megalinter, image]
     files:
       .mega-linter-base.yml:
         content:

@@ -94,7 +94,7 @@ release_env() {
     run yq -o=json -I0 ".repos[] | select(.git == \"$repo\") | .settings.environments.release.deploymentBranchPolicy" "$SRC/repos.yaml"
     echo "$repo: $output"
     [ "$output" = "null" ]
-  done < <(yq -r ".repos[] | select(.groups[] == \"release-please\" or .groups[] == \"dockerhub\") | .git | select(. != \"$XFG_GIT\")" "$SRC/repos.yaml" | sort -u)
+  done < <(yq -r ".repos[] | select(.groups | any_c(. == \"release-please\" or . == \"dockerhub\" or . == \"image\" or . == \"go-image\" or . == \"python-image\")) | .git | select(. != \"$XFG_GIT\")" "$SRC/repos.yaml" | sort -u)
   local g
   for g in release-please dockerhub; do
     run release_env "$g"
@@ -166,17 +166,21 @@ YAML
   [ "$output" = "false" ]
   run yq -r '.on.workflow_call.inputs.push.default' "$WF/_build-image.yaml"
   [ "$output" = "false" ]
-  run yq -r '.jobs.build | [has("environment"), (.if | test("!inputs\.push"))] | @tsv' "$WF/_build-image.yaml"
-  [ "$output" = $'false\ttrue' ]
+  run yq -r '.jobs.build | [has("environment"), .permissions.contents] | @tsv' "$WF/_build-image.yaml"
+  [ "$output" = $'false\tread' ]
   run yq -r '.jobs.publish.if | test("&& inputs\.push\s")' "$WF/_build-image.yaml"
   [ "$output" = "true" ]
   run yq -r '[.jobs[] | select(.environment != null)] | length' "$TEMPLATES/ci.yaml" "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [ "$output" = $'0\n0' ]
 }
 
-@test "the release caller runs only from main pushes or dispatch, and passes every release secret by name" {
-  run yq -o=json -I0 '[(.on | keys), .on.push.branches]' "$TEMPLATES/image-release-please.yaml"
-  [ "$output" = '[["push","workflow_dispatch"],["main"]]' ]
-  run yq -o=json -I0 '.jobs.release.secrets' "$TEMPLATES/image-release-please.yaml"
-  [ "$output" = '{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}","DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
+@test "the release callers run only from main pushes or dispatch, and pass every release secret by name" {
+  local wf
+  for wf in release-please.yaml image-release-please.yaml; do
+    run yq -o=json -I0 '[(.on | keys), .on.push.branches, .jobs.release.secrets]' "$TEMPLATES/$wf"
+    echo "$wf: $output"
+    [ "$output" = '[["push","workflow_dispatch"],["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
+  done
+  run yq -o=json -I0 '.jobs.images.secrets' "$TEMPLATES/image-release-please.yaml"
+  [ "$output" = '{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
 }

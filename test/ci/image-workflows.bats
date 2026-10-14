@@ -60,10 +60,11 @@ setup() {
 
 @test "_build-image.yaml's build and publish wait for test-node like the other test jobs" {
   local job
+  run yq -o=json -I0 ".jobs.build.needs" "$WF/_build-image.yaml"
+  [ "$output" = '["test-go","test-python","test-node"]' ]
+  run yq -o=json -I0 ".jobs.publish.needs" "$WF/_build-image.yaml"
+  [ "$output" = '["test-go","test-python","test-node","build"]' ]
   for job in build publish; do
-    run yq -o=json -I0 ".jobs.$job.needs" "$WF/_build-image.yaml"
-    echo "$job needs: $output"
-    [ "$output" = '["test-go","test-python","test-node"]' ]
     run yq -r ".jobs.$job.if" "$WF/_build-image.yaml"
     echo "$job if: $output"
     [[ "$output" == *"(needs.test-node.result == 'success' || needs.test-node.result == 'skipped')"* ]]
@@ -75,17 +76,162 @@ setup() {
   [ "$output" = "\${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}" ]
 }
 
-@test "_release-please.yaml publishes each package with its own language and workdir" {
-  run yq -o=json -I0 '.jobs.build.with | [.language, .workdir]' "$WF/_release-please.yaml"
-  [ "$output" = '["${{ matrix.language || inputs.language }}","${{ matrix.workdir }}"]' ]
-  run yq -r '.on.workflow_call.inputs | has("workdir")' "$WF/_release-please.yaml"
+@test "_release-please.yaml runs only release-please and outputs what it released" {
+  run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs // {} | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-please.yaml"
+  [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
+  run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-please.yaml"
+  [ "$output" = '["${{ jobs.release-please.outputs.release-created }}","${{ jobs.release-please.outputs.releases }}"]' ]
+  run yq -o=json -I0 '.jobs["release-please"].outputs' "$WF/_release-please.yaml"
+  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created }}","releases":"${{ toJSON(steps.release.outputs) }}"}' ]
+}
+
+@test "_release-images.yaml detects the images in the releases it is given" {
+  run yq -o=json -I0 '.on.workflow_call.inputs.releases | [.type, .required]' "$WF/_release-images.yaml"
+  [ "$output" = '["string",true]' ]
+  run yq -o=json -I0 '.jobs.detect.steps[] | select(.id == "detect") | [.uses, .with]' "$WF/_release-images.yaml"
+  [ "$output" = '["$/.github/actions/detect-images",{"mode":"released","releases":"${{ inputs.releases }}","root-name":"${{ inputs.image }}"}]' ]
+  run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-images.yaml"
+  [ "$output" = '[["detect","build"],["DOCKERHUB_TOKEN"],["images"]]' ]
+  run yq -o=json -I0 '.jobs.build | [.needs, .if, .strategy.matrix]' "$WF/_release-images.yaml"
+  [ "$output" = '["detect","needs.detect.outputs.has-images == '"'true'"'","${{ fromJSON(needs.detect.outputs.matrix) }}"]' ]
+}
+
+@test "_release-images.yaml publishes each image with its own language and workdir" {
+  run yq -o=json -I0 '.jobs.build.with | [.language, .workdir, .push]' "$WF/_release-images.yaml"
+  [ "$output" = '["${{ matrix.language || inputs.language }}","${{ matrix.workdir }}",true]' ]
+  run yq -r '.on.workflow_call.inputs | has("workdir")' "$WF/_release-images.yaml"
   [ "$output" = "false" ]
+}
+
+@test "the release workflows leave concurrency to their caller, which runs both" {
+  local wf
+  for wf in _release-please.yaml _release-images.yaml; do
+    run yq -r '[.. | select(tag == "!!map" and has("concurrency"))] | length' "$WF/$wf"
+    echo "$wf: $output"
+    [ "$output" = "0" ]
+  done
 }
 
 @test "the image workflows pass actionlint with this repo's config" {
   cd "$REPO_ROOT"
   run actionlint -no-color .github/workflows/_images.yaml .github/workflows/_build-image.yaml \
-    .github/workflows/_release-please.yaml
+    .github/workflows/_release-please.yaml .github/workflows/_release-images.yaml
   echo "$output"
   [ "$status" -eq 0 ]
+}
+
+restore_script() {
+  yq -r '.jobs.publish.steps[] | select(.name == "Restore prepared context") | .run' "$WF/_build-image.yaml"
+}
+
+# restore <dir> - runs the publish job's restore step on <dir>/prepared/prepared-context.tar, into <dir>/ctx
+restore() {
+  mkdir -p "$1/ctx"
+  env -C "$1" RUNNER_TEMP="$1" CONTEXT=ctx bash -euo pipefail -c "$(restore_script)"
+}
+
+@test "_build-image.yaml builds and tests every image, releases included, in a read-only job" {
+  run yq -o=json -I0 '.jobs.build | [has("environment"), .permissions, (.if | test("inputs\\.push"))]' "$WF/_build-image.yaml"
+  [ "$output" = '[false,{"contents":"read"},false]' ]
+  run yq -o=json -I0 '[.jobs.build.steps[] | select(.uses == "$/.github/actions/build-image") | .with | [has("push"), .["test-command"]]]' "$WF/_build-image.yaml"
+  [ "$output" = '[[false,"${{ inputs.test-command }}"]]' ]
+}
+
+@test "_build-image.yaml's publish job runs neither the prepare nor the test command" {
+  run yq -r '[.jobs.publish.steps[] | select(.run != null) | (.["env"] // {} | keys[])] | unique | .[]' "$WF/_build-image.yaml"
+  [[ "$output" != *PREPARE_COMMAND* && "$output" != *TEST_COMMAND* ]]
+  run yq -r '[.jobs.publish.steps[] | .run // "" | test("inputs\\.(prepare|test)-command")] | any' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/build-image") | .with | has("test-command")' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
+}
+
+@test "_build-image.yaml publishes only after the build and its tests pass" {
+  run yq -r '.jobs.publish.if' "$WF/_build-image.yaml"
+  [[ "$output" == *"&& needs.build.result == 'success'"* ]]
+}
+
+@test "_build-image.yaml packs the prepared context after prepare, and publish restores it before its build" {
+  run yq -o=json -I0 '[.jobs.build.steps[].name]' "$WF/_build-image.yaml"
+  [[ "$output" == *'"Check the Dockerfile is in the context","Prepare build","Pack prepared context","Upload prepared context","Build image"'* ]]
+  run yq -r '.jobs.build.steps[] | select(.name == "Check the Dockerfile is in the context") | .if' "$WF/_build-image.yaml"
+  [ "$output" = "inputs.prepare-command != ''" ]
+  run yq -r '.jobs.build.steps[] | select(.name == "Upload prepared context") | .with["retention-days"]' "$WF/_build-image.yaml"
+  [ "$output" = "7" ]
+  run yq -o=json -I0 '[.jobs.build.steps[] | select(.name == "Pack prepared context" or .name == "Upload prepared context") | .if] | unique' "$WF/_build-image.yaml"
+  [ "$output" = "[\"inputs.push && inputs.prepare-command != ''\"]" ]
+  run yq -o=json -I0 '[.jobs.publish.steps[].name]' "$WF/_build-image.yaml"
+  [[ "$output" == *'"Download prepared context","Restore prepared context","Build and push image"'* ]]
+  run yq -o=json -I0 '[.jobs.publish.steps[] | select(.name == "Download prepared context" or .name == "Restore prepared context") | .if] | unique' "$WF/_build-image.yaml"
+  [ "$output" = "[\"steps.verify.outputs.published != 'true' && inputs.prepare-command != ''\"]" ]
+  run yq -r '[(.jobs.build.steps[] | select(.name == "Upload prepared context") | .with.name), (.jobs.publish.steps[] | select(.name == "Download prepared context") | .with.name)] | unique | .[]' "$WF/_build-image.yaml"
+  [ "$output" = 'prepared-context-${{ inputs.image || github.event.repository.name }}' ]
+}
+
+@test "the restore step unpacks plain files and directories into the context, keeping modes" {
+  local src="$BATS_TEST_TMPDIR/src"
+  mkdir -p "$src/sub" "$BATS_TEST_TMPDIR/prepared"
+  printf 'FROM scratch\n' >"$src/Dockerfile"
+  printf '#!/bin/sh\n' >"$src/sub/run.sh"
+  chmod 755 "$src/sub/run.sh"
+  tar -C "$src" -cf "$BATS_TEST_TMPDIR/prepared/prepared-context.tar" .
+  run restore "$BATS_TEST_TMPDIR"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$BATS_TEST_TMPDIR/ctx/Dockerfile")" = "FROM scratch" ]
+  [ -x "$BATS_TEST_TMPDIR/ctx/sub/run.sh" ]
+}
+
+@test "the restore step refuses a link or a path outside the context" {
+  local src="$BATS_TEST_TMPDIR/src" tarball="$BATS_TEST_TMPDIR/prepared/prepared-context.tar" kind
+  for kind in symlink hardlink parent absolute parent-long; do
+    rm -rf "$src" "$BATS_TEST_TMPDIR/prepared" "$BATS_TEST_TMPDIR/ctx"
+    mkdir -p "$src" "$BATS_TEST_TMPDIR/prepared"
+    printf 'x\n' >"$src/f"
+    case "$kind" in
+      symlink)
+        ln -s /usr "$src/link"
+        tar -C "$src" -cf "$tarball" .
+        ;;
+      hardlink)
+        ln "$src/f" "$src/g"
+        tar -C "$src" -cf "$tarball" .
+        ;;
+      parent) tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ;;
+      absolute) tar -C "$src" -cf "$tarball" -P --transform 's|^\./f$|/tmp/escape|' ./f ;;
+      parent-long)
+        # A listing longer than the pipe buffer, so a piped grep -q exits before tar does
+        mkdir "$src/d"
+        for i in $(seq 400); do : >"$src/d/$(printf 'n%.0s' $(seq 200))$i"; done
+        tar -C "$src" -cf "$tarball" --transform 's|^\./f$|../escape|' ./f ./d
+        ;;
+    esac
+    run restore "$BATS_TEST_TMPDIR"
+    echo "$kind: $status $output"
+    [ "$status" -ne 0 ]
+    [ -z "$(ls -A "$BATS_TEST_TMPDIR/ctx")" ]
+  done
+}
+
+dockerfile_check_script() {
+  yq -r '.jobs.build.steps[] | select(.name == "Check the Dockerfile is in the context") | .run' "$WF/_build-image.yaml"
+}
+
+@test "with a prepare-command, the build fails unless the Dockerfile is in the context" {
+  local ctx dockerfile want
+  mkdir -p "$BATS_TEST_TMPDIR/img" "$BATS_TEST_TMPDIR/img-other"
+  while IFS='|' read -r ctx dockerfile want; do
+    run env -C "$BATS_TEST_TMPDIR" CONTEXT="$ctx" DOCKERFILE="$dockerfile" bash -euo pipefail -c "$(dockerfile_check_script)"
+    echo "$ctx|$dockerfile: $status $output"
+    [ "$status" -eq "$want" ]
+  done <<'EOF'
+img||0
+./img/||0
+.||0
+img|img/sub/Dockerfile|0
+.|img-other/Dockerfile|0
+img|img-other/Dockerfile|1
+img|img/../img-other/Dockerfile|1
+img|/tmp/Dockerfile|1
+EOF
 }

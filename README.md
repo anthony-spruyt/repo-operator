@@ -8,7 +8,7 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 
 - Syncs standardized configuration files (linting, CI/CD, devcontainer, editor settings, security scanning) to target repositories
 - Manages GitHub repository settings: labels, branch rulesets, code scanning configuration
-- Uses a group system for composable, reusable configuration (e.g. `docker`, `python`, `megalinter`, `mergify`)
+- Uses a group system for composable, reusable configuration (e.g. `image`, `python`, `megalinter`, `mergify`)
 - Distributes modular Renovate configuration that target repos extend via `github>` references
 
 ## How It Works
@@ -28,13 +28,13 @@ XFG Apply authenticates as the `repo-operator` GitHub App, whose key (`APP_PRIVA
 
 Config is split across multiple files in `src/`:
 
-| File            | Purpose                                                                          |
-| --------------- | -------------------------------------------------------------------------------- |
-| `base.yaml`     | Core config: `id`, `deleteOrphaned`, `prOptions`                                 |
-| `files.yaml`    | Default files synced to all repos                                                |
-| `groups.yaml`   | Reusable groups (e.g. `docker`, `megalinter`, `renovate`) and conditional groups |
-| `repos.yaml`    | Target repositories with group assignments and per-repo overrides                |
-| `settings.yaml` | Global settings: labels, repo defaults, rulesets, code scanning                  |
+| File            | Purpose                                                                         |
+| --------------- | ------------------------------------------------------------------------------- |
+| `base.yaml`     | Core config: `id`, `deleteOrphaned`, `prOptions`                                |
+| `files.yaml`    | Default files synced to all repos                                               |
+| `groups.yaml`   | Reusable groups (e.g. `image`, `megalinter`, `renovate`) and conditional groups |
+| `repos.yaml`    | Target repositories with group assignments and per-repo overrides               |
+| `settings.yaml` | Global settings: labels, repo defaults, rulesets, code scanning                 |
 
 Template files referenced via `@templates/` paths live in `src/templates/`.
 
@@ -83,7 +83,7 @@ GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 ## Shared CI
 
-Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_images`, `_build-image`, `_release-please`, `_container-retention`, `_sonar-new-issues`) and composite actions (`build-image`, `publish-release`, `detect-images`, `sonar-new-issues`, `trivy-scan`, `dockerhub-cleanup`) that other repos call. See [docs/ci.md](docs/ci.md).
+Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_images`, `_build-image`, `_release-please`, `_release-images`, `_container-retention`, `_sonar-new-issues`) and composite actions (`build-image`, `publish-release`, `detect-images`, `sonar-new-issues`, `trivy-scan`, `dockerhub-cleanup`) that other repos call. See [docs/ci.md](docs/ci.md).
 
 Every repo's `ci.yaml` has an `image` job that builds each release-please package with a `Dockerfile` or `flavor.yaml` (a MegaLinter flavor, whose Dockerfile is generated) whose files changed, and the release callers publish each released package as its own image. See [Images](docs/ci.md#images).
 
