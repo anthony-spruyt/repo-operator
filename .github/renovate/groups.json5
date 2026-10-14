@@ -201,6 +201,18 @@
       }
     },
     {
+      // Each flavor has its own version, so a versioned branchTopic would split
+      // the group back into one PR per image. One rolling branch takes them all.
+      description: "Own MegaLinter flavor images (released together by the weekly refresh)",
+      groupName: "MegaLinter flavors",
+      matchPackageNames: ["ghcr.io/anthony-spruyt/megalinter-*"],
+      matchDatasources: ["docker"],
+      group: {
+        commitMessageTopic: "{{{groupName}}} group",
+        branchTopic: "{{{groupName}}}"
+      }
+    },
+    {
       description: "Go toolchain (go.mod directive + Dockerfile builder image stay in sync)",
       groupName: "Go toolchain",
       matchPackageNames: ["golang", "go"],
