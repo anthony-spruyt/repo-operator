@@ -128,8 +128,8 @@ secret_jobs() {
   env_jobs=$(cd "$WF" && yq --no-doc -r '.jobs | to_entries[] | select(.value.environment != null) | filename + ":" + .key + "=" + (.value.environment | tostring)' _*.yaml | sort)
   echo "secret jobs: $secret_jobs"
   echo "environment jobs: $env_jobs"
-  [ "$secret_jobs" = $'_build-image.yaml:publish\n_release-please.yaml:release-please' ]
-  [ "$env_jobs" = $'_build-image.yaml:publish=release\n_release-please.yaml:release-please=release' ]
+  [ "$secret_jobs" = $'_build-image.yaml:publish\n_container-retention.yaml:dockerhub\n_release-please.yaml:release-please' ]
+  [ "$env_jobs" = $'_build-image.yaml:publish=release\n_container-retention.yaml:dockerhub=release\n_release-please.yaml:release-please=release' ]
 }
 
 @test "a release secret in a job-level env block counts as a read" {
