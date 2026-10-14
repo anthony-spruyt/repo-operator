@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # shellcheck disable=SC2016
 
+with_token() { export SONAR_TOKEN="${1:-dummy-token-value}"; }
+
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../.github/scripts/sync-sonar-settings.sh"
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/.." && pwd)"
@@ -173,7 +175,7 @@ posts() {
 }
 
 @test "dry-run never sends the token, even when it is set" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   run_sync
   [ "$status" -eq 0 ]
   run grep -q 'auth=yes' "$CURL_LOG"
@@ -212,7 +214,7 @@ posts() {
 }
 
 @test "apply rejects a token with a newline and does not print it" {
-  export SONAR_TOKEN=$'abc\nX-Evil: 1'
+  with_token $'abc\nX-Evil: 1'
   run_sync --apply
   [ "$status" -eq 1 ]
   [[ "$output" != *"X-Evil"* ]]
@@ -220,7 +222,7 @@ posts() {
 }
 
 @test "apply posts only the keys that differ, with the token, and never prints it" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   in_sync_state beta '{"key":"sonar.inclusions","values":["old/**"]}'
   jq -c '.settings |= map(select(.key != "sonar.issue.ignore.multicriteria"))' "$STATE/anthony-spruyt_alpha.json" >"$WORK/a" && mv "$WORK/a" "$STATE/anthony-spruyt_alpha.json"
   run_sync --apply
@@ -242,7 +244,7 @@ posts() {
 }
 
 @test "apply sends one values field per list entry" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   printf '  alpha:\n    sonar.exclusions: ["a/**", "b/**"]\n' >>"$WORK/sonar.yaml"
   run_sync --apply
   [ "$status" -eq 0 ]
@@ -251,7 +253,7 @@ posts() {
 }
 
 @test "apply sends a scalar as value" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   printf '  alpha:\n    sonar.python.version: "3.12"\n' >>"$WORK/sonar.yaml"
   run_sync --apply
   [ "$status" -eq 0 ]
@@ -259,7 +261,7 @@ posts() {
 }
 
 @test "apply is idempotent: a second run posts nothing" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   in_sync_state beta
   run_sync --apply
   [ "$status" -eq 0 ]
@@ -272,7 +274,7 @@ posts() {
 }
 
 @test "apply fails when a setting does not stick" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   export FAKE_POST_NOOP=1
   in_sync_state beta
   run_sync --apply
@@ -281,7 +283,7 @@ posts() {
 }
 
 @test "apply fails loudly on an API error from set" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   export FAKE_POST_STATUS=400
   in_sync_state beta
   run_sync --apply
@@ -314,7 +316,8 @@ posts() {
 }
 
 @test "apply fails when the read after it is not one JSON document" {
-  export SONAR_TOKEN="dummy-token-value" FAKE_JUNK_AFTER_POST=1
+  with_token
+  export FAKE_JUNK_AFTER_POST=1
   in_sync_state beta
   run_sync --apply
   [ "$status" -eq 1 ]
@@ -332,7 +335,7 @@ posts() {
 }
 
 @test "rejects a config file with more than one YAML document" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   printf -- '---\ndefaults:\n  sonar.exclusions: ["x"]\n' >>"$WORK/sonar.yaml"
   run_sync --apply
   [ "$status" -eq 1 ]
@@ -382,7 +385,7 @@ posts() {
 }
 
 @test "passes values with URL metacharacters through as a single encoded field" {
-  export SONAR_TOKEN="dummy-token-value"
+  with_token
   printf '  alpha:\n    sonar.exclusions: ["a&key=sonar.evil&component=other"]\n' >>"$WORK/sonar.yaml"
   run_sync --apply
   [ "$status" -eq 0 ]

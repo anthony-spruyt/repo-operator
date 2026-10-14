@@ -1,5 +1,7 @@
 #!/usr/bin/env bats
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   SCRIPT="${BATS_TEST_DIRNAME}/../src/templates/.devcontainer/post-start.d/claude-plugins.sh"
   WS="${BATS_TEST_TMPDIR}/ws"
@@ -44,7 +46,7 @@ installed() {
 }
 
 run_script() {
-  cd "$WS"
+  cd "$WS" || return
   run bash "$SCRIPT"
 }
 
@@ -60,7 +62,7 @@ run_script() {
   installed agent-kit@aspruyt-plugins user
   run_script
   [ "$status" -eq 0 ]
-  ! grep -q '^plugin install' "$CALLS"
+  run ! grep -q '^plugin install' "$CALLS"
 }
 
 @test "does not reinstall a plugin installed at project scope for this workspace" {
@@ -68,7 +70,7 @@ run_script() {
   installed agent-kit@aspruyt-plugins project "$WS"
   run_script
   [ "$status" -eq 0 ]
-  ! grep -q '^plugin install' "$CALLS"
+  run ! grep -q '^plugin install' "$CALLS"
 }
 
 @test "installs when the plugin is only project-scoped to another workspace" {
@@ -92,7 +94,7 @@ run_script() {
   settings '{"enabledPlugins":{"context7@claude-plugins-official":true,"off@aspruyt-plugins":false,"str@aspruyt-plugins":"false"}}'
   run_script
   [ "$status" -eq 0 ]
-  ! grep -q '^plugin install' "$CALLS"
+  run ! grep -q '^plugin install' "$CALLS"
 }
 
 @test "installs plugins enabled in the user settings file" {
@@ -125,7 +127,7 @@ run_script() {
   jq -n --arg p "${BATS_TEST_TMPDIR}/mkt" '[{repo: "anthony-spruyt/claude-plugins", installLocation: $p}]' >"$FAKE_MARKETS"
   run_script
   [ "$status" -eq 0 ]
-  ! grep -q '^plugin marketplace add' "$CALLS"
+  run ! grep -q '^plugin marketplace add' "$CALLS"
 }
 
 @test "a failing install refreshes the marketplace, retries once, warns and exits 0" {
@@ -156,7 +158,7 @@ run_script() {
   grep -qxF 'plugin marketplace update' "$CALLS"
   grep -qxF 'plugin update agent-kit@aspruyt-plugins --scope user' "$CALLS"
   grep -qxF 'plugin update proj@aspruyt-plugins --scope project' "$CALLS"
-  ! grep -q 'foreign@' "$CALLS"
+  run ! grep -q 'foreign@' "$CALLS"
 }
 
 @test "updates run after installs" {
@@ -180,7 +182,7 @@ run_script() {
   settings '{not json'
   run_script
   [ "$status" -eq 0 ]
-  ! grep -q '^plugin install' "$CALLS"
+  run ! grep -q '^plugin install' "$CALLS"
 }
 
 @test "exits quietly when claude is missing" {
