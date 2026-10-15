@@ -89,8 +89,7 @@ def str_or_empty($k): .[$k] // "" | if type == "string" then . else error("\($k)
     "test-command": ($m | str_or_empty("test-command")),
     language: $lang,
     workdir: (if $wd == "" then $path else $wd end),
-    egress: ($eg | join(" ")),
-    "egress-policy": (if $has_eg then "block" else "audit" end)
+    egress: ($eg | join(" "))
   }
 '
 

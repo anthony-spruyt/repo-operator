@@ -3,14 +3,9 @@
 
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
-  # lychee checks links on arbitrary hosts. The image chain moves to block with per-repo allowlists (#696).
+  # lychee checks links on arbitrary hosts
   AUDIT_ALLOWED=(
     .github/workflows/_lint.yaml:lychee
-    .github/workflows/_build-image.yaml:test-node
-    .github/workflows/_build-image.yaml:build
-    .github/workflows/_build-image.yaml:publish
-    .github/workflows/_go-test.yaml:test
-    .github/workflows/_python-uv-test.yaml:test
   )
 }
 
