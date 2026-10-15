@@ -15,26 +15,23 @@ directive_rule() {
   rules "$RULES" '[.packageRules[] | select(((.matchManagers // []) | join(",")) == "gomod" and ((.matchDepTypes // []) | join(",")) == "golang")] | .[0]'
 }
 
-days() {
-  sed -n 's/^\([0-9]\+\) days\?$/\1/p' <<<"$1"
+@test "Renovate never updates the go.mod go directive" {
+  rule="$(directive_rule)"
+  run yq -p json -o json -I0 '[.enabled, .rangeStrategy, .allowedVersions, .minimumReleaseAge]' <<<"$rule"
+  [ "$output" = '[false,null,null,null]' ]
 }
 
-@test "the go directive only moves to the first release of a Go minor" {
-  allowed="$(directive_rule | yq -p json -r '.allowedVersions')"
-  [[ "$allowed" == /*/ ]]
-  regex="${allowed:1:-1}"
-  for v in 1.28.0 1.30.0 2.0.0; do grep -Eq "$regex" <<<"$v"; done
-  for v in 1.27.2 1.28.1 1.28rc1 1.28.0-rc.1; do
-    if grep -Eq "$regex" <<<"$v"; then return 1; fi
-  done
+@test "the go directive rule matches the golang depType only, so toolchain and module updates stay" {
+  rule="$(directive_rule)"
+  run yq -p json -o json -I0 '[.matchManagers, .matchDepTypes, .matchPackageNames, .matchDepNames, .matchDatasources]' <<<"$rule"
+  [ "$output" = '[["gomod"],["golang"],null,null,null]' ]
 }
 
-@test "the go directive waits two weeks past the default age, for the lint image to ship that Go" {
-  default="$(days "$(rules "$RULES" '.packageRules[0].minimumReleaseAge')")"
-  directive="$(days "$(directive_rule | yq -p json -r '.minimumReleaseAge')")"
-  [ -n "$default" ]
-  [ -n "$directive" ]
-  [ "$directive" -ge $((default + 14)) ]
+@test "the go directive rule comes after every rule that sets enabled true" {
+  run rules "$RULES" '[.packageRules | to_entries[] | select(.value.enabled == true) | .key] | max'
+  last_enable="$output"
+  run rules "$RULES" '[.packageRules | to_entries[] | select(((.value.matchManagers // []) | join(",")) == "gomod" and ((.value.matchDepTypes // []) | join(",")) == "golang") | .key] | .[0]'
+  [ "$output" -gt "$last_enable" ]
 }
 
 @test "the Go toolchain group leaves the go directive out" {

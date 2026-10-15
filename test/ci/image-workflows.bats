@@ -76,6 +76,23 @@ setup() {
   [ "$output" = "\${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}" ]
 }
 
+@test "build-image's Go build args leave GO_VERSION to the Dockerfile" {
+  local script work
+  script=$(yq -r '.runs.steps[] | select(.name == "Go build args") | .run' "$REPO_ROOT/.github/actions/build-image/action.yaml")
+  work="$BATS_TEST_TMPDIR/ctx"
+  mkdir -p "$work"
+  printf 'module example.com/m\n\ngo 1.27.1\n' >"$work/go.mod"
+  git -C "$work" init -q
+  git -C "$work" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m init
+  GITHUB_OUTPUT="$BATS_TEST_TMPDIR/out" GO_MOD="$work/go.mod" VERSION=1.2.3 CONTEXT="$work" EXTRA_BUILD_ARGS="FOO=bar" run bash -c "$script"
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/out"
+  [[ "$output" != *GO_VERSION* ]]
+  [[ "$output" == *$'\nVERSION=v1.2.3\n'* ]]
+  [[ "$output" == *$'\nCOMMIT='* ]]
+  [[ "$output" == *$'\nFOO=bar\n'* ]]
+}
+
 @test "_release-please.yaml runs only release-please and outputs what it released" {
   run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs // {} | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-please.yaml"
   [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]

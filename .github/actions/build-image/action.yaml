@@ -40,8 +40,8 @@ inputs:
     default: ""
   go-mod:
     description: >-
-      Path to a go.mod. When set, adds GO_VERSION (from the go directive),
-      VERSION (v<version>, or v0.0.0-ci) and COMMIT (checked-out HEAD) build args
+      Path to a go.mod. When set, adds VERSION (v<version>, or v0.0.0-ci) and
+      COMMIT (checked-out HEAD) build args; the Dockerfile's ARG GO_VERSION sets the Go version
     required: false
     default: ""
   dockerhub-namespace:
@@ -133,20 +133,13 @@ runs:
       if: inputs.go-mod != ''
       shell: bash
       env:
-        GO_MOD: ${{ inputs.go-mod }}
         VERSION: ${{ inputs.version }}
         CONTEXT: ${{ inputs.context }}
         EXTRA_BUILD_ARGS: ${{ inputs.build-args }}
       run: |
-        GO_VERSION=$(awk '$1 == "go" { print $2; exit }' "$GO_MOD")
-        if [ -z "$GO_VERSION" ]; then
-          echo "::error::No go directive in $GO_MOD"
-          exit 1
-        fi
         COMMIT=$(git -C "$CONTEXT" rev-parse HEAD)
         {
           echo "build-args<<EOF"
-          echo "GO_VERSION=$GO_VERSION"
           echo "VERSION=v${VERSION:-0.0.0-ci}"
           echo "COMMIT=$COMMIT"
           if [ -n "$EXTRA_BUILD_ARGS" ]; then
