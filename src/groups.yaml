@@ -343,6 +343,9 @@ groups:
               - actorId: 2758555 # repo-operator: xfg sync pushes straight to main (prOptions.merge: direct)
                 actorType: Integration
                 bypassMode: always
+              - actorId: 272440587 # spruyt-labs-bot: merges the CI uplift PRs (#696); remove when #696 closes
+                actorType: User
+                bypassMode: pull_request
           conditions:
             refName:
               include:
