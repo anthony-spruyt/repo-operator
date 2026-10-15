@@ -31,7 +31,6 @@ repos:
       - image
       - mergify
       - renovate
-      - sonar
     settings:
       repo:
         description: "Blog: build write-ups from the homelab."
