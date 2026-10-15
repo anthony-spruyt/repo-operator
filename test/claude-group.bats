@@ -23,3 +23,147 @@ FILE=".github/pull_request_template.md"
   run grep -c '[^$]\${' "${SRC}/templates/${FILE}"
   [ "${output}" = "0" ]
 }
+
+FORMS_DIR=".github/ISSUE_TEMPLATE"
+FORMS="bug_report feature_request chore docs config"
+TITLED="bug_report feature_request chore docs infra"
+GENERIC="bug_report feature_request chore docs"
+
+@test "the claude group syncs every issue form from its template file" {
+  for form in ${FORMS}; do
+    run yq -r ".groups.claude.files.\"${FORMS_DIR}/${form}.yml\".content" "${SRC}/groups.yaml"
+    [ "${status}" -eq 0 ]
+    [ "${output}" = "@templates/${FORMS_DIR}/${form}.yml" ]
+    [ -f "${SRC}/templates/${FORMS_DIR}/${form}.yml" ]
+    run yq -r ".groups.claude.files.\"${FORMS_DIR}/${form}.yml\".createOnly // false" "${SRC}/groups.yaml"
+    [ "${output}" = "false" ]
+  done
+}
+
+@test "the issue forms hold no brace-dollar reference, which xfg would substitute on sync" {
+  for form in ${FORMS} infra; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    # shellcheck disable=SC2016
+    run grep -c '[^$]\${' "${f}"
+    [ "${output}" = "0" ]
+  done
+}
+
+@test "config.yml turns blank issues off" {
+  run yq -r '.blank_issues_enabled' "${SRC}/templates/${FORMS_DIR}/config.yml"
+  [ "${output}" = "false" ]
+}
+
+@test "each form title prefix is a type the PR title check accepts" {
+  types="$(yq -r '.jobs.check.steps[] | select(.with.types) | .with.types' "${SRC}/templates/.github/workflows/pr-title.yaml")"
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run yq -r '.title' "${f}"
+    [[ "${output}" =~ ^([a-z]+)\(scope\):\ $ ]]
+    grep -qx "${BASH_REMATCH[1]}" <<<"${types}"
+  done
+}
+
+@test "each form label is one the settings manage in every repo" {
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    for label in $(yq -r '.labels[]' "${f}"); do
+      run yq -r ".settings.labels.\"${label}\".color // \"\"" "${SRC}/settings.yaml"
+      [ -n "${output}" ]
+    done
+  done
+}
+
+@test "the issue forms carry no homelab-only or public-repo-unsafe wording" {
+  [ -f "${SRC}/templates/${FORMS_DIR}/bug_report.yml" ]
+  # shellcheck disable=SC2016
+  for form in ${FORMS}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run bash -c 'sed "s#](\.\./security/advisories/new)##" "$1" | grep -niE "risk level|security|talos|ceph|k8s|kubectl|cluster"' _ "${f}"
+    [ "${status}" -eq 1 ]
+  done
+}
+
+@test "the bug form sends vulnerability reports to the private advisory form" {
+  run yq -r '.body[0].attributes.value' "${SRC}/templates/${FORMS_DIR}/bug_report.yml"
+  [[ "${output}" == *"](../security/advisories/new)"* ]]
+}
+
+@test "every form uses no dropdowns" {
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run yq -r '[.body[] | select(.type == "dropdown")] | length' "${f}"
+    [ "${output}" = "0" ]
+  done
+}
+
+@test "each form has exactly its expected fields" {
+  for form in feature_request chore docs; do
+    run yq -r '[.body[] | select(.type != "markdown") | .id] | join(",")' "${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ "${output}" = "why,what,done-when" ]
+    run yq -r '[.body[] | select(.type != "markdown") | .type] | join(",")' "${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ "${output}" = "textarea,textarea,textarea" ]
+    run yq -r '[.body[] | select(.validations.required == true) | .id] | join(",")' "${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ "${output}" = "why,what" ]
+  done
+  f="${SRC}/templates/${FORMS_DIR}/bug_report.yml"
+  run yq -r '[.body[] | select(.type != "markdown") | .id] | join(",")' "${f}"
+  [ "${output}" = "what-happened,logs,done-when" ]
+  run yq -r '[.body[] | select(.validations.required == true) | .id] | join(",")' "${f}"
+  [ "${output}" = "what-happened" ]
+  f="${SRC}/templates/${FORMS_DIR}/infra.yml"
+  run yq -r '[.body[] | select(.type != "markdown") | .id] | join(",")' "${f}"
+  [ "${output}" = "why,what,rollback,done-when" ]
+  run yq -r '[.body[] | select(.type != "markdown") | .type] | join(",")' "${f}"
+  [ "${output}" = "textarea,textarea,textarea,textarea" ]
+  run yq -r '[.body[] | select(.validations.required == true) | .id] | join(",")' "${f}"
+  [ "${output}" = "why,what,rollback" ]
+}
+
+@test "every form field has an id and no id repeats within a form" {
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run yq -r '[.body[] | select(.type != "markdown") | select(.id == null)] | length' "${f}"
+    [ "${output}" = "0" ]
+    run yq -r '[.body[] | select(.type != "markdown") | .id] | (length - (unique | length))' "${f}"
+    [ "${output}" = "0" ]
+  done
+}
+
+@test "every form opens with the line telling the reporter to leave out secrets, IPs and domains" {
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run yq -r '.body[0].type' "${f}"
+    [ "${output}" = "markdown" ]
+    run yq -r '.body[0].attributes.value' "${f}"
+    [[ "${output}" == "Leave out secrets, IPs, CIDRs, hostnames and domains."* ]]
+  done
+}
+
+@test "spruyt-labs alone adds the infra form, with the chore prefix and the infra label" {
+  run yq -r '.repos[] | select(.git | test("/spruyt-labs")) | .files."'"${FORMS_DIR}"'/infra.yml".content' "${SRC}/repos.yaml"
+  [ "${output}" = "@templates/${FORMS_DIR}/infra.yml" ]
+  run yq -r '[.repos[] | select(.files."'"${FORMS_DIR}"'/infra.yml")] | length' "${SRC}/repos.yaml"
+  [ "${output}" = "1" ]
+  run yq -r '.title, .labels[0]' "${SRC}/templates/${FORMS_DIR}/infra.yml"
+  [ "${lines[0]}" = "chore(scope): " ]
+  [ "${lines[1]}" = "infra" ]
+  run yq -r '.. | select(tag == "!!str") | select(test("(?i)risk|security"))' "${SRC}/templates/${FORMS_DIR}/infra.yml"
+  [ -z "${output}" ]
+}
+
+@test "the PR template has a visible Ref line after the Why comment, with a comment saying how to fill it in" {
+  run grep -c '^Ref #$' "${SRC}/templates/${FILE}"
+  [ "${output}" = "1" ]
+  grep -qx '<!-- Replace # with the issue number, or delete the Ref line if there is none. -->' "${SRC}/templates/${FILE}"
+  run grep -n 'Ref #\|The problem or goal' "${SRC}/templates/${FILE}"
+  [[ "${lines[0]}" == *"The problem or goal"* ]]
+  [[ "${lines[1]}" == *"Ref #"* ]]
+}

@@ -270,6 +270,8 @@ repos:
       - renovate
       - sonar
     files:
+      .github/ISSUE_TEMPLATE/infra.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/infra.yml"
       .github/workflows/ci.yaml:
         content:
           jobs:
