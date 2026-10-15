@@ -282,10 +282,14 @@
 
     // ============ Go toolchain ============
     {
-      description: "Proactively bump Go toolchain version in go.mod to latest patch (default rangeStrategy only updates when a dependency requires it)",
+      // megalinter-go runs with GOTOOLCHAIN=local, so a directive newer than its Go
+      // fails lint. Its Go bump waits 7 days, then a merge, a release, a pin bump and an Apply.
+      description: "Bump the go.mod go directive to each new Go minor's x.y.0 once megalinter-go has had time to ship it; patches never move it",
       matchManagers: ["gomod"],
       matchDepTypes: ["golang"],
-      rangeStrategy: "bump"
+      rangeStrategy: "bump",
+      allowedVersions: "/^[0-9]+\\.[0-9]+\\.0$/",
+      minimumReleaseAge: "30 days"
     },
 
     // ============ Custom regex ============
