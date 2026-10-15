@@ -346,6 +346,9 @@ groups:
               - actorId: 272440587 # spruyt-labs-bot: merges the CI uplift PRs (#696); remove when #696 closes
                 actorType: User
                 bypassMode: pull_request
+              - actorId: 3233443 # skynet-rw: opens the CI uplift PRs (#696); remove when #696 closes
+                actorType: Integration
+                bypassMode: pull_request
           conditions:
             refName:
               include:
