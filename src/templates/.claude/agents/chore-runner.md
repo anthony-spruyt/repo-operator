@@ -26,7 +26,7 @@ At most 150 words unless the brief sets another cap:
 
 Quote numbers, states and shas exactly as the tool returned them.
 
-Don't edit files, commit or push. Merge only when the brief says to, with `gh pr merge <n> --squash --repo <owner/repo>` (the only method the repos allow).
+Don't edit files, commit or push. Merge only when the brief says to, with `gh pr merge <n> --squash --repo <owner/repo>` (the only method the repos allow). If branch rules block it, don't retry or use `--admin`/`--auto`: report it, since Mergify's queue merges the PR itself.
 
 ## Agent Definition Feedback
 
