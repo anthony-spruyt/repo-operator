@@ -41,6 +41,7 @@ Load the `repo-operator` skill (source `src/templates/.claude/skills/repo-operat
   - `pr-rules` (`protected-main-branch`): one approval from someone who is neither the PR author nor the latest pusher; a real commit dismisses it, an "Update branch" keeps it. No CODEOWNERS.
   - `.mergify.yml` merge protections: `approval` (one approval on every PR, including repos without `pr-rules`), `outsider` (an author outside the trusted bot and owner list needs `anthony-spruyt`) and `gate-files` (`.github/`, `.mergify.yml`, root `renovate.json`, `renovate-overrides.json5` and `release-please-config.json`, `metadata.yaml` at any depth, and the repo's `gateFilesExtra` need
     `anthony-spruyt` unless the PR is pure Renovate or wholly the owner's). Mergify is in `pr-rules` `bypass_actors` (mode `exempt`) and enforces these protections.
+  - `pr-reviews`: a ruleset on `main` (group `dismiss-stale-approvals`) that dismisses approvals when new commits are pushed, for the repos in that group.
   - Approvals on Renovate PRs reset when new commits are pushed: a `.mergify.yml` pull request rule dismisses them, including in repos without `pr-rules`.
   - Mergify never approves a PR. Release PRs are ordinary PRs that merge once a collaborator approves them.
   - "Pure" means the bot opened the PR and every commit has that bot's author login and `<id>+<login>@users.noreply.github.com` email, committer `noreply@github.com` and a valid signature. Only GitHub's web-flow key signs that combination; a commit signed with any other key carries its signer's committer email.
