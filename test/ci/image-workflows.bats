@@ -76,6 +76,81 @@ setup() {
   [ "$output" = "\${{ inputs.language == 'go' && format('{0}/go.mod', inputs.workdir) || '' }}" ]
 }
 
+@test "build-image's Go build args leave GO_VERSION to the Dockerfile" {
+  local script work
+  script=$(yq -r '.runs.steps[] | select(.name == "Go build args") | .run' "$REPO_ROOT/.github/actions/build-image/action.yaml")
+  work="$BATS_TEST_TMPDIR/ctx"
+  mkdir -p "$work"
+  printf 'module example.com/m\n\ngo 1.27.1\n' >"$work/go.mod"
+  git -C "$work" init -q
+  git -C "$work" -c user.name=t -c user.email=t@example.com commit -q --allow-empty -m init
+  GITHUB_OUTPUT="$BATS_TEST_TMPDIR/out" VERSION=1.2.3 CONTEXT="$work" EXTRA_BUILD_ARGS="FOO=bar" run bash -c "$script"
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/out"
+  [[ "$output" != *GO_VERSION* ]]
+  [[ "$output" == *$'\nVERSION=v1.2.3\n'* ]]
+  [[ "$output" == *$'\nCOMMIT='* ]]
+  [[ "$output" == *$'\nFOO=bar\n'* ]]
+}
+
+@test "_build-image.yaml hands _go-test the image's Dockerfile, defaulting to the context's" {
+  run yq -r '.jobs["test-go"].with.dockerfile' "$WF/_build-image.yaml"
+  [ "$output" = "\${{ inputs.dockerfile || format('{0}/Dockerfile', inputs.context) }}" ]
+}
+
+@test "_go-test.yaml takes a dockerfile input, empty by default" {
+  run yq -o=json -I0 '.on.workflow_call.inputs.dockerfile | [.type, .required, .default]' "$WF/_go-test.yaml"
+  [ "$output" = '["string",false,""]' ]
+}
+
+@test "_go-test.yaml sets up Go from the resolved version, falling back to go.mod" {
+  run yq -o=json -I0 '.jobs.test.steps[] | select(.name == "Setup Go") | .with | [.["go-version"], .["go-version-file"]]' "$WF/_go-test.yaml"
+  [ "$output" = '["${{ steps.go.outputs.go-version }}","${{ steps.go.outputs.go-version-file }}"]' ]
+  run yq -r '.jobs.test.steps[] | select(.id == "go") | .["working-directory"]' "$WF/_go-test.yaml"
+  [ "$output" = "." ]
+}
+
+go_version_step() {
+  local script work="$BATS_TEST_TMPDIR/repo"
+  script=$(yq -r '.jobs.test.steps[] | select(.id == "go") | .run' "$WF/_go-test.yaml")
+  mkdir -p "$work"
+  (cd "$work" && GITHUB_OUTPUT="$BATS_TEST_TMPDIR/out" bash -c "$script")
+}
+
+@test "_go-test.yaml takes Go from the Dockerfile's ARG GO_VERSION" {
+  mkdir -p "$BATS_TEST_TMPDIR/repo/cmd/app"
+  printf '# renovate: depName=golang datasource=docker\nARG GO_VERSION=1.27.1\nFROM golang:${GO_VERSION}-alpine AS builder\n' >"$BATS_TEST_TMPDIR/repo/cmd/app/Dockerfile"
+  DOCKERFILE=cmd/app/Dockerfile WORKDIR=cmd/app run go_version_step
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/out"
+  [ "$output" = $'go-version=1.27.1\ngo-version-file=' ]
+}
+
+@test "_go-test.yaml falls back to go.mod when the Dockerfile has no ARG GO_VERSION" {
+  mkdir -p "$BATS_TEST_TMPDIR/repo"
+  printf 'FROM scratch\nCOPY plugin /plugin\n' >"$BATS_TEST_TMPDIR/repo/Dockerfile"
+  DOCKERFILE=Dockerfile WORKDIR=. run go_version_step
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/out"
+  [ "$output" = $'go-version=\ngo-version-file=./go.mod' ]
+}
+
+@test "_go-test.yaml falls back to go.mod when there is no Dockerfile or the ARG is not a version" {
+  DOCKERFILE=Dockerfile WORKDIR=svc run go_version_step
+  [ "$status" -eq 0 ]
+  run cat "$BATS_TEST_TMPDIR/out"
+  [ "$output" = $'go-version=\ngo-version-file=svc/go.mod' ]
+  rm "$BATS_TEST_TMPDIR/out"
+  printf 'ARG GO_VERSION\nARG GO_VERSION=${OTHER}\n' >"$BATS_TEST_TMPDIR/repo/Dockerfile"
+  DOCKERFILE=Dockerfile WORKDIR=svc run go_version_step
+  run cat "$BATS_TEST_TMPDIR/out"
+  [ "$output" = $'go-version=\ngo-version-file=svc/go.mod' ]
+  rm "$BATS_TEST_TMPDIR/out"
+  DOCKERFILE="" WORKDIR=svc run go_version_step
+  run cat "$BATS_TEST_TMPDIR/out"
+  [ "$output" = $'go-version=\ngo-version-file=svc/go.mod' ]
+}
+
 @test "_release-please.yaml runs only release-please and outputs what it released" {
   run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs // {} | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-please.yaml"
   [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]

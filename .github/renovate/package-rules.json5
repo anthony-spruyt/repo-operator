@@ -282,14 +282,11 @@
 
     // ============ Go toolchain ============
     {
-      // megalinter-go runs with GOTOOLCHAIN=local, so a directive newer than its Go
-      // fails lint. Its Go bump waits 7 days, then a merge, a release, a pin bump and an Apply.
-      description: "Bump the go.mod go directive to each new Go minor's x.y.0 once megalinter-go has had time to ship it; patches never move it",
+      // Image builds take Go from the Dockerfile's ARG GO_VERSION, which the golang image rules already bump
+      description: "Never update the go.mod go directive; it is a minimum language version, not the build toolchain",
       matchManagers: ["gomod"],
       matchDepTypes: ["golang"],
-      rangeStrategy: "bump",
-      allowedVersions: "/^[0-9]+\\.[0-9]+\\.0$/",
-      minimumReleaseAge: "30 days"
+      enabled: false
     },
 
     // ============ Custom regex ============

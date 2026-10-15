@@ -137,6 +137,7 @@ jobs:
     uses: $/.github/workflows/_go-test.yaml
     with:
       workdir: ${{ inputs.workdir }}
+      dockerfile: ${{ inputs.dockerfile || format('{0}/Dockerfile', inputs.context) }}
       egress: ${{ inputs.egress }}
 
   test-python:
