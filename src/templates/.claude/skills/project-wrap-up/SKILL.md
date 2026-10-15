@@ -3,7 +3,7 @@ name: project-wrap-up
 description: >-
   Wrap up a finished large workstream: write the blog post about it, then tidy up.
   Use when a large workstream has just finished, or the owner says wrap up the project or workstream.
-  Not for subagents, small fixes, work still in progress, or ending a session (wind down).
+  Not for subagents, small fixes, or work still in progress.
 ---
 
 # Project Wrap-Up
