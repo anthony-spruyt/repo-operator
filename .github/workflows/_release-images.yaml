@@ -131,6 +131,5 @@ jobs:
       python-test-paths: ${{ inputs.python-test-paths }}
       python-extra-commands: ${{ inputs.python-extra-commands }}
       egress: ${{ matrix.egress }}
-      egress-policy: ${{ matrix.egress-policy }}
     secrets:
       DOCKERHUB_TOKEN: ${{ secrets.DOCKERHUB_TOKEN }}
