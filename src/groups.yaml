@@ -116,6 +116,9 @@ groups:
             - actorId: 272440587 # spruyt-labs-bot
               actorType: User
               bypassMode: always
+            - actorId: 3233443 # skynet-rw
+              actorType: Integration
+              bypassMode: pull_request
             - actorId: 10562 # mergify: exempt per Mergify rulesets docs
               actorType: Integration
               bypassMode: exempt

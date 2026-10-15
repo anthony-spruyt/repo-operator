@@ -219,7 +219,7 @@ no_commit_matches() {
   run yq -o=json -I0 '.groups["dismiss-stale-approvals"].settings.rulesets["pr-reviews"] | [.enforcement, .conditions.refName.include, (.rules[] | select(.type == "pull_request") | .parameters)]' "$SRC/groups.yaml"
   [ "$output" = '["active",["refs/heads/main"],{"allowedMergeMethods":["squash"],"dismissStaleReviewsOnPush":true,"requireCodeOwnerReview":false,"requireExtraApprovalForUnattributedChanges":false,"requiredApprovingReviewCount":1,"requiredReviewers":[],"requiredReviewThreadResolution":false,"requireLastPushApproval":false}]' ]
   run yq -o=json -I0 '[.groups["dismiss-stale-approvals"].settings.rulesets["pr-reviews"].bypassActors[] | [.actorId, .actorType, .bypassMode]]' "$SRC/groups.yaml"
-  [ "$output" = '[[2758555,"Integration","always"],[99536297,"User","always"],[272440587,"User","always"],[10562,"Integration","exempt"]]' ]
+  [ "$output" = '[[2758555,"Integration","always"],[99536297,"User","always"],[272440587,"User","always"],[3233443,"Integration","pull_request"],[10562,"Integration","exempt"]]' ]
   run yq -r '.repos[] | select(.groups[] == "dismiss-stale-approvals") | .git' "$SRC/repos.yaml"
   [ "$output" = $'https://github.com/anthony-spruyt/esphome.git\nhttps://github.com/anthony-spruyt/spruyt-labs.git' ]
 }
