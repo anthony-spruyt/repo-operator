@@ -68,6 +68,16 @@ groups:
         content: "@templates/.claude/statusline.sh"
       .claude/xfg-managed.sh:
         content: "@templates/.claude/xfg-managed.sh"
+      .github/ISSUE_TEMPLATE/bug_report.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/bug_report.yml"
+      .github/ISSUE_TEMPLATE/chore.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/chore.yml"
+      .github/ISSUE_TEMPLATE/config.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/config.yml"
+      .github/ISSUE_TEMPLATE/docs.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/docs.yml"
+      .github/ISSUE_TEMPLATE/feature_request.yml:
+        content: "@templates/.github/ISSUE_TEMPLATE/feature_request.yml"
       .github/pull_request_template.md:
         content: "@templates/.github/pull_request_template.md"
       .pre-commit-config.yaml:

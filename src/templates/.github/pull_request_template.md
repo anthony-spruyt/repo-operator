@@ -3,7 +3,7 @@
 
 <!-- The problem or goal, in a sentence or two. -->
 
-Ref #
+<!-- Ref #<issue>, or delete if there is none. -->
 
 ## What changed
 
