@@ -10,15 +10,15 @@ usage() {
 
 since=""
 projects_dir="$HOME/.claude/projects"
-while [ $# -gt 0 ]; do
+while [[ $# -gt 0 ]]; do
   case "$1" in
   --since)
-    [ $# -ge 2 ] || usage
+    [[ $# -ge 2 ]] || usage
     since="$2"
     shift 2
     ;;
   --projects-dir)
-    [ $# -ge 2 ] || usage
+    [[ $# -ge 2 ]] || usage
     projects_dir="$2"
     shift 2
     ;;
@@ -26,11 +26,11 @@ while [ $# -gt 0 ]; do
   esac
 done
 
-if [ -n "$since" ] && ! [[ "$since" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
+if [[ -n "$since" ]] && ! [[ "$since" =~ ^[0-9]{4}-[0-9]{2}-[0-9]{2}$ ]]; then
   echo "retro.sh: --since must be YYYY-MM-DD" >&2
   exit 2
 fi
-if [ ! -d "$projects_dir" ]; then
+if [[ ! -d "$projects_dir" ]]; then
   echo "retro.sh: $projects_dir is not a directory" >&2
   exit 1
 fi
@@ -182,7 +182,7 @@ trap 'rm -f "$runs_file"' EXIT
 while IFS= read -r -d '' transcript; do
   meta_file=$(printf '%s' "$transcript" | sed 's/\.jsonl$/.meta.json/')
   meta='{"agent":"unknown","desc":""}'
-  if [ -f "$meta_file" ]; then
+  if [[ -f "$meta_file" ]]; then
     meta="$(jq -c '{agent: (.agentType // "unknown"), desc: (.description // "")}' "$meta_file" 2>/dev/null || echo "$meta")"
   fi
   jq -R -n -c --argjson meta "$meta" "$extract" "$transcript" >>"$runs_file" ||
