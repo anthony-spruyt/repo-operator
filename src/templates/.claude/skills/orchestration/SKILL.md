@@ -59,7 +59,7 @@ Definition of Ready, before approving, asking the owner to approve, or merging: 
 - Approve a PR yourself only when `gh pr view <n> --json author` shows one of these logins; all others, and PRs you or your helpers opened, go to the owner. These pass on:
   - `app/renovate`: CI green and the repo's Renovate triage skill, if it has one, returns SAFE; else ask the owner
   - `app/repo-operator-release-bot`: CI green and the diff touches only `.release-please-manifest.json`, `CHANGELOG.md`, the project's own `version` in `package.json`/`package-lock.json`/`pyproject.toml`/`uv.lock` (no dependency entries), and the one-line stamp in `megalinter-*/.rebuild-stamp` files
-- Once you approve one of these PRs, merge it yourself with `gh pr merge <n> --squash --repo <owner/repo>`; Mergify's queue is too slow to wait for
+- Once you approve one of these PRs, merge it with `gh pr merge <n> --squash --repo <owner/repo>`. Where branch rules block that, Mergify's queue merges it itself within minutes: let it, and read its `Mergify Merge Queue` check if it hasn't merged after 15 minutes.
 
 ## Improving this file
 
