@@ -13,7 +13,7 @@ set -euo pipefail
 
 # Pinned in repo-operator (src/groups.yaml, or src/repos.yaml for a per-repo flavor), where Renovate bumps it
 # shellcheck disable=SC2154
-MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-base:1.0.2@sha256:34ce26e2b682adb11d2ff2f5e73029452f8eff9eca24136f6956d0210667a057"
+MEGALINTER_IMAGE="ghcr.io/anthony-spruyt/megalinter-base:1.0.3@sha256:157057501d16c58a8a005668e24efa1186714b84dea6593f015eee24939b81b2"
 # "all" skips MegaLinter's flavor check, which rejects custom images
 MEGALINTER_FLAVOR="all"
 
