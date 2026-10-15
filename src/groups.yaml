@@ -1,5 +1,29 @@
 # yaml-language-server: $schema=https://raw.githubusercontent.com/anthony-spruyt/xfg/main/config-schema.json
 groups:
+  agent-kit:
+    files:
+      .claude/rules/orchestration.md:
+        content: "@templates/.claude/rules/orchestration.md"
+      .claude/rules/do-it-yourself.md:
+        content: "@templates/.claude/rules/do-it-yourself.md"
+      .claude/agents/builder.md:
+        content: "@templates/.claude/agents/builder.md"
+      .claude/agents/reviewer.md:
+        content: "@templates/.claude/agents/reviewer.md"
+      .claude/agents/chore-runner.md:
+        content: "@templates/.claude/agents/chore-runner.md"
+      .claude/skills/orchestration/SKILL.md:
+        content: "@templates/.claude/skills/orchestration/SKILL.md"
+      .claude/skills/interview/SKILL.md:
+        content: "@templates/.claude/skills/interview/SKILL.md"
+      .claude/skills/spec-review/SKILL.md:
+        content: "@templates/.claude/skills/spec-review/SKILL.md"
+      .claude/skills/spec-review/review-brief.md:
+        content: "@templates/.claude/skills/spec-review/review-brief.md"
+      .claude/skills/orchestration-retro/SKILL.md:
+        content: "@templates/.claude/skills/orchestration-retro/SKILL.md"
+      .claude/skills/orchestration-retro/retro.sh:
+        content: "@templates/.claude/skills/orchestration-retro/retro.sh"
   biome:
     files:
       biome.json:
@@ -622,6 +646,13 @@ conditionalGroups:
             $arrayMerge: append
             $values:
               - "TERRAFORM_TFLINT"
+  - when:
+      allOf: [claude, agent-kit]
+    files:
+      .claude/settings.json:
+        content:
+          enabledPlugins:
+            "agent-kit@aspruyt-plugins": true
   - when:
       allOf: [claude, terraform]
     files:

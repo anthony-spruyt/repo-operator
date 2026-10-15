@@ -1,0 +1,7 @@
+{"type":"user","isSidechain":true,"message":{"role":"user","content":"fake prompt"},"timestamp":"2026-03-11T09:00:00.000Z"}
+{"type":"attachment","timestamp":"2026-03-11T09:00:01.000Z"}
+{"type":"assistant","message":{"id":"msg_A","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"thinking","thinking":"fake"}],"usage":{"output_tokens":10}},"timestamp":"2026-03-11T09:00:02.000Z"}
+{"type":"assistant","message":{"id":"msg_A","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"tool_use","id":"toolu_1","name":"Bash","input":{"command":"echo SENTINEL_TOOL_INPUT"}}],"usage":{"output_tokens":100}},"timestamp":"2026-03-11T09:00:03.000Z"}
+{"type":"user","message":{"role":"user","content":[{"type":"tool_result","tool_use_id":"toolu_1","content":"SENTINEL_TOOL_RESULT"}]},"timestamp":"2026-03-11T09:00:04.000Z"}
+{"type":"assistant","message":{"id":"msg_S","model":"<synthetic>","role":"assistant","content":[{"type":"text","text":"synthetic"}],"usage":{"output_tokens":0}},"timestamp":"2026-03-11T09:00:05.000Z"}
+{"type":"assistant","message":{"id":"msg_B","model":"claude-sonnet-5-5","role":"assistant","content":[{"type":"text","text":"Done.\n\n### Agent Definition Feedback\n\nNone"}],"stop_reason":"end_turn","usage":{"output_tokens":50}},"timestamp":"2026-03-11T09:00:06.000Z"}
