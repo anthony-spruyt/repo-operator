@@ -68,6 +68,8 @@ groups:
         content: "@templates/.claude/statusline.sh"
       .claude/xfg-managed.sh:
         content: "@templates/.claude/xfg-managed.sh"
+      .github/pull_request_template.md:
+        content: "@templates/.github/pull_request_template.md"
       .pre-commit-config.yaml:
         content:
           repos:
