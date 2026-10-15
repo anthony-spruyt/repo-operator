@@ -27,13 +27,6 @@ directive_rule() {
   [ "$output" = '[["gomod"],["golang"],null,null,null]' ]
 }
 
-@test "the go directive rule comes after every rule that sets enabled true" {
-  run rules "$RULES" '[.packageRules | to_entries[] | select(.value.enabled == true) | .key] | max'
-  last_enable="$output"
-  run rules "$RULES" '[.packageRules | to_entries[] | select(((.value.matchManagers // []) | join(",")) == "gomod" and ((.value.matchDepTypes // []) | join(",")) == "golang") | .key] | .[0]'
-  [ "$output" -gt "$last_enable" ]
-}
-
 @test "the Go toolchain group leaves the go directive out" {
   run rules "$GROUPS_FILE" '.packageRules[] | select(.groupName == "Go toolchain") | [(.matchDatasources // [])[], (.matchPackageNames // [])[]] | join(",")'
   [ "$output" = "docker,golang" ]

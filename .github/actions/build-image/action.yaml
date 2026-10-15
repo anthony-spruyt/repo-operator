@@ -40,8 +40,9 @@ inputs:
     default: ""
   go-mod:
     description: >-
-      Path to a go.mod. When set, adds VERSION (v<version>, or v0.0.0-ci) and
-      COMMIT (checked-out HEAD) build args; the Dockerfile's ARG GO_VERSION sets the Go version
+      Set for a Go image (the value is not read). Adds VERSION (v<version>, or
+      v0.0.0-ci) and COMMIT (checked-out HEAD) build args; the Dockerfile's ARG
+      GO_VERSION sets the Go version
     required: false
     default: ""
   dockerhub-namespace:
