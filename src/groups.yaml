@@ -102,6 +102,42 @@ groups:
                 $arrayMerge: append
                 $values:
                   - "ms-dotnettools.csdevkit"
+  dismiss-stale-approvals:
+    settings:
+      rulesets:
+        pr-reviews:
+          bypassActors:
+            - actorId: 2758555 # repo-operator
+              actorType: Integration
+              bypassMode: always
+            - actorId: 99536297 # anthony-spruyt
+              actorType: User
+              bypassMode: always
+            - actorId: 272440587 # spruyt-labs-bot
+              actorType: User
+              bypassMode: always
+            - actorId: 10562 # mergify: exempt per Mergify rulesets docs
+              actorType: Integration
+              bypassMode: exempt
+          conditions:
+            refName:
+              include:
+                - "refs/heads/main"
+              exclude: []
+          enforcement: active
+          rules:
+            - type: pull_request
+              parameters:
+                allowedMergeMethods:
+                  - squash
+                dismissStaleReviewsOnPush: true
+                requireCodeOwnerReview: false
+                requireExtraApprovalForUnattributedChanges: false
+                requiredApprovingReviewCount: 1
+                requiredReviewers: []
+                requiredReviewThreadResolution: false
+                requireLastPushApproval: false
+          target: branch
   dockerhub:
     settings:
       environments:

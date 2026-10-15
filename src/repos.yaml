@@ -127,6 +127,7 @@ repos:
       - claude
       - agent-kit
       - mcp
+      - dismiss-stale-approvals
       - megalinter-flavor
       - mergify
       - renovate
@@ -258,6 +259,7 @@ repos:
       - claude
       - agent-kit
       - mcp
+      - dismiss-stale-approvals
       - github-ci
       - github-trivy
       - megalinter
