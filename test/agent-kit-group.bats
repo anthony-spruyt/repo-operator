@@ -31,8 +31,14 @@ SRC="${BATS_TEST_DIRNAME}/../src"
   done <<<"${output}"
 }
 
-@test "retro.sh has no brace-dollar reference, which xfg would substitute on sync" {
-  # shellcheck disable=SC2016
-  run grep -c '[^$]\${' "${SRC}/templates/.claude/skills/orchestration-retro/retro.sh"
-  [ "${output}" = "0" ]
+@test "no template the agent-kit group syncs has a brace-dollar reference, which xfg would substitute on sync" {
+  run yq -r '.groups.agent-kit.files[].content | sub("^@", "")' "${SRC}/groups.yaml"
+  [ "${status}" -eq 0 ]
+  [ -n "${output}" ]
+  templates="${output}"
+  while IFS= read -r path; do
+    # shellcheck disable=SC2016
+    run grep -c '[^$]\${' "${SRC}/${path}"
+    [ "${output}" = "0" ]
+  done <<<"${templates}"
 }

@@ -60,7 +60,7 @@ Mode: full (<lens or all>) / fix-check (<fix range>)
 2. [MINOR] file:line - problem - exact fix
 ```
 
-READY needs every gate passing (n/a only with no PR), no BLOCKER or MAJOR finding, and in fix-check every prior BLOCKER and MAJOR fixed. Report security findings only to the caller; follow `.claude/rules/public-repos.md` for anything posted publicly.
+READY needs every gate passing (n/a only with no PR, or for a gate the repo doesn't have), no BLOCKER or MAJOR finding, and in fix-check every prior BLOCKER and MAJOR fixed. Report security findings only to the caller; follow `.claude/rules/public-repos.md` for anything posted publicly.
 
 Don't edit, commit, push, approve or merge. Report what you could not verify as unverified, never as passing.
 
