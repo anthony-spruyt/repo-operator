@@ -58,7 +58,7 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
-- `egress`: `host:port` endpoints the image's tests, build and publish reach besides the shared lists (see [Egress](#egress)), such as `deb.debian.org:80` or `"*.example.com:443"`. Setting it, even to `[]`, moves those jobs from harden-runner `audit` to `block`
+- `egress`: `host:port` endpoints the image's tests, build and publish reach besides the shared lists (see [Egress](#egress)), such as `deb.debian.org:80` or `"*.example.com:443"`. Those jobs always run harden-runner with `egress-policy: block`, so an image with no `egress` gets only the shared lists.
 
 `prepare-command` and `test-command` run as shell on the runner only in `_build-image.yaml`'s `build` job, which has `contents: read` and no environment, for pull requests and releases alike. On a release it packs the prepared `context` as a tar artifact; `publish` waits for `build`, restores that tar (plain files and directories only) and builds and pushes from it without running either command.
 
@@ -84,8 +84,8 @@ Other release types count only their changelog and `extra-files`, so their relea
 - `releases`: `released` mode only, the release-please-action outputs as JSON (`toJSON(steps.<id>.outputs)`)
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
-The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none), `workdir`, `egress` (space-separated) and `egress-policy` (`block` when `metadata.yaml` sets `egress`, else
-`audit`), with the defaults filled in. In `released` mode each entry also holds `version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
+The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none), `workdir` and `egress` (space-separated), with the defaults filled in. In `released` mode each entry also holds
+`version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
 
 `released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` or `flavor.yaml` is not an image and is left out.
 
@@ -146,8 +146,7 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 - `dockerhub-namespace`, `dockerhub-username`
 - `python-version`, `python-groups`, `python-extras`, `python-test-paths`, `python-extra-commands`
 
-`_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags`, `egress` and `egress-policy`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`. `_go-test.yaml` and `_python-uv-test.yaml` take `egress`
-and `egress-policy` too.
+`_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags` and `egress`, and for publishing `push`, `version`, `tag-name` and `tag-prefix`. `_go-test.yaml` and `_python-uv-test.yaml` take `egress` too.
 
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
@@ -174,7 +173,7 @@ The `megalinter` allowlist comes from egress logged across all repos: GitHub, GH
 
 Shared jobs run harden-runner with `egress-policy: block` and their own allowlist, built from the egress logged across all repos. A job that reaches a host off its list fails, so a new download needs its host added. `test/ci/harden-runner.bats` keeps every job on `block` but the ones it lists.
 
-An image's jobs (its Go, Python or Node tests, `build` and `publish`) take the policy and extra hosts from its `metadata.yaml` `egress`. Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
+An image's jobs (its Go, Python or Node tests, `build` and `publish`) block too, and add the extra hosts from its `metadata.yaml` `egress`. Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
 the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so prove a new list with a build that misses the cache.
 
 ### Images

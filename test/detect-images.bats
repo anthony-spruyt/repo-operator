@@ -84,7 +84,7 @@ released() {
   [ "$status" -eq 0 ]
   [ "$(images)" = "sungather" ]
   [ "$(output_value has-images)" = "true" ]
-  [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":".","egress":"","egress-policy":"audit"}' ]
+  [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":".","egress":""}' ]
 }
 
 @test "single-image repo: REPO_NAME overrides the repository name" {
@@ -283,7 +283,7 @@ released() {
   use_layout container-images
   MODE=all detect
   [ "$status" -eq 0 ]
-  [ "$(image_entry chrony)" = '{"name":"chrony","path":"chrony","context":"chrony","dockerfile":"chrony/Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":"chrony","egress":"","egress-policy":"audit"}' ]
+  [ "$(image_entry chrony)" = '{"name":"chrony","path":"chrony","context":"chrony","dockerfile":"chrony/Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":"chrony","egress":""}' ]
 }
 
 @test "spruyt-labs: lists nested packages and the Go service" {
@@ -788,15 +788,15 @@ edit_config() {
   [[ "$stderr" == *"::error::ts/agent-queue-worker/metadata.yaml: free-disk must be true or false"* ]]
 }
 
-@test "metadata.yaml: egress blocks the image's jobs to its hosts, and its absence leaves them in audit" {
+@test "metadata.yaml: egress lists the image's extra hosts, space-joined" {
   use_layout spruyt-labs
   printf 'egress:\n  - deb.debian.org:80\n  - "*.example.com:443"\n' >"$REPO/ts/agent-queue-worker/metadata.yaml"
   printf 'egress: []\n' >"$REPO/cmd/shutdown-orchestrator/metadata.yaml"
   MODE=all detect
   [ "$status" -eq 0 ]
-  [ "$(image_entry agent-queue-worker | jq -c '[.egress, ."egress-policy"]')" = '["deb.debian.org:80 *.example.com:443","block"]' ]
-  [ "$(image_entry shutdown-orchestrator | jq -c '[.egress, ."egress-policy"]')" = '["","block"]' ]
-  [ "$(image_entry bull-board | jq -c '[.egress, ."egress-policy"]')" = '["","audit"]' ]
+  [ "$(image_entry agent-queue-worker | jq -c '[.egress, has("egress-policy")]')" = '["deb.debian.org:80 *.example.com:443",false]' ]
+  [ "$(image_entry shutdown-orchestrator | jq -c '[.egress, has("egress-policy")]')" = '["",false]' ]
+  [ "$(image_entry bull-board | jq -c '[.egress, has("egress-policy")]')" = '["",false]' ]
 }
 
 @test "metadata.yaml: egress must be a list of host:port endpoints" {

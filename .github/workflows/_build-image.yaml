@@ -118,11 +118,6 @@ on:
         required: false
         type: string
         default: ""
-      egress-policy:
-        description: harden-runner egress-policy, block once the image's metadata.yaml lists its egress
-        required: false
-        type: string
-        default: audit
     secrets:
       DOCKERHUB_TOKEN:
         required: false
@@ -143,7 +138,6 @@ jobs:
     with:
       workdir: ${{ inputs.workdir }}
       egress: ${{ inputs.egress }}
-      egress-policy: ${{ inputs.egress-policy }}
 
   test-python:
     name: Test
@@ -157,7 +151,6 @@ jobs:
       test-paths: ${{ inputs.python-test-paths }}
       extra-commands: ${{ inputs.python-extra-commands }}
       egress: ${{ inputs.egress }}
-      egress-policy: ${{ inputs.egress-policy }}
 
   test-node:
     name: Test
@@ -170,7 +163,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: ${{ inputs.egress-policy }}
+          egress-policy: block
           allowed-endpoints: >-
             api.github.com:443
             github.com:443
@@ -230,7 +223,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: ${{ inputs.egress-policy }}
+          egress-policy: block
           allowed-endpoints: >-
             api.github.com:443
             auth.docker.io:443
@@ -336,7 +329,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: ${{ inputs.egress-policy }}
+          egress-policy: block
           allowed-endpoints: >-
             api.github.com:443
             auth.docker.io:443

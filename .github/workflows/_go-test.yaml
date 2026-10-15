@@ -15,11 +15,6 @@ on:
         required: false
         type: string
         default: ""
-      egress-policy:
-        description: harden-runner egress-policy, block once the image's metadata.yaml lists its egress
-        required: false
-        type: string
-        default: audit
 
 permissions:
   contents: read
@@ -35,7 +30,7 @@ jobs:
       - name: Harden Runner
         uses: step-security/harden-runner@ccd8616d44fd3846e67624a50d5aad6d37bf2d25 # v2.22.1
         with:
-          egress-policy: ${{ inputs.egress-policy }}
+          egress-policy: block
           allowed-endpoints: >-
             api.github.com:443
             dl.google.com:443
