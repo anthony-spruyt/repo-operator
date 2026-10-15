@@ -4,6 +4,7 @@ repos:
   - git: https://github.com/anthony-spruyt/agent-platform.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -22,6 +23,7 @@ repos:
   - git: https://github.com/anthony-spruyt/blog.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -38,6 +40,7 @@ repos:
   - git: https://github.com/anthony-spruyt/Chromance.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - megalinter
@@ -67,6 +70,7 @@ repos:
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -82,6 +86,7 @@ repos:
   - git: https://github.com/anthony-spruyt/container-images.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -119,6 +124,7 @@ repos:
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - megalinter-flavor
       - mergify
@@ -142,6 +148,7 @@ repos:
   - git: https://github.com/anthony-spruyt/kata-tap-qdisc-fix.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -158,6 +165,7 @@ repos:
   - git: https://github.com/anthony-spruyt/litellm-middleware.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -188,6 +196,7 @@ repos:
   - git: https://github.com/anthony-spruyt/mcp-header-proxy.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -204,6 +213,7 @@ repos:
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -245,6 +255,7 @@ repos:
   - git: https://github.com/anthony-spruyt/spruyt-labs.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -368,6 +379,7 @@ repos:
   - git: https://github.com/anthony-spruyt/SunGather.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -403,6 +415,7 @@ repos:
   - git: https://github.com/anthony-spruyt/traefik-api-key-auth.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
@@ -452,6 +465,7 @@ repos:
   - git: https://github.com/anthony-spruyt/xfg.git
     groups:
       - claude
+      - agent-kit
       - mcp
       - github-ci
       - github-trivy
