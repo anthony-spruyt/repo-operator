@@ -213,10 +213,12 @@
       }
     },
     {
-      description: "Go toolchain (go.mod directive + Dockerfile builder image stay in sync)",
+      // The go.mod go directive stays out: it is a minimum version, which any
+      // newer builder image builds, and it follows its own slower rule.
+      description: "Go toolchain (golang images: Dockerfile builders and the megalinter-go base)",
       groupName: "Go toolchain",
-      matchPackageNames: ["golang", "go"],
-      matchDatasources: ["docker", "golang-version"],
+      matchPackageNames: ["golang"],
+      matchDatasources: ["docker"],
       group: {
         commitMessageTopic: "{{{groupName}}}",
         branchTopic: "{{{groupName}}}-{{{newVersion}}}"
