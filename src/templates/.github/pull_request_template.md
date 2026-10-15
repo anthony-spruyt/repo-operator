@@ -3,7 +3,7 @@
 
 <!-- The problem or goal, in a sentence or two. -->
 
-<!-- Replace with the issue number, or delete this line if there is none. -->
+<!-- Replace # with the issue number, or delete the Ref line if there is none. -->
 Ref #
 
 ## What changed

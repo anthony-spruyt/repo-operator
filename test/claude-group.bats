@@ -80,9 +80,12 @@ GENERIC="bug_report feature_request chore docs"
 @test "the issue forms carry no homelab-only or public-repo-unsafe wording" {
   [ -f "${SRC}/templates/${FORMS_DIR}/bug_report.yml" ]
   # shellcheck disable=SC2016
-  run bash -c 'grep -rniE "risk level|security|talos|ceph|k8s|kubectl|cluster" "$@" | grep -v "\](\.\./security/advisories/new)"' _ \
-    "${SRC}/templates/${FORMS_DIR}"/{bug_report,feature_request,chore,docs,config}.yml
-  [ "${status}" -eq 1 ]
+  for form in ${FORMS}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run bash -c 'sed "s#](\.\./security/advisories/new)##" "$1" | grep -niE "risk level|security|talos|ceph|k8s|kubectl|cluster"' _ "${f}"
+    [ "${status}" -eq 1 ]
+  done
 }
 
 @test "the bug form sends vulnerability reports to the private advisory form" {
@@ -90,14 +93,16 @@ GENERIC="bug_report feature_request chore docs"
   [[ "${output}" == *"](../security/advisories/new)"* ]]
 }
 
-@test "the generic forms use no dropdowns" {
-  for form in ${GENERIC}; do
-    run yq -r '[.body[] | select(.type == "dropdown")] | length' "${SRC}/templates/${FORMS_DIR}/${form}.yml"
+@test "every form uses no dropdowns" {
+  for form in ${TITLED}; do
+    f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
+    [ -f "${f}" ]
+    run yq -r '[.body[] | select(.type == "dropdown")] | length' "${f}"
     [ "${output}" = "0" ]
   done
 }
 
-@test "each generic form has exactly its expected fields" {
+@test "each form has exactly its expected fields" {
   for form in feature_request chore docs; do
     run yq -r '[.body[] | select(.type != "markdown") | .id] | join(",")' "${SRC}/templates/${FORMS_DIR}/${form}.yml"
     [ "${output}" = "why,what,done-when" ]
@@ -111,6 +116,13 @@ GENERIC="bug_report feature_request chore docs"
   [ "${output}" = "what-happened,logs,done-when" ]
   run yq -r '[.body[] | select(.validations.required == true) | .id] | join(",")' "${f}"
   [ "${output}" = "what-happened" ]
+  f="${SRC}/templates/${FORMS_DIR}/infra.yml"
+  run yq -r '[.body[] | select(.type != "markdown") | .id] | join(",")' "${f}"
+  [ "${output}" = "why,what,rollback,done-when" ]
+  run yq -r '[.body[] | select(.type != "markdown") | .type] | join(",")' "${f}"
+  [ "${output}" = "textarea,textarea,textarea,textarea" ]
+  run yq -r '[.body[] | select(.validations.required == true) | .id] | join(",")' "${f}"
+  [ "${output}" = "why,what,rollback" ]
 }
 
 @test "every form field has an id and no id repeats within a form" {
@@ -124,15 +136,14 @@ GENERIC="bug_report feature_request chore docs"
   done
 }
 
-@test "every form that asks for logs tells the reporter to leave out secrets, IPs and domains" {
+@test "every form opens with the line telling the reporter to leave out secrets, IPs and domains" {
   for form in ${TITLED}; do
     f="${SRC}/templates/${FORMS_DIR}/${form}.yml"
     [ -f "${f}" ]
-    if grep -qi 'logs' "${f}"; then
-      grep -qi 'secrets' "${f}"
-      grep -qi 'IPs' "${f}"
-      grep -qi 'domains' "${f}"
-    fi
+    run yq -r '.body[0].type' "${f}"
+    [ "${output}" = "markdown" ]
+    run yq -r '.body[0].attributes.value' "${f}"
+    [[ "${output}" == "Leave out secrets, IPs, CIDRs, hostnames and domains."* ]]
   done
 }
 
@@ -151,7 +162,7 @@ GENERIC="bug_report feature_request chore docs"
 @test "the PR template has a visible Ref line after the Why comment, with a comment saying how to fill it in" {
   run grep -c '^Ref #$' "${SRC}/templates/${FILE}"
   [ "${output}" = "1" ]
-  grep -qx '<!-- Replace with the issue number, or delete this line if there is none. -->' "${SRC}/templates/${FILE}"
+  grep -qx '<!-- Replace # with the issue number, or delete the Ref line if there is none. -->' "${SRC}/templates/${FILE}"
   run grep -n 'Ref #\|The problem or goal' "${SRC}/templates/${FILE}"
   [[ "${lines[0]}" == *"The problem or goal"* ]]
   [[ "${lines[1]}" == *"Ref #"* ]]

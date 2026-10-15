@@ -5,103 +5,36 @@ labels: ["infra"]
 body:
   - type: markdown
     attributes:
-      value: |
-        ## Infrastructure Task
-
-        Use this template for infrastructure work: Talos configs, Terraform, networking, storage, node changes.
-        **Warning:** Infrastructure changes may require rollback planning.
-        Leave out secrets, IPs, CIDRs, hostnames and domains: this repo is public.
+      value: Leave out secrets, IPs, CIDRs, hostnames and domains.
 
   - type: textarea
-    id: summary
+    id: why
     attributes:
-      label: Summary
-      description: What infrastructure work is needed?
-      placeholder: Brief description of the infrastructure change
+      label: Why
+      description: The problem or goal.
     validations:
       required: true
 
   - type: textarea
-    id: motivation
+    id: what
     attributes:
-      label: Motivation
-      description: Why is this infrastructure change needed?
-      placeholder: What problem does this solve? What improvement does it bring?
-    validations:
-      required: true
-
-  - type: dropdown
-    id: type
-    attributes:
-      label: Infrastructure Type
-      description: What kind of infrastructure is affected?
-      options:
-        - Talos (machine configs, upgrades)
-        - Terraform (cloud resources)
-        - Networking (Cilium, DNS, load balancer)
-        - Storage (Rook/Ceph, PVCs)
-        - Nodes (add/remove/reboot)
-        - Certificates (cert-manager, PKI)
-        - Other
-    validations:
-      required: true
-
-  - type: textarea
-    id: affected-nodes
-    attributes:
-      label: Affected Nodes
-      description: Which nodes are affected? (if applicable)
-      placeholder: |
-        - All nodes
-        - Control plane only
-        - Worker nodes only
-        - Specific: node1, node2
-    validations:
-      required: false
-
-  - type: textarea
-    id: changes
-    attributes:
-      label: Planned Changes
-      description: What specific changes will be made?
-      placeholder: |
-        - [ ] Change 1
-        - [ ] Change 2
-        - [ ] Change 3
+      label: What
+      description: The change, which nodes or components it touches, and the steps.
     validations:
       required: true
 
   - type: textarea
     id: rollback
     attributes:
-      label: Rollback Plan
-      description: How to revert if something goes wrong?
-      placeholder: |
-        1. Revert commit
-        2. Run talosctl reset (if needed)
-        3. Restore from backup
+      label: Rollback
+      description: How to undo it.
     validations:
       required: true
 
   - type: textarea
-    id: validation
+    id: done-when
     attributes:
-      label: Validation Steps
-      description: How to verify the change worked?
-      placeholder: |
-        - [ ] kubectl get nodes
-        - [ ] talosctl health
-        - [ ] Check pod status
-    validations:
-      required: true
-
-  - type: textarea
-    id: related
-    attributes:
-      label: Related Issues/PRs
-      description: Link any related issues or PRs
-      placeholder: |
-        - #123
-        - #456
+      label: Done when
+      description: How we will check it worked.
     validations:
       required: false
