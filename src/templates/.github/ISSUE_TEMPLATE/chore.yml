@@ -5,99 +5,28 @@ labels: ["chore"]
 body:
   - type: markdown
     attributes:
-      value: |
-        ## Chore / Maintenance Task
-
-        Use this template for maintenance work that doesn't add features or fix bugs.
-        Examples: refactoring, dependency updates, configuration changes, cleanup.
+      value: Leave out secrets, IPs, CIDRs, hostnames and domains.
 
   - type: textarea
-    id: summary
+    id: why
     attributes:
-      label: Summary
-      description: What maintenance work is needed?
-      placeholder: Brief description of the task
+      label: Why
+      description: The problem or goal.
     validations:
       required: true
 
   - type: textarea
-    id: motivation
+    id: what
     attributes:
-      label: Motivation
-      description: Why is this maintenance needed?
-      placeholder: What problem does this solve? What improvement does it bring?
-    validations:
-      required: true
-
-  - type: dropdown
-    id: type
-    attributes:
-      label: Chore Type
-      description: What kind of maintenance is this?
-      options:
-        - Refactoring
-        - Configuration change
-        - Dependency update
-        - Cleanup/removal
-        - CI/CD
-        - Other
-    validations:
-      required: true
-
-  - type: dropdown
-    id: scope
-    attributes:
-      label: Affected Area
-      description: What part of the repo does this affect?
-      options:
-        - Source code
-        - Configuration
-        - Tooling (scripts, task runners)
-        - Documentation
-        - CI/CD (.github/)
-        - Other
+      label: What
+      description: What should change.
     validations:
       required: true
 
   - type: textarea
-    id: files
+    id: done-when
     attributes:
-      label: Files Affected
-      description: Which files or directories will be changed?
-      placeholder: |
-        - src/
-        - .github/workflows/
-    validations:
-      required: false
-
-  - type: textarea
-    id: checklist
-    attributes:
-      label: Task Checklist
-      description: Break down the work into steps
-      placeholder: |
-        - [ ] Step 1
-        - [ ] Step 2
-        - [ ] Step 3
-    validations:
-      required: false
-
-  - type: textarea
-    id: risks
-    attributes:
-      label: Considerations
-      description: Anything to watch out for?
-      placeholder: Describe any considerations
-    validations:
-      required: false
-
-  - type: textarea
-    id: related
-    attributes:
-      label: Related Issues/PRs
-      description: Link any related issues or PRs
-      placeholder: |
-        - #123
-        - #456
+      label: Done when
+      description: How we will know it is done.
     validations:
       required: false

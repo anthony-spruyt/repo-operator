@@ -5,84 +5,28 @@ labels: ["enhancement"]
 body:
   - type: markdown
     attributes:
-      value: |
-        ## Feature Request
-
-        Use this template to propose new features or enhancements.
-        Please fill out all required fields.
+      value: Leave out secrets, IPs, CIDRs, hostnames and domains.
 
   - type: textarea
-    id: summary
+    id: why
     attributes:
-      label: Summary
-      description: Brief description of the feature
-      placeholder: What do you want to add or change?
+      label: Why
+      description: The problem or goal.
     validations:
       required: true
 
   - type: textarea
-    id: motivation
+    id: what
     attributes:
-      label: Motivation
-      description: Why is this feature needed?
-      placeholder: What problem does this solve? What use case does it enable?
+      label: What
+      description: What should change.
     validations:
       required: true
 
   - type: textarea
-    id: acceptance-criteria
+    id: done-when
     attributes:
-      label: Acceptance Criteria
-      description: How will we know this feature is complete?
-      placeholder: |
-        - [ ] Criterion 1
-        - [ ] Criterion 2
-        - [ ] Criterion 3
-    validations:
-      required: true
-
-  - type: dropdown
-    id: scope
-    attributes:
-      label: Affected Area
-      description: What part of the repo does this affect?
-      options:
-        - Source code
-        - Configuration
-        - Tooling (scripts, task runners)
-        - Documentation
-        - CI/CD (.github/)
-        - Other
-    validations:
-      required: true
-
-  - type: textarea
-    id: implementation-notes
-    attributes:
-      label: Implementation Notes
-      description: Any technical details, constraints, or suggestions
-      placeholder: Optional notes about implementation approach
-    validations:
-      required: false
-
-  - type: textarea
-    id: testing
-    attributes:
-      label: Testing Plan
-      description: How should this feature be tested?
-      placeholder: |
-        - [ ] Test case 1
-        - [ ] Test case 2
-    validations:
-      required: false
-
-  - type: textarea
-    id: related
-    attributes:
-      label: Related Issues/PRs
-      description: Link any related issues or PRs
-      placeholder: |
-        - #123
-        - #456
+      label: Done when
+      description: How we will know it is done.
     validations:
       required: false

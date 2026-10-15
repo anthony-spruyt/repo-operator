@@ -6,95 +6,30 @@ body:
   - type: markdown
     attributes:
       value: |
-        ## Bug Report
-
-        Use this template to report bugs or issues.
-        Please provide as much detail as possible.
-        Leave out secrets, IPs, CIDRs, hostnames and domains: this repo is public.
+        Leave out secrets, IPs, CIDRs, hostnames and domains.
+        Report vulnerabilities privately through the [advisory form](../security/advisories/new), not here.
 
   - type: textarea
-    id: description
+    id: what-happened
     attributes:
-      label: Description
-      description: What's broken?
-      placeholder: Brief description of the bug
+      label: What happened
+      description: Steps, expected result, actual result.
     validations:
       required: true
 
   - type: textarea
-    id: expected
+    id: logs
     attributes:
-      label: Expected Behavior
-      description: What should happen?
-      placeholder: Describe the expected behavior
-    validations:
-      required: true
-
-  - type: textarea
-    id: actual
-    attributes:
-      label: Actual Behavior
-      description: What actually happens?
-      placeholder: Describe what you observed
-    validations:
-      required: true
-
-  - type: textarea
-    id: reproduction
-    attributes:
-      label: Steps to Reproduce
-      description: How can we reproduce this issue?
-      placeholder: |
-        1. Step one
-        2. Step two
-        3. Step three
-    validations:
-      required: true
-
-  - type: dropdown
-    id: scope
-    attributes:
-      label: Affected Area
-      description: What part of the repo is affected?
-      options:
-        - Source code
-        - Configuration
-        - Tooling (scripts, task runners)
-        - Documentation
-        - CI/CD (.github/)
-        - Other
-    validations:
-      required: true
-
-  - type: textarea
-    id: evidence
-    attributes:
-      label: Logs/Evidence
-      description: Relevant logs, error messages, or screenshots. Leave out secrets, IPs, CIDRs, hostnames and domains.
-      placeholder: |
-        ```
-        Paste logs here (no secrets, IPs, CIDRs, hostnames or domains!)
-        ```
+      label: Logs or evidence
+      description: Relevant logs or errors, with secrets, IPs, CIDRs, hostnames and domains removed.
       render: shell
     validations:
       required: false
 
   - type: textarea
-    id: workaround
+    id: done-when
     attributes:
-      label: Workaround
-      description: Is there a temporary workaround?
-      placeholder: Describe any workaround you've found
-    validations:
-      required: false
-
-  - type: textarea
-    id: related
-    attributes:
-      label: Related Issues/PRs
-      description: Link any related issues or PRs
-      placeholder: |
-        - #123
-        - #456
+      label: Done when
+      description: How we will know it is fixed.
     validations:
       required: false
