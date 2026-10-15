@@ -1,11 +1,11 @@
 #!/usr/bin/env bats
 #
-# The agent-kit group ships the orchestration kit and turns the agent-kit plugin on only in repos that have it.
+# The agent-kit group ships the orchestration kit and adds the agent-kit plugin entry only in repos that have it.
 
 SRC="${BATS_TEST_DIRNAME}/../src"
 
-@test "the claude settings template leaves the agent-kit plugin off" {
-  run yq -r '.enabledPlugins["agent-kit@aspruyt-plugins"]' "${SRC}/templates/.claude/settings.json"
+@test "the claude settings template has no agent-kit plugin entry" {
+  run jq -r '.enabledPlugins | has("agent-kit@aspruyt-plugins")' "${SRC}/templates/.claude/settings.json"
   [ "${status}" -eq 0 ]
   [ "${output}" = "false" ]
 }
