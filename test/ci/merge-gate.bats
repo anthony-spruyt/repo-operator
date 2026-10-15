@@ -118,7 +118,7 @@ no_commit_matches() {
 }
 
 @test "image metadata and the release-please config are gate files everywhere" {
-  for repo in container-images mcp-header-proxy claude-plugins SunGather xfg repo-operator traefik-api-key-auth spruyt-labs litellm-middleware agent-platform kata-tap-qdisc-fix; do
+  for repo in container-images mcp-header-proxy claude-plugins SunGather xfg repo-operator traefik-api-key-auth spruyt-labs litellm-middleware agent-platform kata-tap-qdisc-fix blog; do
     gated "$repo" "metadata.yaml"
     gated "$repo" "chrony/metadata.yaml"
     gated "$repo" "cmd/shutdown-orchestrator/metadata.yaml"

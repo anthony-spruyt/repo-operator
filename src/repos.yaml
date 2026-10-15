@@ -19,6 +19,23 @@ repos:
       repo:
         description: "Temporal workers and webhook intake for homelab agents, in .NET."
 
+  - git: https://github.com/anthony-spruyt/blog.git
+    groups:
+      - claude
+      - mcp
+      - github-ci
+      - github-trivy
+      - megalinter
+      - megalinter-flavor
+      - protected-main-branch
+      - image
+      - mergify
+      - renovate
+      - sonar
+    settings:
+      repo:
+        description: "Blog: build write-ups from the homelab."
+
   - git: https://github.com/anthony-spruyt/Chromance.git
     groups:
       - claude
