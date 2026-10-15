@@ -213,8 +213,7 @@
       }
     },
     {
-      // The go.mod go directive stays out: it is a minimum version, which any
-      // newer builder image builds, and it follows its own slower rule.
+      // The go.mod go directive is disabled in package-rules.json5; builders take Go from the Dockerfile ARG.
       description: "Go toolchain (golang images: Dockerfile builders and the megalinter-go base)",
       groupName: "Go toolchain",
       matchPackageNames: ["golang"],
