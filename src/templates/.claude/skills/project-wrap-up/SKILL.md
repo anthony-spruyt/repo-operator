@@ -26,9 +26,9 @@ Three open questions, one message at a time:
 
 Play their answers back. Only what they said goes in as theirs.
 
-## 3. Brief a builder to draft the post
+## 3. Draft the post
 
-Give the builder the story, the owner's answers and this blog context (the owner's words):
+Get the post written from the story, the owner's answers and this blog context (the owner's words):
 
 - Readers are home labbers, builders, maybe a future employer.
 - Tone: an honest build journey. The messy middle and dead ends stay in. Not bragging, not pretentious.
@@ -38,11 +38,11 @@ Give the builder the story, the owner's answers and this blog context (the owner
 - Slugs and asset names avoid the words `login` and `signin`.
 - Never hardcode the domain in post text; link relative.
 
-The builder commits the draft locally in its blog clone and stops; it does not push or open a PR.
+The draft is committed locally in a blog clone: not pushed, no PR.
 
 ## 4. Review and hand over
 
-A PR in a public repo is public the moment it opens, so open it only after the draft is checked. Check the draft, then run a fresh reviewer on the committed diff. Only on READY, push the branch from the builder's clone and open the PR with `gh pr create`. Have a chore-runner wait for CI green on the post PR, then hand it to the owner, who reviews and merges.
+A PR in a public repo is public the moment it opens, so the draft is checked against the blog context in step 3 and the exclusions in step 1, and reviewed on the committed diff, before the PR opens. Open the PR only once the review passes. Hand it to the owner once CI is green; the owner reviews and merges.
 
 ## 5. Tidy up
 
