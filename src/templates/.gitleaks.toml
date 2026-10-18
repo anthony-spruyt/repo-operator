@@ -12,8 +12,12 @@ useDefault = true
 [[rules]]
 id = "private-ip-rfc1918-10"
 description = "RFC1918 private IP address (10.x.x.x)"
-regex = '''(?:^|[^0-9])10\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
+regex = '''\b10\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?\b'''
 tags = ["ip-leakage"]
+
+[[rules.allowlists]]
+description = "Generic RFC1918 aggregate, not a network detail"
+regexes = ['''^10\.0\.0\.0/8$''']
 
 [[rules.allowlists]]
 description = "Python requirement pins that look like RFC1918 addresses"
@@ -35,8 +39,12 @@ regexes = [
 [[rules]]
 id = "private-ip-rfc1918-172"
 description = "RFC1918 private IP address (172.16-31.x.x)"
-regex = '''(?:^|[^0-9])172\.(?:1[6-9]|2[0-9]|3[01])\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
+regex = '''\b172\.(?:1[6-9]|2[0-9]|3[01])\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?\b'''
 tags = ["ip-leakage"]
+
+[[rules.allowlists]]
+description = "Generic RFC1918 aggregate, not a network detail"
+regexes = ['''^172\.16\.0\.0/12$''']
 
 [[rules.allowlists]]
 description = "Python requirement pins that look like RFC1918 addresses"
@@ -58,8 +66,12 @@ regexes = [
 [[rules]]
 id = "private-ip-rfc1918-192"
 description = "RFC1918 private IP address (192.168.x.x)"
-regex = '''(?:^|[^0-9])192\.168\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?(?:[^0-9]|$)'''
+regex = '''\b192\.168\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})\.(?:25[0-5]|2[0-4][0-9]|[01]?[0-9]{1,2})(?:/[0-9]{1,2})?\b'''
 tags = ["ip-leakage"]
+
+[[rules.allowlists]]
+description = "Generic RFC1918 aggregate, not a network detail"
+regexes = ['''^192\.168\.0\.0/16$''']
 
 [[rules.allowlists]]
 description = "Python requirement pins that look like RFC1918 addresses"
