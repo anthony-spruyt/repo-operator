@@ -377,6 +377,9 @@ repos:
         alert:
           color: "#e11d48"
           description: "Auto-created alert triage issue"
+        mcp-tool-drift:
+          color: "#fbca04"
+          description: "LiteLLM MCP tool list drift"
         sre:
           color: "#7c3aed"
           description: "SRE investigation or triage"
