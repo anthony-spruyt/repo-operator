@@ -42,17 +42,14 @@
       },
     },
     {
-      description: "Victoria Metrics components",
+      // The charts carry different versions, so a versioned branchTopic splits the group into one PR per chart.
+      description: "Victoria Metrics chart images",
       groupName: "Victoria Metrics",
-      matchPackageNames: [
-        "victoria-metrics",
-        "victoriametrics",
-        "ghcr.io/victoriametrics/helm-charts"
-      ],
+      matchPackageNames: ["ghcr.io/victoriametrics/helm-charts/**"],
       matchDatasources: ["helm", "docker", "oci"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
-        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
+        branchTopic: "{{{groupName}}}"
       },
     },
     {
@@ -88,7 +85,7 @@
     {
       description: "Authentik stack",
       groupName: "Authentik",
-      matchPackageNames: ["goauthentik/*", "ghcr.io/goauthentik/*"],
+      matchPackageNames: ["authentik", "goauthentik/*", "ghcr.io/goauthentik/*"],
       matchDatasources: ["docker", "helm"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
@@ -158,7 +155,7 @@
       description: "BJW-S App Template",
       groupName: "App Template",
       matchPackageNames: ["ghcr.io/bjw-s-labs/helm/app-template"],
-      matchDatasources: ["helm"],
+      matchDatasources: ["docker", "oci"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
         branchTopic: "{{{groupName}}}-{{{newVersion}}}"

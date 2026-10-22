@@ -5,7 +5,7 @@
       defaultRegistryUrlTemplate: "https://artifacthub.io/api/v1/packages/headlamp/{{packageName}}",
       format: "json",
       transformTemplates: [
-        "{ \"releases\": [$map(available_versions, function($v) { { \"version\": $v.version } })] }"
+        "{ \"releases\": [$map(available_versions, function($v) { { \"version\": $v.version, \"releaseTimestamp\": $fromMillis($v.ts * 1000) } })] }"
       ]
     },
     // Coder publishes mainline and stable releases to the same tag namespace with
@@ -18,7 +18,7 @@
       defaultRegistryUrlTemplate: "https://api.github.com/repos/coder/coder/releases/latest",
       format: "json",
       transformTemplates: [
-        "{ \"releases\": [{ \"version\": $substring(tag_name, 1) }], \"sourceUrl\": \"https://github.com/coder/coder\", \"homepage\": \"https://coder.com\" }"
+        "{ \"releases\": [{ \"version\": $substring(tag_name, 1), \"releaseTimestamp\": published_at }], \"sourceUrl\": \"https://github.com/coder/coder\", \"homepage\": \"https://coder.com\" }"
       ]
     },
     // n8n tags prereleases with plain semver, so the docker datasource ranks
