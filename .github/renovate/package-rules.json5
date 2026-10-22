@@ -3,9 +3,11 @@
   packageRules: [
     // ============ Supply-chain default ============
     {
+      // Only Docker Hub returns release dates; timestamp-required would leave every other registry's updates pending forever.
       description: "Default minimum release age for supply-chain safety (overridden per-package below)",
-      matchUpdateTypes: ["major", "minor", "patch"],
-      minimumReleaseAge: "7 days"
+      matchUpdateTypes: ["major", "minor", "patch", "digest"],
+      minimumReleaseAge: "7 days",
+      minimumReleaseAgeBehaviour: "timestamp-optional"
     },
 
     // ============ Own packages ============
