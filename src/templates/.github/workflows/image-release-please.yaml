@@ -18,7 +18,7 @@ jobs:
   release:
     permissions:
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@bcde1b1328dccea1560285ff264888cf55e3ea88" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@6e84aee2275994d138c536405bc89314bc648571" # main
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
       RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
@@ -30,7 +30,7 @@ jobs:
       packages: "write"
       id-token: "write"
       attestations: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@bcde1b1328dccea1560285ff264888cf55e3ea88" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@6e84aee2275994d138c536405bc89314bc648571" # main
     with:
       releases: "${{ needs.release.outputs.releases }}"
       language: "${xfg:language}"
