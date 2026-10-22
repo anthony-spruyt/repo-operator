@@ -102,7 +102,7 @@ Modular Renovate config in `.github/renovate/` is **not** synced via xfg — tar
 
 For repo-specific Renovate rules, use `matchRepositories` in `.github/renovate/package-rules.json5`.
 
-Renovate refreshes npm lockfiles weekly, resolving only releases at least 7 days old.
+Renovate refreshes npm lockfiles weekly, resolving only releases at least 7 days old. Digest updates wait the same 7 days as version updates.
 
 Target repos don't bump the files xfg manages for them. `.github/renovate/xfg-managed.json5` disables Renovate on every file that xfg manages in a repo without `createOnly`. Without it, Renovate's bump would be reverted by the next sync. Renovate bumps those pins here in `src/` instead, and they reach the target repos at the next XFG Apply. `createOnly` files stay with their repo. Vulnerability
 alerts override `enabled: false`, so a security fix can still open a PR in a target repo. Land the same fix in `src/` too, or the next sync reverts it. The preset is generated from `src/`, so regenerate it after any change there:
