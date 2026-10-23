@@ -53,6 +53,11 @@ json5() {
   [ "$output" = "0" ]
 }
 
+@test "the inventory artifact holds inventory.json and report.txt, not the Renovate logs" {
+  run yq -r '.jobs.extract.steps[] | select(.with.name == "inventory") | .with.path' "$WORKFLOW"
+  [ "$output" = $'${{ runner.temp }}/extract/inventory.json\n${{ runner.temp }}/extract/report.txt' ]
+}
+
 @test "the extract job uploads the Renovate logs of every run for three days, even after a failure" {
   step='.jobs.extract.steps[] | select(.with.name == "image-age-extract-logs")'
   run yq -r "[$step] | length" "$WORKFLOW"

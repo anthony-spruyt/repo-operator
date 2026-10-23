@@ -541,18 +541,29 @@ use_renovate_logs() {
   grep -q '^::error::.*anthony-spruyt/SunGather' "$WORK/out/report.txt"
 }
 
-@test "extract shows why a repo failed in the job log and the report: the error lines of the Renovate log and the end of its stderr" {
+@test "extract shows why a repo failed in the job log and the report: the warning and error lines of the Renovate log with Renovate's own error text, and the end of its stderr" {
   use_renovate_logs
   cp "$FX/renovate-auth-failure.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
   echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
   run fn main extract --out "$WORK/out"
   [ "$status" -eq 0 ]
-  for text in 'Init: Authentication failure' 'Resource not accessible by integration' 'Renovate stopped' 'npm warn deprecated fake@1.0.0'; do
+  for text in 'github.com token 401 unauthorized' 'Initialization error: Authentication failure' 'npm warn deprecated fake@1.0.0'; do
     [[ "$output" == *"$text"* ]]
     grep -qF "$text" "$WORK/out/report.txt"
   done
-  [[ "$output" != *'Renovate started'* ]]
-  [[ "$output" != *'ghs_ prefix'* ]]
+  [[ "$output" != *'Renovate started'* && "$output" != *'log level'* && "$output" != *'non-zero code'* ]]
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+}
+
+@test "extract shows the result Renovate gives for a run that exits 0 without extracting" {
+  use_renovate_logs
+  cp "$FX/renovate-bad-credentials.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for text in 'Bad credentials - aborting' 'result: bad-credentials'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
   [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
 }
 
@@ -582,11 +593,11 @@ use_renovate_logs() {
 
 @test "extract diagnosis skips lines of the log that are not JSON or have no numeric level, and tolerates an err that is not an object" {
   use_renovate_logs
-  printf '%s\n' 'plain text, level 50' '42' '{"level":"50","msg":"string level"}' '{"level":50,"msg":"string err","err":"boom"}' '{"level":50,"err":{"message":"no msg"}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  printf '%s\n' 'plain text, level 50' '42' '{"level":"50","msg":"string level"}' '{"level":50,"msg":"string err","err":"boom"}' '{"level":50,"err":{"message":"no msg"}}' '{"level":40,"msg":"object error message","errorMessage":{"a":1}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
   echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
   run fn main extract --out "$WORK/out"
   [ "$status" -eq 0 ]
-  [[ "$output" == *'string err'* && "$output" == *'no msg'* ]]
+  [[ "$output" == *'string err'* && "$output" == *'no msg'* && "$output" == *'object error message'* ]]
   [[ "$output" != *'string level'* && "$output" != *'plain text'* ]]
 }
 
@@ -600,6 +611,23 @@ use_renovate_logs() {
   [[ "$output" == *'from msg'*'from err'*'from stderr'*'indented stderr'* ]]
   [ "$(grep -c '^[[:space:]]*::' <<<"$output")" -eq 1 ]
   [ "$(grep -c '^[[:space:]]*::' "$WORK/out/report.txt")" -eq 1 ]
+}
+
+@test "extract diagnosis turns a carriage return in the log or stderr into a space, so nothing after it starts a workflow command" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"a\r::error::x","errorMessage":"b\r::error::y","err":{"message":"c\r::error::z"}}' '{"level":30,"msg":"Repository finished","result":"d\r::error::w"}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  printf 'e\r::error::v\n' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^  log: a ' <<<"$output")" -eq 1 ]
+  [[ "$output" == *'log: a ::error::x: b ::error::y: c ::error::z'* ]]
+  [[ "$output" == *'result: d ::error::w'* ]]
+  [[ "$output" == *'stderr: e ::error::v'* ]]
+  for text in "$output" "$(cat "$WORK/out/report.txt")"; do
+    [[ "$text" != *$'\r'* ]]
+    [ "$(tr '\r' '\n' <<<"$text" | grep -c '^[[:space:]]*::')" -eq 1 ]
+  done
 }
 
 @test "extract treats a log that never reached the end of the run as a failure" {
@@ -617,6 +645,19 @@ use_renovate_logs() {
   [ "$status" -eq 0 ]
   [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
   [[ "$output" == *"::error::"*"anthony-spruyt/blog"* ]]
+}
+
+@test "extract shows the same diagnosis when the extracted dependencies of a run cannot be read" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"odd run"}' '{"level":30,"msg":"Extracted dependencies","packageFiles":{"dockerfile":"odd"}}' '{"level":30,"msg":"Repository finished"}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 'stderr after odd run' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+  for text in 'Renovate output for anthony-spruyt/blog' 'log: odd run' 'stderr: stderr after odd run'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
 }
 
 @test "extract treats a log it cannot read as a failure, not as an empty repo" {

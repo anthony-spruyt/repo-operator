@@ -386,18 +386,19 @@ public_repos() {
   yq '.repos[] | select(.files.inherit != false) | .git' "$REPOS_FILE" | while read -r url; do repo_slug "$url"; done
 }
 
-# diagnose REPO LOG ERR: the first error lines of Renovate's log and the end of its stderr, for the job log and the report
+# diagnose REPO LOG ERR: the first warning and error lines of Renovate's log (msg, errorMessage, err.message), the result of its run and the end of its stderr, for the job log and the report
 # Each line starts with a label, so nothing in Renovate's output can start a workflow command; CR and LF become spaces.
 diagnose() {
   local repo=$1 log=$2 err=$3 line
-  say "Renovate output for $repo (error lines of its log, end of its stderr):"
+  say "Renovate output for $repo (warnings and errors of its log, the result of its run, end of its stderr):"
   while IFS= read -r line; do
-    say "  log: $line"
+    say "  $line"
   done < <(jq -Rnr --argjson max "$DIAGNOSIS_LOG_LINES" '
-    [inputs | fromjson? | select(type == "object" and (.level | type) == "number" and .level >= 50)]
-    | .[:$max][]
-    | [.msg // "no message", (.err | objects | .message | strings)]
-    | map(tostring | gsub("[\r\n]+"; " ")) | join(": ")' "$log")
+    def clean: tostring | gsub("[\r\n]+"; " ");
+    [inputs | fromjson? | select(type == "object")] as $lines
+    | ($lines | map(select((.level | type) == "number" and .level >= 40)) | .[:$max][]
+        | "log: " + ([.msg // "no message", (.errorMessage | strings), (.err | objects | .message | strings)] | map(clean) | join(": "))),
+      ($lines[] | select(.msg == "Repository finished" and (.result | type) == "string") | "result: " + (.result | clean))' "$log")
   while IFS= read -r line; do
     say "  stderr: $line"
   done < <(tail -n "$DIAGNOSIS_ERR_LINES" "$err" | tr '\r' ' ')
@@ -409,7 +410,7 @@ extract_repo() {
   local repo=$1 out=$2 logs=$3 log err all name status=0
   log="$logs/${repo//\//__}.log" err="$logs/${repo//\//__}.err"
   all=$(mktemp)
-  # Setting both username and git author keeps Renovate from looking them up with GET /app
+  # Setting both username and git author keeps Renovate from asking GitHub who the token belongs to
   if ! RENOVATE_TOKEN="$GITHUB_TOKEN" LOG_FORMAT=json LOG_LEVEL=info \
     RENOVATE_USERNAME="github-actions[bot]" RENOVATE_GIT_AUTHOR="github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" \
     npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then

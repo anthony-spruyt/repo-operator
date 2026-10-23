@@ -1,7 +1,6 @@
 #!/usr/bin/env bash
-# Stands in for npx in the bats tests: logs its arguments, serves the recorded Renovate log of the repo named
-# last on the command line from $FAKE_NPX_DIR (with that repo's .err file as stderr and .status as exit code when they
-# exist), and answers the config validator with $FAKE_VALIDATOR_STATUS.
+# Serves the recorded Renovate log of the repo named last from $FAKE_NPX_DIR, with its .err file as stderr and .status as
+# exit code when they exist; the config validator answers with $FAKE_VALIDATOR_STATUS.
 set -euo pipefail
 
 printf '%s | token=%s format=%s user=%s author=%s\n' "$*" "${RENOVATE_TOKEN:+set}" "${LOG_FORMAT:-}" "${RENOVATE_USERNAME:-}" "${RENOVATE_GIT_AUTHOR:-}" >>"$FAKE_NPX_LOG"
