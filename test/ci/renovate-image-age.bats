@@ -5,6 +5,7 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WORKFLOW="$REPO_ROOT/.github/workflows/image-age.yaml"
   CI_REPO="$REPO_ROOT/.github/workflows/ci-repo.yaml"
+  BUILD_IMAGE="$REPO_ROOT/.github/workflows/_build-image.yaml"
   SCRIPT="$REPO_ROOT/.github/scripts/image-age.sh"
   RULES="$REPO_ROOT/.github/renovate/package-rules.json5"
   SKIPS="$REPO_ROOT/.github/renovate/image-age-skips.yaml"
@@ -48,9 +49,28 @@ json5() {
 
 @test "the artifacts carry data only" {
   run yq -r '[.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.name] | join(",")' "$WORKFLOW"
-  [ "$output" = "inventory,preset" ]
+  [ "$output" = "inventory,image-age-extract-logs,preset" ]
   run grep -cE 'chmod|[.]sh"?$' <<<"$(yq -r '.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.path' "$WORKFLOW")"
   [ "$output" = "0" ]
+}
+
+@test "the inventory artifact holds inventory.json and report.txt, not the Renovate logs" {
+  run yq -r '.jobs.extract.steps[] | select(.with.name == "inventory") | .with.path' "$WORKFLOW"
+  [ "$output" = $'${{ runner.temp }}/extract/inventory.json\n${{ runner.temp }}/extract/report.txt' ]
+}
+
+@test "the extract job uploads the Renovate logs of every run for three days, even after a failure" {
+  step='.jobs.extract.steps[] | select(.with.name == "image-age-extract-logs")'
+  run yq -r "[$step] | length" "$WORKFLOW"
+  [ "$output" = "1" ]
+  run yq -r "$step | .if" "$WORKFLOW"
+  [ "$output" = "always()" ]
+  run yq -r "$step | .with.path" "$WORKFLOW"
+  [ "$output" = $'${{ runner.temp }}/extract/*.log\n${{ runner.temp }}/extract/*.err' ]
+  run yq -r "$step | .with[\"retention-days\"]" "$WORKFLOW"
+  [ "$output" = "3" ]
+  run yq -r "$step | .uses" "$WORKFLOW"
+  [ "$output" = "$(yq -r '.jobs.extract.steps[] | select(.with.name == "inventory") | .uses' "$WORKFLOW")" ]
 }
 
 @test "every job blocks egress and names the hosts it needs" {
@@ -113,6 +133,23 @@ json5() {
   [ "$output" = "0" ]
   run awk '/^[a-z_]+\(\) \{/ { fn = $1 } /(^|[^a-z])npx / && !/^[[:space:]]*#/ { print fn }' "$SCRIPT"
   [ "$output" = $'extract_repo()\ncmd_validate()' ]
+}
+
+@test "the extract and validate jobs run Renovate on Node 24, set up before the script from the setup-node pin that _build-image uses" {
+  pin=$(yq -r '[.jobs[].steps[] | select(.uses // "" | test("^actions/setup-node@")) | .uses] | .[0]' "$BUILD_IMAGE")
+  [[ "$pin" =~ ^actions/setup-node@[0-9a-f]{40}$ ]]
+  idx() { yq -r ".jobs.$1.steps | to_entries | map(select($2)) | .[0].key" "$WORKFLOW"; }
+  for job in extract validate; do
+    run yq -o=json -I0 "[.jobs.$job.steps[] | select(.uses // \"\" | test(\"^actions/setup-node@\"))] | map({\"name\": .name, \"uses\": .uses, \"with\": .with})" "$WORKFLOW"
+    [ "$output" = "[{\"name\":\"Set up Node\",\"uses\":\"$pin\",\"with\":{\"node-version\":\"24\"}}]" ]
+    checkout=$(idx "$job" '.value.uses // "" | test("^actions/checkout@")')
+    node=$(idx "$job" '.value.uses // "" | test("^actions/setup-node@")')
+    script=$(idx "$job" '.value.run // "" | test("image-age[.]sh")')
+    [ "$checkout" -lt "$node" ]
+    [ "$node" -lt "$script" ]
+  done
+  run yq -r '[.jobs | to_entries[] | select(.value.steps[] | .uses // "" | test("^actions/setup-node@")) | .key] | join(",")' "$WORKFLOW"
+  [ "$output" = "extract,validate" ]
 }
 
 @test "the Renovate version is pinned once with a renovate annotation" {
