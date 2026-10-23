@@ -184,9 +184,9 @@ json5() {
   [ "$output" = "0" ]
 }
 
-@test "the registry moves are docker-only replacements, one old name each" {
+@test "the registry moves are docker-only replacements to a docker.io name, one old name each" {
   run json5 "$RULES" '[.packageRules[] | select(has("replacementName")) | select((.matchDatasources | join(",")) == "docker" and (.matchPackageNames | length) == 1) | .matchPackageNames[0] + ">" + .replacementName] | join(" ")'
-  [ "$output" = "ghcr.io/static-web-server/static-web-server>joseluisq/static-web-server ghcr.io/astral-sh/uv>astral/uv ghcr.io/druggeri/nut_exporter>druggeri/nut_exporter ghcr.io/felddy/foundryvtt>felddy/foundryvtt ghcr.io/unpoller/unpoller>golift/unifi-poller public.ecr.aws/docker/library/eclipse-mosquitto>eclipse-mosquitto" ]
+  [ "$output" = "ghcr.io/static-web-server/static-web-server>docker.io/joseluisq/static-web-server ghcr.io/astral-sh/uv>docker.io/astral/uv ghcr.io/druggeri/nut_exporter>docker.io/druggeri/nut_exporter ghcr.io/felddy/foundryvtt>docker.io/felddy/foundryvtt ghcr.io/unpoller/unpoller>docker.io/golift/unifi-poller public.ecr.aws/docker/library/eclipse-mosquitto>docker.io/eclipse-mosquitto" ]
   run json5 "$RULES" '[.packageRules[] | select(has("replacementName"))] | length'
   [ "$output" = "6" ]
 }
