@@ -4,9 +4,11 @@
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WORKFLOW="$REPO_ROOT/.github/workflows/image-age.yaml"
+  CI_REPO="$REPO_ROOT/.github/workflows/ci-repo.yaml"
   SCRIPT="$REPO_ROOT/.github/scripts/image-age.sh"
   RULES="$REPO_ROOT/.github/renovate/package-rules.json5"
   SKIPS="$REPO_ROOT/.github/renovate/image-age-skips.yaml"
+  REPOS="$REPO_ROOT/src/repos.yaml"
 }
 
 # yq reads json5 as YAML flow style once the full-line comments are gone
@@ -22,52 +24,88 @@ json5() {
 }
 
 @test "the workflow has the four jobs in a chain and one run at a time" {
-  run yq -r '.jobs | to_entries | map(.key + ":" + ((.value.needs // "") | tostring)) | join(" ")' "$WORKFLOW"
-  [ "$output" = "extract: render:extract validate:render publish:validate" ]
+  run yq -r '.jobs | to_entries | map(.key + ":" + ((.value.needs // []) | (if type == "!!str" then [.] else . end) | join(","))) | join(" ")' "$WORKFLOW"
+  [ "$output" = "extract: render:extract validate:render publish:render,validate" ]
   run yq -r '.concurrency.group + ":" + (.concurrency["cancel-in-progress"] | tostring)' "$WORKFLOW"
   [ "$output" = "image-age:false" ]
 }
 
-@test "each job runs the matching script command" {
-  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[].run // "" | select(test("image-age[.]sh"))] | map(capture("image-age[.]sh\"? (?<c>[a-z]+)").c) | join(","))' "$WORKFLOW"
-  [ "$output" = $'extract:extract\nrender:render\nvalidate:validate\npublish:publish' ]
+@test "each job runs the matching script commands" {
+  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[].run // "" | select(test("image-age[.]sh"))] | map(capture("image-age[.]sh (?<c>[a-z]+)").c) | join(","))' "$WORKFLOW"
+  [ "$output" = $'extract:extract\nrender:render,hashes\nvalidate:validate\npublish:publish' ]
+}
+
+@test "every job runs the script from its own checkout of the commit, never from an artifact" {
+  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select(.uses // "" | test("^actions/checkout@")) | .with.ref + "," + (.with["persist-credentials"] | tostring)] | join(" "))' "$WORKFLOW"
+  [ "$output" = $'extract:${{ github.sha }},false\nrender:${{ github.sha }},false\nvalidate:${{ github.sha }},false\npublish:${{ github.sha }},false' ]
+  run yq -r '[.jobs[].steps[].run // "" | split("\n")[] | select(test("image-age[.]sh")) | select(test("^[.]github/scripts/image-age[.]sh ") | not)] | length' "$WORKFLOW"
+  [ "$output" = "0" ]
+  run grep -E 'RUNNER_TEMP[^ ]*/image-age[.]sh|bash +"?[$]' "$WORKFLOW"
+  [ "$status" -ne 0 ]
+  run grep -E 'BASH_SOURCE\[0\]}" "\$out' "$SCRIPT"
+  [ "$status" -ne 0 ]
+}
+
+@test "the artifacts carry data only" {
+  run yq -r '[.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.name] | join(",")' "$WORKFLOW"
+  [ "$output" = "inventory,preset" ]
+  run grep -cE 'chmod|[.]sh"?$' <<<"$(yq -r '.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.path' "$WORKFLOW")"
+  [ "$output" = "0" ]
 }
 
 @test "every job blocks egress and names the hosts it needs" {
-  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select(.uses | test("^step-security/harden-runner@")) | .with["egress-policy"]] | join(","))' "$WORKFLOW"
+  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select(.uses // "" | test("^step-security/harden-runner@")) | .with["egress-policy"]] | join(","))' "$WORKFLOW"
   [ "$output" = $'extract:block\nrender:block\nvalidate:block\npublish:block' ]
-  hosts() { yq -r ".jobs.$1.steps[] | select(.uses | test(\"^step-security/harden-runner@\")) | .with[\"allowed-endpoints\"]" "$WORKFLOW" | tr -s '[:space:]' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
+  hosts() { yq -r ".jobs.$1.steps[] | select(.uses // \"\" | test(\"^step-security/harden-runner@\")) | .with[\"allowed-endpoints\"]" "$WORKFLOW" | tr -s '[:space:]' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
   run hosts extract
   [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts render
   [ "$output" = "*.blob.core.windows.net:443 *.pkg.dev:443 api.github.com:443 gcr.io:443 ghcr.io:443 github.com:443 mcr.microsoft.com:443 quay.io:443 registry.k8s.io:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts validate
-  [ "$output" = "*.blob.core.windows.net:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
+  [ "$output" = "*.blob.core.windows.net:443 github.com:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts publish
-  [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 results-receiver.actions.githubusercontent.com:443 " ]
+  [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 results-receiver.actions.githubusercontent.com:443 " ]
 }
 
-@test "only publish can write, only render reads packages, and validate holds no token" {
+@test "no job writes with the job token, and only publish holds the App token and the environment" {
   run yq -r '.permissions | length' "$WORKFLOW"
   [ "$output" = "0" ]
   run yq -r '.jobs | to_entries[] | .key + ":" + (.value.permissions | to_entries | map(.key + "=" + .value) | sort | join(","))' "$WORKFLOW"
-  [ "$output" = $'extract:contents=read\nrender:contents=read,packages=read\nvalidate:\npublish:contents=write' ]
-  run grep -c 'contents: write' "$WORKFLOW"
+  [ "$output" = $'extract:contents=read\nrender:contents=read,packages=read\nvalidate:contents=read\npublish:contents=read' ]
+  run grep -E '^[[:space:]]+(contents|packages|actions|id-token): write' "$WORKFLOW"
+  [ "$status" -ne 0 ]
+  run yq -r '.jobs | to_entries[] | select(.value.environment != null) | .key + ":" + .value.environment' "$WORKFLOW"
+  [ "$output" = "publish:plan-main" ]
+  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select(.uses // "" | test("^actions/create-github-app-token@"))] | length | tostring)' "$WORKFLOW"
+  [ "$output" = $'extract:0\nrender:0\nvalidate:0\npublish:1' ]
+  run grep -c 'secrets[.]' "$WORKFLOW"
   [ "$output" = "1" ]
-  run yq -r '[.jobs.validate.steps[] | select(has("env"))] | length' "$WORKFLOW"
-  [ "$output" = "0" ]
+  run grep -c 'vars[.]' "$WORKFLOW"
+  [ "$output" = "1" ]
+}
+
+@test "publish mints a token for the data repo only, with contents write" {
+  run yq -r '.jobs.publish.steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .uses' "$WORKFLOW"
+  [ "$output" = "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" ]
+  run yq -o=json -I0 '.jobs.publish.steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .with' "$WORKFLOW"
+  [ "$output" = '{"client-id":"${{ vars.APP_CLIENT_ID }}","private-key":"${{ secrets.APP_PRIVATE_KEY }}","owner":"anthony-spruyt","repositories":"renovate-data","permission-contents":"write"}' ]
+  run yq -r '[.jobs.publish.steps[] | select(.run // "" | test("image-age[.]sh publish")) | .env.GITHUB_TOKEN] | join(",")' "$WORKFLOW"
+  [[ "$output" == *steps.*.outputs.token* ]]
+  run yq -r '.jobs.publish.steps[] | select(.run // "" | test("image-age[.]sh publish")) | .env | to_entries | map(.key) | sort | join(",")' "$WORKFLOW"
+  [ "$output" = "DATA_SHA256,GITHUB_TOKEN,PRESET_SHA256" ]
+}
+
+@test "render hands the hashes of the two JSON files to publish through job outputs" {
+  run yq -r '.jobs.render.outputs | to_entries | map(.key + "=" + .value) | join(" ")' "$WORKFLOW"
+  [[ "$output" == *'preset-sha256='*'steps.'*'.outputs.preset'* ]]
+  [[ "$output" == *'data-sha256='*'steps.'*'.outputs.data'* ]]
+  run yq -r '.jobs.publish.steps[] | select(.run // "" | test("image-age[.]sh publish")) | .env.PRESET_SHA256 + " " + .env.DATA_SHA256' "$WORKFLOW"
+  [ "$output" = '${{ needs.render.outputs.preset-sha256 }} ${{ needs.render.outputs.data-sha256 }}' ]
 }
 
 @test "publish waits for validate and only runs on main" {
   run yq -r '.jobs.publish.if' "$WORKFLOW"
   [ "$output" = "github.ref == 'refs/heads/main'" ]
-}
-
-@test "checkouts keep no credentials and validate and publish check nothing out" {
-  run yq -r '[.jobs[].steps[] | select(.uses | test("^actions/checkout@")) | .with["persist-credentials"]] | unique | join(",")' "$WORKFLOW"
-  [ "$output" = "false" ]
-  run yq -r '.jobs | to_entries[] | select(.value.steps | any_c(.uses | test("^actions/checkout@"))) | .key' "$WORKFLOW"
-  [ "$output" = $'extract\nrender' ]
 }
 
 @test "npx runs only in the extract and validate commands" {
@@ -83,6 +121,22 @@ json5() {
   run grep -B1 '^RENOVATE_VERSION="' "$SCRIPT"
   [ "${lines[0]}" = "# renovate: depName=renovate datasource=npm" ]
   [[ "${lines[1]}" =~ ^RENOVATE_VERSION=\"[0-9]+\.[0-9]+\.[0-9]+\"$ ]]
+}
+
+@test "the guard-test job installs jsonata at an annotated pin and may reach npm for it" {
+  run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .env.JSONATA_VERSION' "$CI_REPO"
+  [ "$output" = "1.8.9" ]
+  run grep -B2 'JSONATA_VERSION: "' "$CI_REPO"
+  [[ "$output" == *"# renovate: depName=jsonata datasource=npm"* ]]
+  run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .run' "$CI_REPO"
+  [[ "$output" == *'npm install --no-save --ignore-scripts'* ]]
+  [[ "$output" == *'jsonata@"$JSONATA_VERSION"'* ]]
+  [[ "$output" == *'NODE_PATH='* ]]
+  [[ "$output" == *'GITHUB_ENV'* ]]
+  run yq -r '.jobs.guard-test.steps[] | select(.uses // "" | test("^step-security/harden-runner@")) | .with["allowed-endpoints"]' "$CI_REPO"
+  [[ "$output" == *"registry.npmjs.org:443"* ]]
+  run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata" or .name == "Run bats tests") | .name' "$CI_REPO"
+  [ "$output" = $'Install jsonata\nRun bats tests' ]
 }
 
 @test "the skips file maps images to lists of tags" {
@@ -107,7 +161,41 @@ json5() {
   [ "$blanket" -lt "$output" ]
 }
 
-@test "the image title shows the short digest for digest updates" {
+@test "the image title shows the short digest for digest updates through updateType, the only field Renovate defines for it" {
   run json5 "$RULES" '.packageRules[] | select(.commitMessageTopic == "container image {{depName}}" and .enabled == true) | .commitMessageExtra'
-  [ "$output" = 'to {{#if isDigest}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}{{/if}}' ]
+  [ "$output" = 'to {{#if (equals updateType "digest")}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}{{/if}}' ]
+  [[ "$output" != *isDigest* ]]
+}
+
+@test "the data repo is a public repo with no collaborators, no inherited files or labels, and outside the protected-main-branch group" {
+  entry='.repos[] | select(.git == "https://github.com/anthony-spruyt/renovate-data.git")'
+  run yq -r "[$entry] | length" "$REPOS"
+  [ "$output" = "1" ]
+  run yq -o=json -I0 "$entry | .files" "$REPOS"
+  [ "$output" = '{"inherit":false}' ]
+  run yq -o=json -I0 "$entry | .settings.labels" "$REPOS"
+  [ "$output" = '{"inherit":false}' ]
+  run yq -o=json -I0 "$entry | .settings.collaborators" "$REPOS"
+  [ "$output" = '{"users":[]}' ]
+  run yq -r "$entry | (.groups // []) | map(select(. == \"protected-main-branch\" or . == \"private-repo\")) | length" "$REPOS"
+  [ "$output" = "0" ]
+  run yq -o=json -I0 "$entry | .settings.repo | pick([\"hasDiscussions\", \"hasIssues\", \"hasProjects\", \"hasWiki\"])" "$REPOS"
+  [ "$output" = '{"hasDiscussions":false,"hasIssues":false,"hasProjects":false,"hasWiki":false}' ]
+  run yq -r "$entry | .settings.repo | has(\"visibility\") | not" "$REPOS"
+  [ "$output" = "true" ]
+  run yq -r "$entry | .settings.repo.description" "$REPOS"
+  [ "${#lines[@]}" -eq 1 ]
+  [ -n "$output" ]
+}
+
+@test "the public text describes the controls as they are, with none of the words that point at a gap" {
+  words='no write access|bypass|fails? open|can reach|accepted risk|residual risk|wins? over|load last|loads last|\brisk\b'
+  section=$(sed -n '/^## Image age$/,/^## /p' "$REPO_ROOT/docs/ci.md")
+  readme=$(grep -F 'Image Age` workflow' "$REPO_ROOT/README.md")
+  [ -n "$section" ]
+  [ -n "$readme" ]
+  [ "$(grep -Eic "$words" <<<"$section")" -eq 0 ]
+  [ "$(grep -Eic "$words" <<<"$readme")" -eq 0 ]
+  [ "$(cat "$SCRIPT" "$WORKFLOW" | grep -Eic "$words")" -eq 0 ]
+  [ "$(cat "$REPO_ROOT/test/image-age.bats" "$REPO_ROOT/test/ci/renovate-image-age.bats" | grep -E '^[[:space:]]*@test ' | grep -Eic "$words")" -eq 0 ]
 }

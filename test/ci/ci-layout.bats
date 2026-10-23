@@ -235,7 +235,7 @@ EOF
   run yq -r '.jobs["guard-test"].steps[].run | select(. != null)' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *"bats -r test/"* ]]
   run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
-  [[ "$output" == *$'Install actionlint\nRun bats tests'* ]]
+  [[ "$output" == *$'Install actionlint\nInstall jsonata\nRun bats tests'* ]]
 }
 
 # check_pins <dir> <min> - fails listing each repo-operator pin under dir that is not on origin/main, or with fewer than min pins

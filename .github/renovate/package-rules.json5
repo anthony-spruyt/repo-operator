@@ -130,7 +130,7 @@
       matchDatasources: ["docker", "oci"],
       enabled: true,
       commitMessageTopic: "container image {{depName}}",
-      commitMessageExtra: "to {{#if isDigest}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}{{/if}}",
+      commitMessageExtra: "to {{#if (equals updateType \"digest\")}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}{{/if}}",
       pinDigests: true
     },
     {
