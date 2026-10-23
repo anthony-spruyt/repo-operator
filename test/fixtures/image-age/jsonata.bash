@@ -8,7 +8,7 @@ need_jsonata() {
   skip "the jsonata package is not installed"
 }
 
-# jsonata_true <expression> <json input>: the Renovate matchJsonata verdict for one set of fields. evaluate() answers directly in jsonata 1.x and with a promise in 2.x.
+# jsonata_true <expression> <json input>: the Renovate matchJsonata verdict for one set of fields. evaluate() returns a promise in jsonata 2.x.
 jsonata_true() {
   node -e '
     const jsonata = require("jsonata");

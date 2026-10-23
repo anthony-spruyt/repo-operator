@@ -224,6 +224,7 @@ repos:
         hasProjects: false
         hasWiki: false
       collaborators:
+        inherit: false
         users: []
       labels:
         inherit: false
