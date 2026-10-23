@@ -1,0 +1,5 @@
+{"name":"renovate","level":30,"renovateVersion":"44.164.7","msg":"Renovate started","v":0}
+{"name":"renovate","level":40,"msg":"github.com token 401 unauthorized","v":0}
+{"name":"renovate","level":60,"errorMessage":"Authentication failure","msg":"Initialization error","v":0}
+{"name":"renovate","level":30,"msg":"Renovate was run at log level \"info\". Set LOG_LEVEL=debug in environment variables to see extended debug logs.","v":0}
+{"name":"renovate","level":30,"loggerErrors":[{"name":"renovate","level":60,"errorMessage":"Authentication failure","msg":"Initialization error"}],"msg":"Renovate is exiting with a non-zero code due to the following logged errors","v":0}
