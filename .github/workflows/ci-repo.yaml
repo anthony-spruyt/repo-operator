@@ -23,6 +23,7 @@ jobs:
             azure.archive.ubuntu.com:80
             github.com:443
             packages.microsoft.com:443
+            registry.npmjs.org:443
             release-assets.githubusercontent.com:443
             results-receiver.actions.githubusercontent.com:443
 
@@ -46,6 +47,16 @@ jobs:
           curl -fsSLO --proto '=https' "https://github.com/rhysd/actionlint/releases/download/${ACTIONLINT_VERSION}/$tarball"
           echo "${ACTIONLINT_SHA256}  ${tarball}" | sha256sum -c -
           sudo tar -xzf "$tarball" -C /usr/local/bin actionlint
+
+      - name: "Install jsonata"
+        env:
+          # renovate: depName=jsonata datasource=npm
+          JSONATA_VERSION: "2.2.2"
+        run: |
+          prefix="$RUNNER_TEMP/jsonata"
+          mkdir -p "$prefix"
+          npm install --no-save --ignore-scripts --prefix "$prefix" jsonata@"$JSONATA_VERSION"
+          echo "NODE_PATH=$prefix/node_modules" >>"$GITHUB_ENV"
 
       - name: "Run bats tests"
         run: "bats -r test/"

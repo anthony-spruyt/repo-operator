@@ -1,0 +1,37 @@
+{
+  "child": [],
+  "name": "sig-storage/csi-snapshotter",
+  "tags": [
+    "v8.2.0",
+    "v8.1.0",
+    "latest"
+  ],
+  "manifest": {
+    "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa": {
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "tag": [
+        "v8.2.0",
+        "latest"
+      ],
+      "timeUploadedMs": "1792600000123",
+      "timeCreatedMs": "-62135596800000",
+      "imageSizeBytes": "545"
+    },
+    "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb": {
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "tag": [
+        "v8.1.0"
+      ],
+      "timeUploadedMs": "1790000000999",
+      "timeCreatedMs": "-62135596800000",
+      "imageSizeBytes": "545"
+    },
+    "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc": {
+      "mediaType": "application/vnd.oci.image.index.v1+json",
+      "tag": [],
+      "timeUploadedMs": "1780000000000",
+      "timeCreatedMs": "-62135596800000",
+      "imageSizeBytes": "545"
+    }
+  }
+}

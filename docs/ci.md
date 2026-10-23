@@ -428,6 +428,27 @@ The job is `image` in `ci.yaml` and `images` in `release-please.yaml`; the `rele
 `container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in
 `repos.yaml`; no repo needs one today.
 
+## Image age
+
+`.github/workflows/image-age.yaml` dates the container images that registries other than Docker Hub serve, so Renovate holds back tags and rebuilds younger than 7 days. It runs every six hours and on dispatch, in four jobs behind harden-runner with `egress-policy: block`. Every job checks out the commit (`github.sha`, `persist-credentials: false`) and runs `.github/scripts/image-age.sh` from that
+checkout. The artifacts carry data only: `inventory.json`, `image-age.json`, `image-age-data.json` and `report.txt`.
+
+1. **extract** (`contents: read`): `image-age.sh extract` runs the pinned Renovate (`RENOVATE_VERSION` in the script, bumped by Renovate) in `--dry-run=extract` mode on every public repo in `src/repos.yaml`, and lists the images whose registry is neither Docker Hub nor `ghcr.io/anthony-spruyt/`, with the tags and digests in use. A repo counts as extracted when Renovate logs
+   `Extracted dependencies`; any other end is an `::error` and the repo's images keep their stored rows. The images in the `Registry moves` rules are left out, because Renovate dates them on Docker Hub. Every image name must be a valid reference; any other is dropped with an `::error`.
+2. **render** (`contents: read`, `packages: read`): `image-age.sh render` reads the previous `image-age-data.json` from the data repo, then each image's tags, digests and push times from its registry (ghcr.io, quay.io, mcr.microsoft.com, gcr.io, registry.k8s.io), paging until 50 tags older than 7 days and every tag in use are listed (20 pages at most; at the cap the listing counts as complete once
+   one tag is at least 7 days old, and an image with none is an `::error`; a tag in use that stays unlisted is a `::warning`). Names, tags, digests and push times from the registry and from the previous data pass the same checks. It writes `image-age.json` and `image-age-data.json` (the rows per image as `tag`, `digest` and `pushedAt` in epoch seconds, the inventory and `generatedAt`). Per image,
+   one rule allows the newest 50 tags built at least 7 days ago, plus every tag in use, minus the tags in `image-age-skips.yaml`; a second rule drops a digest update whose digest the registry lists for that tag only as a build younger than 7 days. A catch-all rule holds back an image not yet dated, and a stale rule holds back updates of these images once the data is 36 hours old. When a registry
+   answers with an error, an unreadable body, no tags or a push time that is not a number, the image's rules are rendered again from its stored rows and the run reports an `::error`; an image with no stored rows, or none old enough, or on a registry the script has no adapter for, is held back. `render` also checks each repo's `renovate-overrides.json5`: a rule that sets `enabled: true` for an
+   image it dates is an `::error`, and one that sets `allowedVersions` for it is a `::warning`. The job outputs the sha256 of the two JSON files.
+3. **validate** (`contents: read`): checks `image-age.json` against the shape `render` writes (only the keys it uses, `matchDatasources` exactly `["docker"]`, `enabled` only `false`, one `allowedVersions` rule and one digest rule or one hold rule per image, the catch-all and the stale rule), against the pinned `renovate-config-validator --strict --no-global` (as a repo config, the way repos load
+   it), and against a 512 KB limit. A failure stops `publish`.
+4. **publish** (`environment: plan-main`, `contents: read`, `main` only): recomputes the sha256 of both JSON files from the artifact and stops unless they equal the outputs of `render`. It then mints a token scoped to `anthony-spruyt/renovate-data` and writes both files to its `main` with one `PUT` each to the contents API, so GitHub signs the commits; the file content goes through `jq -Rs`,
+   because `jq --arg` takes at most 128 KiB. The run fails after publishing when `report.txt` holds an `::error`.
+
+The data repo `anthony-spruyt/renovate-data` is public. xfg creates it from its `src/repos.yaml` entry, which syncs no files, labels or collaborators, and it is not in `protected-main-branch`. Only this workflow writes to it. Repos extend `github>anthony-spruyt/renovate-data//image-age` after the shared presets and before `renovate-overrides.json5`.
+
+The script is tested offline by `test/image-age.bats`, with a fake `curl` and `npx`; `test/ci/renovate-image-age.bats` keeps the workflow, the pins and the rules wired as described.
+
 ## Caller example (Go)
 
 `.github/workflows/ci.yaml`:

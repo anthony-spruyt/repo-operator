@@ -1,0 +1,4 @@
+# Tags image-age never allows for an image, e.g. mistyped upstream tags
+ghcr.io/victoriametrics/mcp-victoriametrics:
+  - v1.120.1
+  - 1.120.1

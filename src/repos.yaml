@@ -212,6 +212,23 @@ repos:
       repo:
         description: "Sidecar proxy that injects headers into MCP requests."
 
+  - git: https://github.com/anthony-spruyt/renovate-data.git
+    files:
+      inherit: false
+    settings:
+      codeScanning: false
+      repo:
+        description: "Renovate preset and data that the image-age workflow in repo-operator publishes."
+        hasDiscussions: false
+        hasIssues: false
+        hasProjects: false
+        hasWiki: false
+      collaborators:
+        inherit: false
+        users: []
+      labels:
+        inherit: false
+
   - git: https://github.com/anthony-spruyt/repo-operator.git
     groups:
       - claude
