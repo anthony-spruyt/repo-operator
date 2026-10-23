@@ -125,7 +125,7 @@ json5() {
 
 @test "the guard-test job installs jsonata at an annotated pin and may reach npm for it" {
   run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .env.JSONATA_VERSION' "$CI_REPO"
-  [ "$output" = "1.8.9" ]
+  [ "$output" = "2.2.2" ]
   run grep -B2 'JSONATA_VERSION: "' "$CI_REPO"
   [[ "$output" == *"# renovate: depName=jsonata datasource=npm"* ]]
   run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .run' "$CI_REPO"

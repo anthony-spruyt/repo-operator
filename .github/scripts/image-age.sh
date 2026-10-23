@@ -114,10 +114,10 @@ enough_rows() {
   [[ "$(old_count "$1")" -ge "$KEEP_NEWEST" && -z "$(missing_tags "$1" "$2")" ]]
 }
 
-# page_cap IMAGE RAW: at the page cap, the listing is complete enough once KEEP_NEWEST old tags are in
+# page_cap IMAGE RAW: at the page cap the listing counts as complete once one tag is at least 7 days old
 page_cap() {
-  if [[ "$(old_count "$2")" -ge "$KEEP_NEWEST" ]]; then return 0; fi
-  say "::error::$1: more than $MAX_PAGES pages of tags needed"
+  if [[ "$(old_count "$2")" -ge 1 ]]; then return 0; fi
+  say "::error::$1: no tag at least 7 days old in the first $MAX_PAGES pages"
   return 1
 }
 

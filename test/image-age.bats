@@ -203,7 +203,33 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   [ "$(wc -l <"$FAKE_LOG")" -eq 1 ]
 }
 
-@test "fetch_rows gives up with an error after 20 pages when the tags stay too young" {
+@test "fetch_rows finishes at 20 pages with the old tags it has, even when there are fewer than 50" {
+  old_ghcr_page 3 t >"$WORK/old.json"
+  jq -n '[range(100) | {name: "sha256:\(("0" * 64 + tostring)[-64:])", created_at: "2026-09-01T00:00:00Z", metadata: {container: {tags: []}}}]' >"$WORK/untagged.json"
+  route GET "$WIDGET_VERSIONS" 200 "$WORK/old.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=2>; rel=\"next\""
+  for n in $(seq 2 25); do
+    route GET "$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$n" 200 "$WORK/untagged.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$((n + 1))>; rel=\"next\""
+  done
+  run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "t1 t2"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <"$FAKE_LOG")" -eq 20 ]
+  [ "$(grep -c '^::error::' <<<"$output")" -eq 0 ]
+  [ "$(wc -l <"$WORK/rows")" -eq 3 ]
+}
+
+@test "fetch_rows still warns at the cap about a tag in use that the short listing lacks" {
+  old_ghcr_page 3 t >"$WORK/old.json"
+  for n in $(seq 1 25); do
+    route GET "$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$n" 200 "$WORK/old.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$((n + 1))>; rel=\"next\""
+  done
+  route GET "$WIDGET_VERSIONS" 200 "$WORK/old.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=1>; rel=\"next\""
+  run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "ghost"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::warning::ghcr.io/acme/widget: tag ghost in use was not listed by the registry"* ]]
+  [ "$(grep -c '^::error::' <<<"$output")" -eq 0 ]
+}
+
+@test "fetch_rows gives up with an error at 20 pages when no tag is old enough" {
   young_ghcr_page 3 t >"$WORK/young.json"
   for n in $(seq 1 25); do
     route GET "$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$n" 200 "$WORK/young.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$((n + 1))>; rel=\"next\""

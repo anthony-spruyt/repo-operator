@@ -51,7 +51,7 @@ jobs:
       - name: "Install jsonata"
         env:
           # renovate: depName=jsonata datasource=npm
-          JSONATA_VERSION: "1.8.9"
+          JSONATA_VERSION: "2.2.2"
         run: |
           prefix="$RUNNER_TEMP/jsonata"
           mkdir -p "$prefix"
