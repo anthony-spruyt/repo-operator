@@ -19,7 +19,7 @@ The main session plans, decides and talks to the owner. If the brief would be lo
 | Deep investigation                           | `general-purpose` (opus)              |
 | Broad read-only search across files or repos | `Explore` (haiku)                     |
 
-Push reviewed commits yourself from the `workspace.sh` clone that holds them, never the shared checkout, with `push-reviewed.sh <base> <sha> <branch>`, only once fresh reviews cover that exact range and the last round is READY (every full-review lens, then each fix-check); if it stops, tell the owner. Give the range it prints to the CI wait and any post-push validator the repo's rules name.
+Push reviewed commits yourself from the `workspace.sh` clone that holds them, never the shared checkout, with `push-reviewed.sh <base> <sha> <branch>`, only once fresh reviews cover that exact range and the last round is READY (every full-review lens, then each fix-check; a verbatim fix you checked under step 3 counts as reviewed and READY); if it stops, tell the owner. Give the pushed sha to the CI wait, and the range it prints to any post-push validator the repo's rules name.
 
 ## Interview, then design, before delegating
 
@@ -28,12 +28,12 @@ New work, or a change to an approach the owner picked, starts with the `intervie
 ## Running helpers
 
 - Each helper works in its own clone from `workspace.sh <owner/repo> <task-name>`, the one way for every repo (no worktrees or hand-made clones); it stages only its own files, and waits for other helpers on the same repo
-- Steer a running helper with `SendMessage`, never duplicate it; use a new helper per fix round
+- Steer a running helper with `SendMessage`, never duplicate it; use a new helper per fix round you delegate
 - A brief for a builder that follows a BLOCKED one names that builder's kept notes path
 - A pre-existing CI failure a helper flags: tell the owner and start a separate fix round at once
 - Never wait for Renovate's bump PR: tick the update's box in the repo's `Renovate Dashboard` issue (else `manual job`), then have a `chore-runner` poll for it (edit the line from `- [ ]` to `- [x]` and pipe the body to `gh issue edit <n> --body-file -`; no Write tool)
 - Every brief has the goal and evidence (`file:line`), constraints and merge rules, what not to touch, when to stop, a report cap, and the Definition of Ready
-- A CI-wait brief gives only `--repo <owner/repo>` and the PR or sha; never name `gh pr checks` or `gh run watch`: `chore-runner` has its own wait command
+- A CI-wait brief gives `--repo <owner/repo>`, the PR or sha, and any `--no-sonar`/`--no-codeql`; never a command such as `gh pr checks` or `gh run watch`: `chore-runner` has its own wait command
 - A PR's work goes in one push: each push re-runs approval-gated jobs and emails the owner per job; fix commit wording at squash-merge time, not with follow-up commits
 - Spot-check key helper claims (PR state, run status) when cheap
 
@@ -50,7 +50,7 @@ Review wide once, then check only the fixes (fresh reviewers each re-reviewing e
 
 Never open follow-up issues for review findings unless the owner asks; unfixed MINORs are dropped.
 
-Definition of Ready, before approving, asking the owner to approve, or merging: READY from every full-review lens or, after a fix round, from the latest fix-check, owner comments and threads checked, CI green, every gate the repo has.
+Definition of Ready, before approving, asking the owner to approve, or merging: READY from every full-review lens or, after a fix round, from the latest fix-check or your step 3 `git diff` check, owner comments and threads checked, CI green, every gate the repo has.
 
 ## Owner
 

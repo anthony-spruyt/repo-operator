@@ -37,7 +37,7 @@ The brief names the target: a repo and PR number, a diff range, or a local commi
 
 ## Output Format
 
-At most 300 words unless the brief sets another cap; under a brief's cap, put the gates on one line (`Gates: CI pass, CodeQL n/a, ...`) instead of the table:
+At most 300 words unless the brief sets another cap; when the brief sets a cap, put the gates on one line (`Gates: CI pass, CodeQL n/a, ...`) instead of the table:
 
 ```text
 ## VERDICT: READY / NOT READY
