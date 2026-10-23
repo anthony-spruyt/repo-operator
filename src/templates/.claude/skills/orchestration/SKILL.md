@@ -9,7 +9,7 @@ description: >
 
 ## Routing
 
-The main session plans, decides and talks to the owner. If the brief would be longer than the job, it does the job itself: inputs in hand, 1-3 commands, no waiting.
+The main session plans, decides and talks to the owner. If the brief would be longer than the job, it does the job itself: inputs in hand, 1-3 commands, no waiting. That includes a fix of about 5 lines with no logic change (wording, a comment, a pin, one flag): edit and commit it in your own `workspace.sh` clone, no builder.
 
 | Work                                         | Helper (model)                        |
 | -------------------------------------------- | ------------------------------------- |
@@ -19,7 +19,7 @@ The main session plans, decides and talks to the owner. If the brief would be lo
 | Deep investigation                           | `general-purpose` (opus)              |
 | Broad read-only search across files or repos | `Explore` (haiku)                     |
 
-Push reviewed commits yourself from the builder's `workspace.sh` clone, never the shared checkout, with `push-reviewed.sh <base> <sha> <branch>`, only once fresh reviews cover that exact range and the last round is READY (every full-review lens, then each fix-check); if it stops, tell the owner. Give the range it prints to the CI wait and any post-push validator the repo's rules name.
+Push reviewed commits yourself from the `workspace.sh` clone that holds them, never the shared checkout, with `push-reviewed.sh <base> <sha> <branch>`, only once fresh reviews cover that exact range and the last round is READY (every full-review lens, then each fix-check); if it stops, tell the owner. Give the range it prints to the CI wait and any post-push validator the repo's rules name.
 
 ## Interview, then design, before delegating
 
@@ -33,18 +33,19 @@ New work, or a change to an approach the owner picked, starts with the `intervie
 - A pre-existing CI failure a helper flags: tell the owner and start a separate fix round at once
 - Never wait for Renovate's bump PR: tick the update's box in the repo's `Renovate Dashboard` issue (else `manual job`), then have a `chore-runner` poll for it (edit the line from `- [ ]` to `- [x]` and pipe the body to `gh issue edit <n> --body-file -`; no Write tool)
 - Every brief has the goal and evidence (`file:line`), constraints and merge rules, what not to touch, when to stop, a report cap, and the Definition of Ready
+- A CI-wait brief gives only `--repo <owner/repo>` and the PR or sha; never name `gh pr checks` or `gh run watch`: `chore-runner` has its own wait command
 - A PR's work goes in one push: each push re-runs approval-gated jobs and emails the owner per job; fix commit wording at squash-merge time, not with follow-up commits
 - Spot-check key helper claims (PR state, run status) when cheap
 
 ## Review and readiness
 
-Every PR and fix round gets a fresh reviewer, never the author (bot PRs below excepted). Security-sensitive changes get an attacker-minded brief. Threats: fork and outsider PRs, prompt-injected or compromised AI agents and bots. Trusted: the owner and deterministic apps (Renovate, release bot, Mergify, GitHub Actions). Grade a security finding by its real impact: what an attacker gains that existing controls don't already stop. Drop it if that's nothing.
+Every PR and fix round gets a fresh reviewer, never the author (bot PRs below and verbatim fixes in step 3 excepted). Security-sensitive changes get an attacker-minded brief. Threats: fork and outsider PRs, prompt-injected or compromised AI agents and bots. Trusted: the owner and deterministic apps (Renovate, release bot, Mergify, GitHub Actions). Grade a security finding by its real impact: what an attacker gains that existing controls don't already stop. Drop it if that's nothing.
 
 Review wide once, then check only the fixes (fresh reviewers each re-reviewing everything find new nits forever):
 
 1. **Full review** - Run reviewers in parallel, one per lens: correctness, rules, and security when it applies. A diff under about 50 lines gets one reviewer with no lens. Merge their findings into one deduplicated list, then re-grade it yourself: a MINOR that causes wrong behaviour (a bug, wrong output, lost data) is a MAJOR.
-2. **Fix round** - One builder fixes every BLOCKER and MAJOR, plus the plainly correct MINORs, in one commit. MINORs alone never start a round.
-3. **Fix-check** - A fresh reviewer in fix-check mode gets the list and the fix range, and looks only there; a BLOCKER it happens to see outside that range is still reported, without hunting for more.
+2. **Fix round** - One commit fixes every BLOCKER and MAJOR, plus each MINOR worth fixing: a reader or user would trip on it, or it breaks a repo convention. Drop taste-only MINORs; one worth fixing can start a round alone.
+3. **Fix-check** - A fresh reviewer in fix-check mode gets the list and the fix range, and looks only there; a BLOCKER it happens to see outside that range is still reported, without hunting for more. Skip it when the fix only pastes in the reviewers' exact suggested text: check that with `git diff` yourself.
 4. **Cap** - If BLOCKER or MAJOR findings remain after two fix rounds, stop and take the list to the owner: repeat blockers usually mean the design is wrong.
 
 Never open follow-up issues for review findings unless the owner asks; unfixed MINORs are dropped.
