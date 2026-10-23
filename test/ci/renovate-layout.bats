@@ -20,6 +20,11 @@ setup() {
   [ "${lines[-1]}" = '"local>${xfg:repo.fullName}//renovate-overrides.json5"' ]
 }
 
+@test "the template extends the image-age preset right before the repo's own overrides" {
+  run grep -o '"[^"]*"' <(sed -n '/extends: \[/,/\]/p' "$TEMPLATE")
+  [ "${lines[-2]}" = '"github>anthony-spruyt/renovate-data//image-age"' ]
+}
+
 @test "no repo or other group configures Renovate files" {
   run yq -r '[.groups | to_entries[] | select(.key != "renovate") | .value.files // {} | keys[] | select(test("renovate"))] | length' "$SRC/groups.yaml"
   [ "$output" = "0" ]
