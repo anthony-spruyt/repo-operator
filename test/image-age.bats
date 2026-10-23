@@ -506,15 +506,28 @@ use_renovate_logs() {
     and (.images["quay.io/ceph/ceph"].pins | length) == 1' "$WORK/out/inventory.json"
 }
 
-@test "extract runs the pinned Renovate once per public repo with the token and JSON logs, and never prints the token" {
+@test "extract runs the pinned Renovate once per public repo with the token, the Actions bot identity and JSON logs, and never prints the token" {
   use_renovate_logs
   run fn main extract --out "$WORK/out"
   [ "$status" -eq 0 ]
+  bot='user=github-actions[bot] author=github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
   [ "$(cat "$FAKE_NPX_LOG")" = "$(printf '%s\n' \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | token=set format=json" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | token=set format=json" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | token=set format=json")" ]
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | token=set format=json $bot")" ]
   [[ "$output" != *dummy-token-value* ]]
+}
+
+@test "extract keeps the Renovate log and stderr of every repo in the out dir, named after the repo" {
+  use_renovate_logs
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for name in blog SunGather spruyt-labs; do
+    [ -s "$WORK/out/anthony-spruyt__$name.log" ]
+    [ -s "$WORK/out/anthony-spruyt__$name.err" ]
+  done
+  cmp "$WORK/out/anthony-spruyt__blog.log" "$FX/renovate-blog.log"
+  grep -q '^npm warn deprecated' "$WORK/out/anthony-spruyt__blog.err"
 }
 
 @test "extract reports a repo that fails and carries on with the rest" {
@@ -526,6 +539,67 @@ use_renovate_logs() {
   [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/SunGather"]' ]
   jq -e '.images["ghcr.io/gohugoio/hugo"] != null' "$WORK/out/inventory.json"
   grep -q '^::error::.*anthony-spruyt/SunGather' "$WORK/out/report.txt"
+}
+
+@test "extract shows why a repo failed in the job log and the report: the error lines of the Renovate log and the end of its stderr" {
+  use_renovate_logs
+  cp "$FX/renovate-auth-failure.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for text in 'Init: Authentication failure' 'Resource not accessible by integration' 'Renovate stopped' 'npm warn deprecated fake@1.0.0'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
+  [[ "$output" != *'Renovate started'* ]]
+  [[ "$output" != *'ghs_ prefix'* ]]
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+}
+
+@test "extract shows the same diagnosis for a run that exits 0 without extracting" {
+  use_renovate_logs
+  cp "$FX/renovate-aborted.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Repository has been aborted'*'Repository not found'* ]]
+  grep -q 'Repository has been aborted' "$WORK/out/report.txt"
+  [ "$(grep -c 'Repository has been aborted' <<<"$output")" -eq 1 ]
+}
+
+@test "extract diagnosis holds the first 15 error lines of the log and the last 10 lines of stderr" {
+  use_renovate_logs
+  for i in $(seq 1 20); do printf '{"level":50,"msg":"failure %02d"}\n' "$i"; done >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  for i in $(seq 1 12); do echo "stderr line $i"; done >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'failure [0-9]' <<<"$output")" -eq 15 ]
+  [[ "$output" == *'failure 15'* && "$output" != *'failure 16'* ]]
+  [ "$(grep -c 'stderr line' <<<"$output")" -eq 10 ]
+  [[ "$output" == *'stderr line 12'* && "$output" != *'stderr line 2'$'\n'* ]]
+  [ "$(grep -c 'stderr line' "$WORK/out/report.txt")" -eq 10 ]
+}
+
+@test "extract diagnosis skips lines of the log that are not JSON or have no numeric level, and tolerates an err that is not an object" {
+  use_renovate_logs
+  printf '%s\n' 'plain text, level 50' '42' '{"level":"50","msg":"string level"}' '{"level":50,"msg":"string err","err":"boom"}' '{"level":50,"err":{"message":"no msg"}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'string err'* && "$output" == *'no msg'* ]]
+  [[ "$output" != *'string level'* && "$output" != *'plain text'* ]]
+}
+
+@test "extract diagnosis cannot start a workflow command from the log or stderr" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"::error::from msg","err":{"message":"line one\n::error::from err"}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  printf '%s\n' '::error::from stderr' '  ::warning::indented stderr' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'from msg'*'from err'*'from stderr'*'indented stderr'* ]]
+  [ "$(grep -c '^[[:space:]]*::' <<<"$output")" -eq 1 ]
+  [ "$(grep -c '^[[:space:]]*::' "$WORK/out/report.txt")" -eq 1 ]
 }
 
 @test "extract treats a log that never reached the end of the run as a failure" {
@@ -886,7 +960,7 @@ preset_in() {
   preset_in
   run fn main validate --in "$WORK/art"
   [ "$status" -eq 0 ]
-  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | token= format=" ]
+  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | token= format= user= author=" ]
 }
 
 @test "validate stops when the validator rejects the preset" {

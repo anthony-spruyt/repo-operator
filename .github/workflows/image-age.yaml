@@ -52,6 +52,16 @@ jobs:
           path: ${{ runner.temp }}/extract
           retention-days: 1
 
+      - name: Upload Renovate logs
+        if: always()
+        uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7.0.2
+        with:
+          name: image-age-extract-logs
+          path: |
+            ${{ runner.temp }}/extract/*.log
+            ${{ runner.temp }}/extract/*.err
+          retention-days: 3
+
   render:
     name: "Date images"
     needs: extract

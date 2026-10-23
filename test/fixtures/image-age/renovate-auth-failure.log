@@ -1,0 +1,4 @@
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":30,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","renovateVersion":"44.164.7","msg":"Renovate started","time":"2026-10-23T00:41:16.931Z","v":0}
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":40,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","msg":"Using a token with the ghs_ prefix","time":"2026-10-23T00:41:16.980Z","v":0}
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":50,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","err":{"message":"Resource not accessible by integration"},"msg":"Init: Authentication failure","time":"2026-10-23T00:41:17.102Z","v":0}
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":60,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","msg":"Renovate stopped","time":"2026-10-23T00:41:17.110Z","v":0}

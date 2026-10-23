@@ -48,9 +48,23 @@ json5() {
 
 @test "the artifacts carry data only" {
   run yq -r '[.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.name] | join(",")' "$WORKFLOW"
-  [ "$output" = "inventory,preset" ]
+  [ "$output" = "inventory,image-age-extract-logs,preset" ]
   run grep -cE 'chmod|[.]sh"?$' <<<"$(yq -r '.jobs[].steps[] | select(.uses // "" | test("^actions/upload-artifact@")) | .with.path' "$WORKFLOW")"
   [ "$output" = "0" ]
+}
+
+@test "the extract job uploads the Renovate logs of every run for three days, even after a failure" {
+  step='.jobs.extract.steps[] | select(.with.name == "image-age-extract-logs")'
+  run yq -r "[$step] | length" "$WORKFLOW"
+  [ "$output" = "1" ]
+  run yq -r "$step | .if" "$WORKFLOW"
+  [ "$output" = "always()" ]
+  run yq -r "$step | .with.path" "$WORKFLOW"
+  [ "$output" = $'${{ runner.temp }}/extract/*.log\n${{ runner.temp }}/extract/*.err' ]
+  run yq -r "$step | .with[\"retention-days\"]" "$WORKFLOW"
+  [ "$output" = "3" ]
+  run yq -r "$step | .uses" "$WORKFLOW"
+  [ "$output" = "$(yq -r '.jobs.extract.steps[] | select(.with.name == "inventory") | .uses' "$WORKFLOW")" ]
 }
 
 @test "every job blocks egress and names the hosts it needs" {

@@ -12,6 +12,8 @@ MAX_PAGES=20
 STALE_SECONDS=$((36 * 3600))
 MAX_BYTES=524288
 MAX_DATA_BYTES=2097152
+DIAGNOSIS_LOG_LINES=15
+DIAGNOSIS_ERR_LINES=10
 DATA_REPO="anthony-spruyt/renovate-data"
 DATA_BRANCH="main"
 DATA_FILE="image-age.json"
@@ -384,18 +386,40 @@ public_repos() {
   yq '.repos[] | select(.files.inherit != false) | .git' "$REPOS_FILE" | while read -r url; do repo_slug "$url"; done
 }
 
-# extract_repo REPO OUT: one JSON object per third-party registry image reference found in REPO
+# diagnose REPO LOG ERR: the first error lines of Renovate's log and the end of its stderr, for the job log and the report
+# Each line starts with a label, so nothing in Renovate's output can start a workflow command; CR and LF become spaces.
+diagnose() {
+  local repo=$1 log=$2 err=$3 line
+  say "Renovate output for $repo (error lines of its log, end of its stderr):"
+  while IFS= read -r line; do
+    say "  log: $line"
+  done < <(jq -Rnr --argjson max "$DIAGNOSIS_LOG_LINES" '
+    [inputs | fromjson? | select(type == "object" and (.level | type) == "number" and .level >= 50)]
+    | .[:$max][]
+    | [.msg // "no message", (.err | objects | .message | strings)]
+    | map(tostring | gsub("[\r\n]+"; " ")) | join(": ")' "$log")
+  while IFS= read -r line; do
+    say "  stderr: $line"
+  done < <(tail -n "$DIAGNOSIS_ERR_LINES" "$err" | tr '\r' ' ')
+  return 0
+}
+
+# extract_repo REPO OUT LOGS: one JSON object per third-party registry image reference found in REPO; Renovate's log and stderr stay in LOGS
 extract_repo() {
-  local repo=$1 out=$2 log err all name status=0
-  log=$(mktemp) err=$(mktemp) all=$(mktemp)
+  local repo=$1 out=$2 logs=$3 log err all name status=0
+  log="$logs/${repo//\//__}.log" err="$logs/${repo//\//__}.err"
+  all=$(mktemp)
+  # Setting both username and git author keeps Renovate from looking them up with GET /app
   if ! RENOVATE_TOKEN="$GITHUB_TOKEN" LOG_FORMAT=json LOG_LEVEL=info \
+    RENOVATE_USERNAME="github-actions[bot]" RENOVATE_GIT_AUTHOR="github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" \
     npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then
-    tail -n 5 "$err"
-    rm -f "$log" "$err" "$all"
+    diagnose "$repo" "$log" "$err"
+    rm -f "$all"
     return 1
   fi
   if ! jq -Rse 'split("\n") | map(fromjson? // empty) | any(.[]; .msg == "Extracted dependencies" and (.packageFiles | type) == "object")' "$log" >/dev/null; then
-    rm -f "$log" "$err" "$all"
+    diagnose "$repo" "$log" "$err"
+    rm -f "$all"
     return 1
   fi
   jq -Rsc --arg repo "$repo" --argjson moved "$(moved_images)" \
@@ -415,7 +439,8 @@ extract_repo() {
     done < <(jq -r --arg re "$IMAGE_RE" 'select(.image | test($re) | not) | .image | @json' "$all")
     jq -c --arg re "$IMAGE_RE" 'select(.image | test($re))' "$all" >"$out" || status=1
   fi
-  rm -f "$log" "$err" "$all"
+  if ((status != 0)); then diagnose "$repo" "$log" "$err"; fi
+  rm -f "$all"
   return "$status"
 }
 
@@ -427,7 +452,7 @@ cmd_extract() {
   refs=$(mktemp)
   while read -r repo; do
     tmp=$(mktemp)
-    if extract_repo "$repo" "$tmp"; then
+    if extract_repo "$repo" "$tmp" "$out"; then
       cat "$tmp" >>"$refs"
     else
       say "::error::extracting the images of $repo failed, its previous rules stay"
