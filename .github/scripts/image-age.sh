@@ -413,7 +413,7 @@ extract_repo() {
   # Setting both username and git author keeps Renovate from asking GitHub who the token belongs to
   if ! RENOVATE_TOKEN="$GITHUB_TOKEN" LOG_FORMAT=json LOG_LEVEL=info \
     RENOVATE_USERNAME="github-actions[bot]" RENOVATE_GIT_AUTHOR="github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" \
-    npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then
+    npm_config_omit=optional npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then
     diagnose "$repo" "$log" "$err"
     rm -f "$all"
     return 1
@@ -726,7 +726,7 @@ cmd_validate() {
     bad=1
   fi
   if ((bad != 0)); then return 1; fi
-  if ! npx --yes --package "renovate@$RENOVATE_VERSION" -- renovate-config-validator --strict --no-global "$file"; then
+  if ! npm_config_omit=optional npx --yes --package "renovate@$RENOVATE_VERSION" -- renovate-config-validator --strict --no-global "$file"; then
     say "::error::the Renovate config validator rejected $DATA_FILE"
     return 1
   fi

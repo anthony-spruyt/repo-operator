@@ -431,7 +431,7 @@ The job is `image` in `ci.yaml` and `images` in `release-please.yaml`; the `rele
 ## Image age
 
 `.github/workflows/image-age.yaml` dates the container images that registries other than Docker Hub serve, so Renovate holds back tags and rebuilds younger than 7 days. It runs every six hours and on dispatch, in four jobs behind harden-runner with `egress-policy: block`. Every job checks out the commit (`github.sha`, `persist-credentials: false`) and runs `.github/scripts/image-age.sh` from that
-checkout. The artifacts carry data only: `inventory.json`, `image-age.json`, `image-age-data.json`, `report.txt` and the Renovate logs of the extract job.
+checkout. The artifacts carry data only: `inventory.json`, `image-age.json`, `image-age-data.json`, `report.txt` and the Renovate logs of the extract job. The extract and validate jobs run Renovate on Node 24 (set up with `actions/setup-node`), the engine Renovate requires.
 
 1. **extract** (`contents: read`): `image-age.sh extract` runs the pinned Renovate (`RENOVATE_VERSION` in the script, bumped by Renovate) in `--dry-run=extract` mode on every public repo in `src/repos.yaml`, and lists the images whose registry is neither Docker Hub nor `ghcr.io/anthony-spruyt/`, with the tags and digests in use. A repo counts as extracted when Renovate logs
    `Extracted dependencies`; any other end is an `::error` and the repo's images keep their stored rows. The images in the `Registry moves` rules are left out, because Renovate dates them on Docker Hub. Every image name must be a valid reference; any other is dropped with an `::error`. Renovate runs with the job token and `github-actions[bot]` as username and git author, so it does not ask GitHub

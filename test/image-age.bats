@@ -506,15 +506,15 @@ use_renovate_logs() {
     and (.images["quay.io/ceph/ceph"].pins | length) == 1' "$WORK/out/inventory.json"
 }
 
-@test "extract runs the pinned Renovate once per public repo with the token, the Actions bot identity and JSON logs, and never prints the token" {
+@test "extract runs the pinned Renovate once per public repo with optional dependencies omitted, the token, the Actions bot identity and JSON logs, and never prints the token" {
   use_renovate_logs
   run fn main extract --out "$WORK/out"
   [ "$status" -eq 0 ]
   bot='user=github-actions[bot] author=github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
   [ "$(cat "$FAKE_NPX_LOG")" = "$(printf '%s\n' \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | token=set format=json $bot" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | token=set format=json $bot" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | token=set format=json $bot")" ]
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | omit=optional token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | omit=optional token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | omit=optional token=set format=json $bot")" ]
   [[ "$output" != *dummy-token-value* ]]
 }
 
@@ -997,11 +997,11 @@ preset_in() {
   : >"$WORK/art/report.txt"
 }
 
-@test "validate runs the pinned Renovate validator on the preset" {
+@test "validate runs the pinned Renovate validator on the preset with optional dependencies omitted" {
   preset_in
   run fn main validate --in "$WORK/art"
   [ "$status" -eq 0 ]
-  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | token= format= user= author=" ]
+  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | omit=optional token= format= user= author=" ]
 }
 
 @test "validate stops when the validator rejects the preset" {

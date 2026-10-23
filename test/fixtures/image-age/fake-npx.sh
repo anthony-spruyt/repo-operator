@@ -3,7 +3,7 @@
 # exit code when they exist; the config validator answers with $FAKE_VALIDATOR_STATUS.
 set -euo pipefail
 
-printf '%s | token=%s format=%s user=%s author=%s\n' "$*" "${RENOVATE_TOKEN:+set}" "${LOG_FORMAT:-}" "${RENOVATE_USERNAME:-}" "${RENOVATE_GIT_AUTHOR:-}" >>"$FAKE_NPX_LOG"
+printf '%s | omit=%s token=%s format=%s user=%s author=%s\n' "$*" "${npm_config_omit:-}" "${RENOVATE_TOKEN:+set}" "${LOG_FORMAT:-}" "${RENOVATE_USERNAME:-}" "${RENOVATE_GIT_AUTHOR:-}" >>"$FAKE_NPX_LOG"
 case "$*" in
 *renovate-config-validator*)
   echo "fake validator: ${*: -1}" >&2
