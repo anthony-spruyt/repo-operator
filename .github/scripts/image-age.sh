@@ -283,7 +283,7 @@ pull_auth() {
 
 # head_manifest IMAGE TAG OUT: writes the digest that the registry serves for the tag now to OUT, from a HEAD on its manifest. Prints why on failure.
 head_manifest() {
-  local image=$1 tag=$2 out=$3 host=${1%%/*} path=${1#*/} token_url="" hdr auth code digest why
+  local tag=$2 out=$3 host=${1%%/*} path=${1#*/} token_url="" hdr auth code digest why
   local args=(-H "Accept: $MANIFEST_ACCEPT")
   case "$host" in
   ghcr.io) token_url="https://ghcr.io/token?scope=repository:$path:pull&service=ghcr.io" ;;
