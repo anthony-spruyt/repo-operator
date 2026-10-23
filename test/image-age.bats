@@ -343,9 +343,9 @@ route_pull() { route GET "$1" 200 "$FX/pull-grant.json"; }
 # route_digest <url> <digest>: a manifest HEAD that answers with the digest of the tag
 route_digest() { route HEAD "$1" 200 - "Docker-Content-Digest: $2"; }
 
-GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull"
+GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.io"
 
-@test "manifest_digest reads the digest of a ghcr tag from a HEAD on its manifest, with an anonymous pull token and the manifest media types" {
+@test "manifest_digest reads the digest of a ghcr tag from a HEAD on its manifest, with an anonymous pull token for the service and the manifest media types" {
   route_pull "$GHCR_PULL"
   route_digest "https://ghcr.io/v2/acme/widget/manifests/17" "$(digest a)"
   run fn manifest_digest ghcr.io/acme/widget 17 "$WORK/digest"
@@ -368,14 +368,14 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull"
     "HEAD https://quay.io/v2/acme/widget/manifests/v1 auth=pull accept=$ACCEPT_TYPES")" ]
 }
 
-@test "manifest_digest asks gcr.io for its pull token and reads the manifest there" {
-  route_pull "https://gcr.io/v2/token?scope=repository:distroless/static:pull"
+@test "manifest_digest asks gcr.io for its pull token with the service and reads the manifest there" {
+  route_pull "https://gcr.io/v2/token?scope=repository:distroless/static:pull&service=gcr.io"
   route_digest "https://gcr.io/v2/distroless/static/manifests/latest" "$(digest c)"
   run fn manifest_digest gcr.io/distroless/static latest "$WORK/digest"
   [ "$status" -eq 0 ]
   [ "$(cat "$WORK/digest")" = "$(digest c)" ]
   [ "$(cat "$FAKE_LOG")" = "$(printf '%s\n' \
-    'GET https://gcr.io/v2/token?scope=repository:distroless/static:pull auth=no' \
+    'GET https://gcr.io/v2/token?scope=repository:distroless/static:pull&service=gcr.io auth=no' \
     "HEAD https://gcr.io/v2/distroless/static/manifests/latest auth=pull accept=$ACCEPT_TYPES")" ]
 }
 
@@ -482,6 +482,18 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull"
   [ "$status" -ne 0 ]
   run grep -Eq '^(young|almost|skipped|sha256-)' <<<"$selected"
   [ "$status" -ne 0 ]
+}
+
+@test "select_rows skips a row whose push time is not a whole number" {
+  {
+    printf 'good\tsha256:g\t%s\n' $((NOW - 800000))
+    printf 'letters\tsha256:l\t0abc\n'
+    printf 'fraction\tsha256:f\t1.5\n'
+    printf 'empty\tsha256:e\t\n'
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "letters fraction empty" ""
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'good\tsha256:g')" ]
 }
 
 @test "trim_rows keeps the young rows, the newest 50 old ones and the tags in use, and drops cosign tags" {
@@ -1100,6 +1112,66 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
 }
 
+@test "render admits a fleet tag at once when the previous rows hold its digest from 30 days ago and no entry is stored, and says nothing" {
+  unlisted_in stable
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW - 2592000))}]"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::"* ]]
+  jq -e '.packageRules[0].allowedVersions | endswith("|stable)$/")' "$WORK/out/image-age.json"
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-09-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
+}
+
+@test "render starts the clock of a fleet tag now when the previous rows hold another build of it or a push time in the future" {
+  unlisted_in stable
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 6)\",\"pushedAt\":$((NOW - 2592000))}]"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among"*"(first seen 2026-10-23T00:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW + 86400))}]"
+  run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out2/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out2/image-age.json"
+}
+
+@test "render counts a stored first-seen time in the future as now" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" -86400)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"(first seen 2026-10-23T00:00:00Z)"* ]]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
+@test "render keeps the stored unlisted entries of an image it cannot list and holds no rows for, reads no digest, and drops the entries of tags no repo uses" {
+  inventory '{"failedRepos":[],"images":{"ghcr.io/acme/widget":{"tags":["t1","stable"],"pins":[]},"public.ecr.aws/acme/tool":{"tags":["1","edge"],"pins":[]}}}'
+  jq -n --arg d "$(digest 7)" --arg e "$(digest 8)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {},
+    unlisted: {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-16T00:00:00Z"}, retired: {digest: $d, firstSeen: "2026-10-01T00:00:00Z"}},
+               "public.ecr.aws/acme/tool": {edge: {digest: $e, firstSeen: "2026-10-20T00:00:00Z"}}}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  route GET "$WIDGET_VERSIONS" 500
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::error::ghcr.io/acme/widget: registry answered 500"* ]]
+  [[ "$output" == *"::error::unsupported registry public.ecr.aws for public.ecr.aws/acme/tool"* ]]
+  jq -e --arg d "$(digest 7)" --arg e "$(digest 8)" '.unlisted == {
+    "ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-16T00:00:00Z"}},
+    "public.ecr.aws/acme/tool": {edge: {digest: $e, firstSeen: "2026-10-20T00:00:00Z"}}}' "$WORK/out/image-age-data.json"
+  jq -e '[.packageRules[] | select(.matchPackageNames == ["ghcr.io/acme/widget"] or .matchPackageNames == ["public.ecr.aws/acme/tool"])] | length == 2 and all(.enabled == false)' "$WORK/out/image-age.json"
+  [ "$(grep -c '^HEAD ' "$FAKE_LOG")" -eq 0 ]
+}
+
 @test "render admits a fleet tag and its digest once it has been seen for 7 days, says nothing about it and keeps its entry" {
   need_jsonata
   unlisted_in stable
@@ -1169,7 +1241,7 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   grep -q '^::warning::ghcr.io/acme/widget: could not read' "$WORK/out/report.txt"
 }
 
-@test "render stores nothing for a tag whose digest it cannot read when it has no entry for it, and finishes the other images" {
+@test "render stores nothing for a tag whose digest it cannot read when it has no entry for it" {
   unlisted_in stable
   route HEAD "https://ghcr.io/v2/acme/widget/manifests/stable" 404
   route_rest
@@ -1215,6 +1287,25 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   [ "$status" -ne 0 ]
   [[ "$output" == *"::error::"* ]]
   [ ! -e "$WORK/out/image-age.json" ]
+}
+
+@test "render stops when the clock reads earlier than the last published run, and goes on when it reads the same time" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  jq '.generatedAt = "2026-10-23T00:00:01Z"' "$WORK/previous-data.json" >"$WORK/later.json"
+  mv "$WORK/later.json" "$WORK/previous-data.json"
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::the clock reads 2026-10-23T00:00:00Z, earlier than the last published run at 2026-10-23T00:00:01Z"* ]]
+  [ ! -e "$WORK/out/image-age.json" ]
+
+  jq '.generatedAt = "2026-10-23T00:00:00Z"' "$WORK/previous-data.json" >"$WORK/same.json"
+  mv "$WORK/same.json" "$WORK/previous-data.json"
+  run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  [ -e "$WORK/out2/image-age.json" ]
 }
 
 @test "render reads a fleet tag's digest from the registry also when it fell back to the stored rows" {
@@ -1445,6 +1536,8 @@ EOF
     [[ "$output" == *"::error::"*"image-age-data.json"*"unlisted"* ]]
   done <<'EOF'
 .unlisted = []
+.unlisted = null
+.unlisted = false
 .unlisted = "x"
 .unlisted["quay.io/acme/widget"] = 1
 .unlisted["quay.io/acme/widget"]["17"] = "x"

@@ -286,10 +286,10 @@ head_manifest() {
   local image=$1 tag=$2 out=$3 host=${1%%/*} path=${1#*/} token_url="" hdr auth code digest why
   local args=(-H "Accept: $MANIFEST_ACCEPT")
   case "$host" in
-  ghcr.io) token_url="https://ghcr.io/token?scope=repository:$path:pull" ;;
+  ghcr.io) token_url="https://ghcr.io/token?scope=repository:$path:pull&service=ghcr.io" ;;
   quay.io) token_url="https://quay.io/v2/auth?service=quay.io&scope=repository:$path:pull" ;;
   gcr.io)
-    token_url="https://gcr.io/v2/token?scope=repository:$path:pull"
+    token_url="https://gcr.io/v2/token?scope=repository:$path:pull&service=gcr.io"
     args+=(-L)
     ;;
   registry.k8s.io) args+=(-L) ;;
@@ -337,25 +337,39 @@ iso() {
   date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ
 }
 
-# stored_unlisted IMAGE TAG PREVIOUS: the digest and first-seen time (epoch seconds) of an entry of the previous data, tab-separated
+# stored_unlisted IMAGE PREVIOUS [TAG]: the tag, digest and first-seen time (epoch seconds, never later than now) of the entries of the previous data for IMAGE, or just TAG, tab-separated
 stored_unlisted() {
-  local image=$1 tag=$2 previous=$3
-  jq -r --arg i "$image" --arg t "$tag" '.unlisted[$i][$t] // empty | [.digest, (.firstSeen | fromdateiso8601)] | @tsv' "$previous"
+  local image=$1 previous=$2 tag=${3:-}
+  jq -r --arg i "$image" --arg t "$tag" --argjson now "$(now)" '
+    (.unlisted[$i] // {}) | to_entries[] | select($t == "" or .key == $t)
+    | [.key, .value.digest, ([(.value.firstSeen | fromdateiso8601), $now] | min)] | @tsv' "$previous"
 }
 
-# resolve_unlisted IMAGE ROWS USED PREVIOUS OUT: for each tag in use that ROWS lack, the digest the registry serves now and when it was first seen.
+# listed_at IMAGE TAG DIGEST PREVIOUS: when the previous rows list the tag at the digest, the time the registry made it (epoch seconds, never later than now)
+listed_at() {
+  local image=$1 tag=$2 digest=$3 previous=$4
+  jq -r --arg i "$image" --arg t "$tag" --arg d "$digest" --argjson now "$(now)" '
+    [.rows[$i][]? | select(.tag == $t and .digest == $d) | .pushedAt] | max // empty | [., $now] | min' "$previous"
+}
+
+# resolve_unlisted IMAGE ROWS USED PREVIOUS OUT: for each tag in use that ROWS lack, the digest the registry serves now and when it was first seen:
+# the stored entry's time for that digest, else the push time of that tag and digest in the previous rows, else now.
 # OUT gets "tag digest seen current" per tag; current is 1 when the registry gave the digest in this run, 0 for an entry kept from PREVIOUS.
 resolve_unlisted() {
-  local image=$1 rows=$2 used=$3 previous=$4 out=$5 tag got now_at stored_digest stored_at seen
+  local image=$1 rows=$2 used=$3 previous=$4 out=$5 tag got now_at got_digest stored_digest stored_at seen
   : >"$out"
   got=$(mktemp)
   now_at=$(now)
   while read -r tag; do
-    IFS=$'\t' read -r stored_digest stored_at <<<"$(stored_unlisted "$image" "$tag" "$previous")"
+    IFS=$'\t' read -r _ stored_digest stored_at <<<"$(stored_unlisted "$image" "$previous" "$tag")"
     if manifest_digest "$image" "$tag" "$got"; then
-      seen=$now_at
-      if [[ "$(<"$got")" == "$stored_digest" ]]; then seen=$stored_at; fi
-      printf '%s\t%s\t%s\t1\n' "$tag" "$(<"$got")" "$seen" >>"$out"
+      got_digest=$(<"$got")
+      seen=$stored_at
+      if [[ "$got_digest" != "$stored_digest" ]]; then
+        seen=$(listed_at "$image" "$tag" "$got_digest" "$previous")
+        seen=${seen:-$now_at}
+      fi
+      printf '%s\t%s\t%s\t1\n' "$tag" "$got_digest" "$seen" >>"$out"
       if ((seen > now_at - MIN_AGE_SECONDS)); then
         say "::notice::$image: tag $tag is not among the builds the registry lists; its digest is admitted after 7 days of being seen (first seen $(iso "$seen"))"
       fi
@@ -366,6 +380,15 @@ resolve_unlisted() {
   rm -f "$got"
 }
 
+# carry_unlisted IMAGE USED PREVIOUS OUT: for an image that could not be listed, the stored entries of the tags in use, written to OUT as resolve_unlisted writes the ones it kept
+carry_unlisted() {
+  local image=$1 used=$2 previous=$3 out=$4
+  stored_unlisted "$image" "$previous" | awk -F'\t' -v OFS='\t' -v used="$used" '
+    BEGIN { n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1 }
+    $1 in U { print $1, $2, $3, 0 }
+  ' >"$out"
+}
+
 # select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first. USED and SKIPS are space-separated tags.
 select_rows() {
   local rows=$1 used=$2 skips=$3 cut=$(($(now) - MIN_AGE_SECONDS))
@@ -374,6 +397,7 @@ select_rows() {
       n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
       n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
     }
+    $3 !~ /^-?[0-9]+$/ { next }
     $3 > cut || $1 ~ cosign || ($1 in S) { next }
     { eligible++ }
     eligible <= keep || ($1 in U) { print $1, $2 }
@@ -599,8 +623,9 @@ ROW_OK='def row_ok: (.tag | type == "string" and test($tag)) and (.digest | type
 
 # shellcheck disable=SC2016
 UNLISTED_OK='def entries: if type == "object" then to_entries else [] end;
+  def time_ok: type == "string" and test($iso) and (try (fromdateiso8601 | true) catch false);
   def entry_ok: (.key | test($tag)) and (.value | type == "object") and (.value.digest | type == "string" and test($dig))
-    and (.value.firstSeen | type == "string" and test($iso) and (try (fromdateiso8601 | true) catch false));'
+    and (.value.firstSeen | time_ok);'
 
 # previous_data OUT: the data of the last published run, checked as fresh data is. The empty shape on the first run.
 previous_data() {
@@ -639,7 +664,7 @@ previous_data() {
   jq '.inventory' "$raw" >"$inv.in"
   clean_inventory "$inv.in" "$inv" "the previous data"
   jq -c --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" --slurpfile inv "$inv" "$ROW_OK $UNLISTED_OK"'
-    {inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries),
+    {generatedAt: (.generatedAt | if time_ok then . else null end), inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries),
      unlisted: ((.unlisted // {}) | to_entries | map(select(.key | test($re)) | .value |= (entries | map(select(entry_ok)) | from_entries)) | map(select(.value | length > 0)) | from_entries)}' "$raw" >"$out"
   rm -f "$raw" "$inv" "$inv.in"
 }
@@ -667,6 +692,7 @@ dated_rules() {
     fi
   fi
   if ((status != 0)); then
+    carry_unlisted "$image" "$used" "$previous" "$work/unlisted"
     disabling_rule "$image" "$(now)" | jq -s . >"$work/rules.json"
     return 0
   fi
@@ -717,6 +743,16 @@ override_guard() {
   rm -f "$raw"
 }
 
+# clock_ok PREVIOUS: the time is not earlier than the last published run; prints why when it is
+clock_ok() {
+  local previous=$1 last
+  last=$(jq -r '(.generatedAt // empty) | fromdateiso8601' "$previous")
+  if [[ -n "$last" ]] && (($(now) < last)); then
+    say "::error::the clock reads $(iso "$(now)"), earlier than the last published run at $(iso "$last")"
+    return 1
+  fi
+}
+
 cmd_render() {
   local in=$1 out=$2 work previous skips image count
   mkdir -p "$out"
@@ -726,6 +762,7 @@ cmd_render() {
   work=$(mktemp -d)
   previous="$work/previous.json"
   previous_data "$previous" || return 1
+  clock_ok "$previous" || return 1
   clean_inventory "$in/inventory.json" "$work/inventory.json" "the inventory"
   if [[ "$(jq '.failedRepos | length' "$work/inventory.json")" -gt 0 ]]; then
     jq -c --slurpfile prev "$previous" '.images = ($prev[0].inventory.images + .images)' "$work/inventory.json" >"$work/merged.json"
@@ -847,7 +884,7 @@ cmd_validate() {
     say "::error::$STATE_FILE is above the $MAX_DATA_BYTES byte limit"
     bad=1
   elif ! jq -e --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" "$UNLISTED_OK"'
-      (.unlisted // {}) | type == "object" and all(to_entries[]; (.key | test($re)) and (.value | type == "object") and all(.value | entries[]; entry_ok))' "$state" >/dev/null 2>&1; then
+      (if has("unlisted") then .unlisted else {} end) | type == "object" and all(to_entries[]; (.key | test($re)) and (.value | type == "object") and all(.value | entries[]; entry_ok))' "$state" >/dev/null 2>&1; then
     say "::error::$STATE_FILE: unlisted is not a map of image to tag to a digest and a first-seen time"
     bad=1
   fi
