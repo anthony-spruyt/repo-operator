@@ -151,16 +151,16 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   [[ "$output" != *"::"* ]]
 }
 
-@test "fetch_rows warns about a tag in use that the registry never lists and still succeeds" {
+@test "fetch_rows succeeds without a word about a tag in use that the registry never lists" {
   old_ghcr_page 60 t >"$WORK/p1.json"
   route GET "$WIDGET_VERSIONS" 200 "$WORK/p1.json"
   run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "ghost t1"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::ghcr.io/acme/widget: tag ghost in use was not listed by the registry"* ]]
-  [[ "$output" != *"t1 in use"* ]]
+  [ -z "$output" ]
+  [ "$(wc -l <"$WORK/rows")" -eq 60 ]
 }
 
-@test "fetch_rows stops at 20 pages with a warning when only a tag in use is still missing" {
+@test "fetch_rows stops at 20 pages without a warning when only a tag in use is still missing" {
   old_ghcr_page 60 t >"$WORK/old.json"
   for n in $(seq 1 25); do
     route GET "$GHCR/user/1/packages/container/widget/versions?per_page=100&page=$n" 200 "$WORK/old.json" "Link: <$GHCR/user/1/packages/container/widget/versions?per_page=100&page=$((n + 1))>; rel=\"next\""
@@ -169,7 +169,7 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "ghost"
   [ "$status" -eq 0 ]
   [ "$(wc -l <"$FAKE_LOG")" -eq 20 ]
-  [[ "$output" == *"::warning::ghcr.io/acme/widget: tag ghost in use was not listed by the registry"* ]]
+  [[ "$output" != *"::warning::"* ]]
 }
 
 @test "fetch_rows counts only tags that are old enough, not cosign signatures" {
@@ -217,7 +217,7 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   [ "$(wc -l <"$WORK/rows")" -eq 3 ]
 }
 
-@test "fetch_rows still warns at the cap about a tag in use that the short listing lacks" {
+@test "fetch_rows says nothing at the cap about a tag in use that the short listing lacks" {
   old_ghcr_page 3 t >"$WORK/old.json"
   for n in $(seq 1 25); do
     route GET "$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$n" 200 "$WORK/old.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=$((n + 1))>; rel=\"next\""
@@ -225,7 +225,7 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   route GET "$WIDGET_VERSIONS" 200 "$WORK/old.json" "Link: <$GHCR/users/acme/packages/container/widget/versions?per_page=100&page=1>; rel=\"next\""
   run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "ghost"
   [ "$status" -eq 0 ]
-  [[ "$output" == *"::warning::ghcr.io/acme/widget: tag ghost in use was not listed by the registry"* ]]
+  [[ "$output" != *"::warning::"* ]]
   [ "$(grep -c '^::error::' <<<"$output")" -eq 0 ]
 }
 
@@ -335,6 +335,132 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   [ ! -s "$FAKE_LOG" ]
 }
 
+ACCEPT_TYPES='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
+
+# route_pull <url>: an anonymous pull token
+route_pull() { route GET "$1" 200 "$FX/pull-grant.json"; }
+
+# route_digest <url> <digest>: a manifest HEAD that answers with the digest of the tag
+route_digest() { route HEAD "$1" 200 - "Docker-Content-Digest: $2"; }
+
+GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.io"
+
+@test "manifest_digest reads the digest of a ghcr tag from a HEAD on its manifest, with an anonymous pull token for the service and the manifest media types" {
+  route_pull "$GHCR_PULL"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/17" "$(digest a)"
+  run fn manifest_digest ghcr.io/acme/widget 17 "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+  [ "$(cat "$WORK/digest")" = "$(digest a)" ]
+  [ "$(cat "$FAKE_LOG")" = "$(printf '%s\n' \
+    "GET $GHCR_PULL auth=no" \
+    "HEAD https://ghcr.io/v2/acme/widget/manifests/17 auth=pull accept=$ACCEPT_TYPES")" ]
+}
+
+@test "manifest_digest asks quay.io for its pull token with the service and reads the manifest there" {
+  route_pull "https://quay.io/v2/auth?service=quay.io&scope=repository:acme/widget:pull"
+  route_digest "https://quay.io/v2/acme/widget/manifests/v1" "$(digest b)"
+  run fn manifest_digest quay.io/acme/widget v1 "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/digest")" = "$(digest b)" ]
+  [ "$(cat "$FAKE_LOG")" = "$(printf '%s\n' \
+    'GET https://quay.io/v2/auth?service=quay.io&scope=repository:acme/widget:pull auth=no' \
+    "HEAD https://quay.io/v2/acme/widget/manifests/v1 auth=pull accept=$ACCEPT_TYPES")" ]
+}
+
+@test "manifest_digest asks gcr.io for its pull token with the service and reads the manifest there" {
+  route_pull "https://gcr.io/v2/token?scope=repository:distroless/static:pull&service=gcr.io"
+  route_digest "https://gcr.io/v2/distroless/static/manifests/latest" "$(digest c)"
+  run fn manifest_digest gcr.io/distroless/static latest "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/digest")" = "$(digest c)" ]
+  [ "$(cat "$FAKE_LOG")" = "$(printf '%s\n' \
+    'GET https://gcr.io/v2/token?scope=repository:distroless/static:pull&service=gcr.io auth=no' \
+    "HEAD https://gcr.io/v2/distroless/static/manifests/latest auth=pull accept=$ACCEPT_TYPES")" ]
+}
+
+@test "manifest_digest follows the registry.k8s.io redirect to the digest and sends no token" {
+  route HEAD "https://registry.k8s.io/v2/sig-storage/csi-snapshotter/manifests/v8.2.0" 307 "" "Location: https://europe-docker.pkg.dev/v2/k8s-artifacts-prod/images/sig-storage/csi-snapshotter/manifests/v8.2.0?rid=1"
+  route_digest "https://europe-docker.pkg.dev/v2/k8s-artifacts-prod/images/sig-storage/csi-snapshotter/manifests/v8.2.0?rid=1" "$(digest d)"
+  run fn manifest_digest registry.k8s.io/sig-storage/csi-snapshotter v8.2.0 "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/digest")" = "$(digest d)" ]
+  [ "$(cat "$FAKE_LOG")" = "$(printf '%s\n' \
+    "HEAD https://registry.k8s.io/v2/sig-storage/csi-snapshotter/manifests/v8.2.0 auth=no accept=$ACCEPT_TYPES" \
+    'HEAD https://europe-docker.pkg.dev/v2/k8s-artifacts-prod/images/sig-storage/csi-snapshotter/manifests/v8.2.0?rid=1 auth=no')" ]
+}
+
+@test "manifest_digest reads mcr.microsoft.com without a token" {
+  route_digest "https://mcr.microsoft.com/v2/dotnet/aspnet/manifests/8.0" "$(digest e)"
+  run fn manifest_digest mcr.microsoft.com/dotnet/aspnet 8.0 "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/digest")" = "$(digest e)" ]
+  [ "$(cat "$FAKE_LOG")" = "HEAD https://mcr.microsoft.com/v2/dotnet/aspnet/manifests/8.0 auth=no accept=$ACCEPT_TYPES" ]
+}
+
+@test "manifest_digest takes the digest header whatever its case" {
+  route_pull "$GHCR_PULL"
+  route HEAD "https://ghcr.io/v2/acme/widget/manifests/17" 200 - "docker-content-digest: $(digest f)"
+  run fn manifest_digest ghcr.io/acme/widget 17 "$WORK/digest"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/digest")" = "$(digest f)" ]
+}
+
+@test "manifest_digest warns and writes nothing when the registry answers an error, sends no digest or a malformed one, or gives no pull token" {
+  local url=https://ghcr.io/v2/acme/widget/manifests/gone
+  route_pull "$GHCR_PULL"
+  route HEAD "$url" 404
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*"404"*")" ]]
+  [ ! -s "$WORK/digest" ]
+
+  : >"$FAKE_ROUTES"
+  route_pull "$GHCR_PULL"
+  route HEAD "$url" 200
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*")" ]]
+  [ ! -s "$WORK/digest" ]
+
+  : >"$FAKE_ROUTES"
+  route_pull "$GHCR_PULL"
+  route HEAD "$url" 200 - "Docker-Content-Digest: sha256:short"
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*")" ]]
+  [ ! -s "$WORK/digest" ]
+
+  : >"$FAKE_ROUTES"
+  : >"$FAKE_LOG"
+  route GET "$GHCR_PULL" 403
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*"403"*")" ]]
+  [ "$(grep -c '^HEAD ' "$FAKE_LOG")" -eq 0 ]
+
+  : >"$FAKE_ROUTES"
+  printf '{"token":"two\\nlines"}\n' >"$WORK/multi-line.json"
+  route GET "$GHCR_PULL" 200 "$WORK/multi-line.json"
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*")" ]]
+
+  : >"$FAKE_ROUTES"
+  route_pull "$GHCR_PULL"
+  route HEAD "$url" 000
+  run fn manifest_digest ghcr.io/acme/widget gone "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"::warning::ghcr.io/acme/widget: could not read the digest of tag gone ("*"000"*")" ]]
+}
+
+@test "manifest_digest has no adapter for a registry it cannot ask and says why" {
+  run fn manifest_digest registry.example.com/acme/widget 1 "$WORK/digest"
+  [ "$status" -eq 1 ]
+  [[ "$output" == "::warning::registry.example.com/acme/widget: could not read the digest of tag 1 ("*")" ]]
+  [ ! -s "$FAKE_LOG" ]
+}
+
 @test "select_rows keeps the newest 50 builds that are at least 7 days old, plus fleet tags, minus skips and cosign tags" {
   {
     printf 'young\tsha256:y\t%s\n' $((NOW - 86400))
@@ -356,6 +482,18 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   [ "$status" -ne 0 ]
   run grep -Eq '^(young|almost|skipped|sha256-)' <<<"$selected"
   [ "$status" -ne 0 ]
+}
+
+@test "select_rows skips a row whose push time is not a whole number" {
+  {
+    printf 'good\tsha256:g\t%s\n' $((NOW - 800000))
+    printf 'letters\tsha256:l\t0abc\n'
+    printf 'fraction\tsha256:f\t1.5\n'
+    printf 'empty\tsha256:e\t\n'
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "letters fraction empty" ""
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'good\tsha256:g')" ]
 }
 
 @test "trim_rows keeps the young rows, the newest 50 old ones and the tags in use, and drops cosign tags" {
@@ -506,15 +644,28 @@ use_renovate_logs() {
     and (.images["quay.io/ceph/ceph"].pins | length) == 1' "$WORK/out/inventory.json"
 }
 
-@test "extract runs the pinned Renovate once per public repo with the token and JSON logs, and never prints the token" {
+@test "extract runs the pinned Renovate once per public repo with optional dependencies omitted, its RE2 warning off, the token, the Actions bot identity and JSON logs, and never prints the token" {
   use_renovate_logs
   run fn main extract --out "$WORK/out"
   [ "$status" -eq 0 ]
+  bot='user=github-actions[bot] author=github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>'
   [ "$(cat "$FAKE_NPX_LOG")" = "$(printf '%s\n' \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | token=set format=json" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | token=set format=json" \
-    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | token=set format=json")" ]
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/blog | omit=optional re2=true token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/SunGather | omit=optional re2=true token=set format=json $bot" \
+    "--yes renovate@$RENOVATE_PIN --dry-run=extract --platform=github anthony-spruyt/spruyt-labs | omit=optional re2=true token=set format=json $bot")" ]
   [[ "$output" != *dummy-token-value* ]]
+}
+
+@test "extract keeps the Renovate log and stderr of every repo in the out dir, named after the repo" {
+  use_renovate_logs
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for name in blog SunGather spruyt-labs; do
+    [ -s "$WORK/out/anthony-spruyt__$name.log" ]
+    [ -s "$WORK/out/anthony-spruyt__$name.err" ]
+  done
+  cmp "$WORK/out/anthony-spruyt__blog.log" "$FX/renovate-blog.log"
+  grep -q '^npm warn deprecated' "$WORK/out/anthony-spruyt__blog.err"
 }
 
 @test "extract reports a repo that fails and carries on with the rest" {
@@ -526,6 +677,95 @@ use_renovate_logs() {
   [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/SunGather"]' ]
   jq -e '.images["ghcr.io/gohugoio/hugo"] != null' "$WORK/out/inventory.json"
   grep -q '^::error::.*anthony-spruyt/SunGather' "$WORK/out/report.txt"
+}
+
+@test "extract shows why a repo failed in the job log and the report: the warning and error lines of the Renovate log with Renovate's own error text, and the end of its stderr" {
+  use_renovate_logs
+  cp "$FX/renovate-auth-failure.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for text in 'github.com token 401 unauthorized' 'Initialization error: Authentication failure' 'npm warn deprecated fake@1.0.0'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
+  [[ "$output" != *'Renovate started'* && "$output" != *'log level'* && "$output" != *'non-zero code'* ]]
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+}
+
+@test "extract shows the result Renovate gives for a run that exits 0 without extracting" {
+  use_renovate_logs
+  cp "$FX/renovate-bad-credentials.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  for text in 'Bad credentials - aborting' 'result: bad-credentials'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+}
+
+@test "extract shows the same diagnosis for a run that exits 0 without extracting" {
+  use_renovate_logs
+  cp "$FX/renovate-aborted.log" "$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'Repository has been aborted'*'Repository not found'* ]]
+  grep -q 'Repository has been aborted' "$WORK/out/report.txt"
+  [ "$(grep -c 'Repository has been aborted' <<<"$output")" -eq 1 ]
+}
+
+@test "extract diagnosis holds the first 15 error lines of the log and the last 10 lines of stderr" {
+  use_renovate_logs
+  for i in $(seq 1 20); do printf '{"level":50,"msg":"failure %02d"}\n' "$i"; done >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  for i in $(seq 1 12); do echo "stderr line $i"; done >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c 'failure [0-9]' <<<"$output")" -eq 15 ]
+  [[ "$output" == *'failure 15'* && "$output" != *'failure 16'* ]]
+  [ "$(grep -c 'stderr line' <<<"$output")" -eq 10 ]
+  [[ "$output" == *'stderr line 12'* && "$output" != *'stderr line 2'$'\n'* ]]
+  [ "$(grep -c 'stderr line' "$WORK/out/report.txt")" -eq 10 ]
+}
+
+@test "extract diagnosis skips lines of the log that are not JSON or have no numeric level, and tolerates an err that is not an object" {
+  use_renovate_logs
+  printf '%s\n' 'plain text, level 50' '42' '{"level":"50","msg":"string level"}' '{"level":50,"msg":"string err","err":"boom"}' '{"level":50,"err":{"message":"no msg"}}' '{"level":40,"msg":"object error message","errorMessage":{"a":1}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'string err'* && "$output" == *'no msg'* && "$output" == *'object error message'* ]]
+  [[ "$output" != *'string level'* && "$output" != *'plain text'* ]]
+}
+
+@test "extract diagnosis cannot start a workflow command from the log or stderr" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"::error::from msg","err":{"message":"line one\n::error::from err"}}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  printf '%s\n' '::error::from stderr' '  ::warning::indented stderr' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'from msg'*'from err'*'from stderr'*'indented stderr'* ]]
+  [ "$(grep -c '^[[:space:]]*::' <<<"$output")" -eq 1 ]
+  [ "$(grep -c '^[[:space:]]*::' "$WORK/out/report.txt")" -eq 1 ]
+}
+
+@test "extract diagnosis turns a carriage return in the log or stderr into a space, so nothing after it starts a workflow command" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"a\r::error::x","errorMessage":"b\r::error::y","err":{"message":"c\r::error::z"}}' '{"level":30,"msg":"Repository finished","result":"d\r::error::w"}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  printf 'e\r::error::v\n' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  echo 1 >"$FAKE_NPX_DIR/anthony-spruyt__blog.status"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^  log: a ' <<<"$output")" -eq 1 ]
+  [[ "$output" == *'log: a ::error::x: b ::error::y: c ::error::z'* ]]
+  [[ "$output" == *'result: d ::error::w'* ]]
+  [[ "$output" == *'stderr: e ::error::v'* ]]
+  for text in "$output" "$(cat "$WORK/out/report.txt")"; do
+    [[ "$text" != *$'\r'* ]]
+    [ "$(tr '\r' '\n' <<<"$text" | grep -c '^[[:space:]]*::')" -eq 1 ]
+  done
 }
 
 @test "extract treats a log that never reached the end of the run as a failure" {
@@ -543,6 +783,19 @@ use_renovate_logs() {
   [ "$status" -eq 0 ]
   [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
   [[ "$output" == *"::error::"*"anthony-spruyt/blog"* ]]
+}
+
+@test "extract shows the same diagnosis when the extracted dependencies of a run cannot be read" {
+  use_renovate_logs
+  printf '%s\n' '{"level":50,"msg":"odd run"}' '{"level":30,"msg":"Extracted dependencies","packageFiles":{"dockerfile":"odd"}}' '{"level":30,"msg":"Repository finished"}' >"$FAKE_NPX_DIR/anthony-spruyt__blog.log"
+  echo 'stderr after odd run' >"$FAKE_NPX_DIR/anthony-spruyt__blog.err"
+  run fn main extract --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c '.failedRepos' "$WORK/out/inventory.json")" = '["anthony-spruyt/blog"]' ]
+  for text in 'Renovate output for anthony-spruyt/blog' 'log: odd run' 'stderr: stderr after odd run'; do
+    [[ "$output" == *"$text"* ]]
+    grep -qF "$text" "$WORK/out/report.txt"
+  done
 }
 
 @test "extract treats a log it cannot read as a failure, not as an empty repo" {
@@ -786,6 +1039,293 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
   jq -e '[.packageRules[] | select(.matchPackageNames == ["ghcr.io/acme/gone"])] | length == 0' "$WORK/out2/image-age.json"
 }
 
+# unlisted_in <tag>...: a ghcr image whose listing holds 60 old builds (t0 to t59) and whose fleet tags are t1 and the given ones, which the listing lacks
+unlisted_in() {
+  local tags
+  tags=$(printf '"%s",' t1 "$@")
+  inventory "{\"failedRepos\":[],\"images\":{\"ghcr.io/acme/widget\":{\"tags\":[${tags%,}],\"pins\":[]}}}"
+  old_ghcr_page 60 t >"$WORK/p1.json"
+  route GET "$WIDGET_VERSIONS" 200 "$WORK/p1.json"
+  route_pull "$GHCR_PULL"
+}
+
+# previous_unlisted <unlisted json>: the data of an earlier run that stored these unlisted entries
+previous_unlisted() {
+  jq -n --argjson u "$1" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {}, unlisted: $u}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+}
+
+# seen <tag> <digest> <seconds before now>: one stored unlisted entry of the widget image
+seen() { jq -nc --arg t "$1" --arg d "$2" --arg f "$(date -u -d "@$((NOW - $3))" +%Y-%m-%dT%H:%M:%SZ)" '{"ghcr.io/acme/widget": {($t): {digest: $d, firstSeen: $f}}}'; }
+
+WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
+
+@test "render reads the digest of a fleet tag the listing lacks, stores it with the time it was first seen and keeps the tag out" {
+  unlisted_in stable
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  jq -e --arg d "$(digest 7)" '.unlisted == {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}}}' "$WORK/out/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("t1|") and (contains("stable") | not)' "$WORK/out/image-age.json"
+  jq -e '.packageRules[1].matchJsonata[0] | contains("stable") | not' "$WORK/out/image-age.json"
+  [ "$(grep -c '^HEAD ' "$FAKE_LOG")" -eq 1 ]
+  grep -q '^HEAD https://ghcr.io/v2/acme/widget/manifests/stable auth=pull ' "$FAKE_LOG"
+  [ "$(grep -v 'api.github.com' "$FAKE_LOG" | grep -c 'auth=yes')" -eq 0 ]
+  [[ "$output" != *pull-token-value* && "$output" != *dummy-token-value* ]]
+}
+
+@test "render says once per waiting tag that the registry does not list it and when its digest is admitted, in the log and the report, and warns about nothing" {
+  unlisted_in stable
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  notice="::notice::ghcr.io/acme/widget: tag stable is not among the builds the registry lists; its digest is admitted after 7 days of being seen (first seen 2026-10-23T00:00:00Z)"
+  [ "$(grep -cxF "$notice" <<<"$output")" -eq 1 ]
+  [ "$(grep -c '::notice::' <<<"$output")" -eq 1 ]
+  [ "$(grep -cxF "$notice" "$WORK/out/report.txt")" -eq 1 ]
+  [[ "$output" != *"::warning::"* && "$output" != *"::error::"* ]]
+}
+
+@test "render keeps the time a fleet tag was first seen while the registry serves the same digest" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" 302400)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-19T12:00:00Z"}' "$WORK/out/image-age-data.json"
+  [[ "$output" == *"(first seen 2026-10-19T12:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
+@test "render restarts the clock of a fleet tag whose digest changed, even after more than 7 days" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 6)" 864000)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
+  [[ "$output" == *"(first seen 2026-10-23T00:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
+@test "render admits a fleet tag at once when the previous rows hold its digest from 30 days ago and no entry is stored, and says nothing" {
+  unlisted_in stable
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW - 2592000))}]"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::"* ]]
+  jq -e '.packageRules[0].allowedVersions | endswith("|stable)$/")' "$WORK/out/image-age.json"
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-09-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
+}
+
+@test "render starts the clock of a fleet tag now when the previous rows hold another build of it or a push time in the future" {
+  unlisted_in stable
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 6)\",\"pushedAt\":$((NOW - 2592000))}]"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among"*"(first seen 2026-10-23T00:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+
+  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW + 86400))}]"
+  run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out2/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out2/image-age.json"
+}
+
+@test "render counts a stored first-seen time in the future as now" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" -86400)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"(first seen 2026-10-23T00:00:00Z)"* ]]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
+@test "render keeps the stored unlisted entries of an image it cannot list and holds no rows for, reads no digest, and drops the entries of tags no repo uses" {
+  inventory '{"failedRepos":[],"images":{"ghcr.io/acme/widget":{"tags":["t1","stable"],"pins":[]},"public.ecr.aws/acme/tool":{"tags":["1","edge"],"pins":[]}}}'
+  jq -n --arg d "$(digest 7)" --arg e "$(digest 8)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {},
+    unlisted: {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-16T00:00:00Z"}, retired: {digest: $d, firstSeen: "2026-10-01T00:00:00Z"}},
+               "public.ecr.aws/acme/tool": {edge: {digest: $e, firstSeen: "2026-10-20T00:00:00Z"}}}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  route GET "$WIDGET_VERSIONS" 500
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::error::ghcr.io/acme/widget: registry answered 500"* ]]
+  [[ "$output" == *"::error::unsupported registry public.ecr.aws for public.ecr.aws/acme/tool"* ]]
+  jq -e --arg d "$(digest 7)" --arg e "$(digest 8)" '.unlisted == {
+    "ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-16T00:00:00Z"}},
+    "public.ecr.aws/acme/tool": {edge: {digest: $e, firstSeen: "2026-10-20T00:00:00Z"}}}' "$WORK/out/image-age-data.json"
+  jq -e '[.packageRules[] | select(.matchPackageNames == ["ghcr.io/acme/widget"] or .matchPackageNames == ["public.ecr.aws/acme/tool"])] | length == 2 and all(.enabled == false)' "$WORK/out/image-age.json"
+  [ "$(grep -c '^HEAD ' "$FAKE_LOG")" -eq 0 ]
+}
+
+@test "render admits a fleet tag and its digest once it has been seen for 7 days, says nothing about it and keeps its entry" {
+  need_jsonata
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" 604800)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::"* ]]
+  jq -e '.packageRules[0].allowedVersions | startswith("/^(t0|t1|") and endswith("|stable)$/")' "$WORK/out/image-age.json"
+  jq -e --arg d "$(digest 7)" '.packageRules[1].matchJsonata[0] | contains("\"stable\":\"" + $d + "\"")' "$WORK/out/image-age.json"
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-16T00:00:00Z"}' "$WORK/out/image-age-data.json"
+  expr=$(jq -r '.packageRules[1].matchJsonata[0]' "$WORK/out/image-age.json")
+  [ "$(jsonata_true "$expr" "{\"newValue\":\"stable\",\"newDigest\":\"$(digest 7)\"}")" = false ]
+  [ "$(jsonata_true "$expr" "{\"newValue\":\"stable\",\"newDigest\":\"$(digest 8)\"}")" = true ]
+}
+
+@test "render does not admit a fleet tag seen for 6 days and 23 hours" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" 601200)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among the builds the registry lists"*"(first seen 2026-10-16T01:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
+@test "render notices only the tags that still wait, and leaves a skipped tag out" {
+  unlisted_in stable lts pinned
+  printf 'ghcr.io/acme/widget:\n  - pinned\n' >"$IMAGE_AGE_SKIPS_FILE"
+  previous_unlisted "$(jq -nc --argjson a "$(seen lts "$(digest 8)" 700000)" --argjson b "$(seen pinned "$(digest 9)" 700000)" '$a * $b')"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/lts" "$(digest 8)"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/pinned" "$(digest 9)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '::notice::' <<<"$output")" -eq 1 ]
+  [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("|lts)") and (contains("stable") | not) and (contains("pinned") | not)' "$WORK/out/image-age.json"
+}
+
+@test "render drops the entry of a tag that is listed now or that no repo uses, and asks the registry about neither" {
+  unlisted_in
+  previous_unlisted "$(jq -nc --argjson a "$(seen t1 "$(digest 7)" 900000)" --argjson b "$(seen retired "$(digest 8)" 900000)" '{"ghcr.io/acme/widget": ($a["ghcr.io/acme/widget"] + $b["ghcr.io/acme/widget"])}')"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c .unlisted "$WORK/out/image-age-data.json")" = '{}' ]
+  [ "$(grep -c '^HEAD ' "$FAKE_LOG")" -eq 0 ]
+  [[ "$output" != *"::"* ]]
+}
+
+@test "render warns for a tag whose digest it cannot read, keeps that tag out and keeps its stored entry" {
+  unlisted_in stable
+  previous_unlisted "$(seen stable "$(digest 7)" 864000)"
+  route HEAD "https://ghcr.io/v2/acme/widget/manifests/stable" 404
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '^::warning::ghcr.io/acme/widget: could not read the digest of tag stable' <<<"$output")" -eq 1 ]
+  [[ "$output" != *"::notice::"* && "$output" != *"::error::"* ]]
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-13T00:00:00Z"}' "$WORK/out/image-age-data.json"
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+  jq -e '.packageRules[1].matchJsonata[0] | contains("stable") | not' "$WORK/out/image-age.json"
+  grep -q '^::warning::ghcr.io/acme/widget: could not read' "$WORK/out/report.txt"
+}
+
+@test "render stores nothing for a tag whose digest it cannot read when it has no entry for it" {
+  unlisted_in stable
+  route HEAD "https://ghcr.io/v2/acme/widget/manifests/stable" 404
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c .unlisted "$WORK/out/image-age-data.json")" = '{}' ]
+  [ "$(grep -c '^::warning::' <<<"$output")" -eq 1 ]
+  jq -e '.packageRules[0].allowedVersions | contains("t1")' "$WORK/out/image-age.json"
+}
+
+@test "render writes an empty unlisted map when the data of the last run has none" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(jq -c .unlisted "$WORK/out/image-age-data.json")" = '{}' ]
+  [[ "$output" != *"::"* ]]
+}
+
+@test "render re-validates the stored unlisted entries: bad names, tags, digests and times are dropped with an error and the clock restarts" {
+  unlisted_in stable
+  jq -n --arg d "$(digest 7)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {},
+    unlisted: {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "yesterday"}, "bad tag": {digest: $d, firstSeen: "2026-10-01T00:00:00Z"},
+                                        other: {digest: "sha256:short", firstSeen: "2026-10-01T00:00:00Z"}},
+               "evil.example/a b": {"1": {digest: $d, firstSeen: "2026-10-01T00:00:00Z"}}}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *'::error::dropped the image name "evil.example/a b" from the previous data'* ]]
+  [[ "$output" == *"::error::dropped 3 unlisted entries of ghcr.io/acme/widget from the previous data"* ]]
+  jq -e --arg d "$(digest 7)" '.unlisted == {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}}}' "$WORK/out/image-age-data.json"
+}
+
+@test "render stops when the stored unlisted entries are not a JSON object" {
+  unlisted_in stable
+  jq -n '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {}, unlisted: []}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"* ]]
+  [ ! -e "$WORK/out/image-age.json" ]
+}
+
+@test "render stops when the clock reads earlier than the last published run, and goes on when it reads the same time" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  jq '.generatedAt = "2026-10-23T00:00:01Z"' "$WORK/previous-data.json" >"$WORK/later.json"
+  mv "$WORK/later.json" "$WORK/previous-data.json"
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::the clock reads 2026-10-23T00:00:00Z, earlier than the last published run at 2026-10-23T00:00:01Z"* ]]
+  [ ! -e "$WORK/out/image-age.json" ]
+
+  jq '.generatedAt = "2026-10-23T00:00:00Z"' "$WORK/previous-data.json" >"$WORK/same.json"
+  mv "$WORK/same.json" "$WORK/previous-data.json"
+  run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  [ -e "$WORK/out2/image-age.json" ]
+}
+
+@test "render reads a fleet tag's digest from the registry also when it fell back to the stored rows" {
+  inventory '{"failedRepos":[],"images":{"ghcr.io/acme/widget":{"tags":["t1","stable"],"pins":[]}}}'
+  jq -n --arg d "$(digest 7)" --arg e "$(digest 4)" '{generatedAt: "2026-10-22T18:00:00Z",
+    inventory: {failedRepos: [], images: {"ghcr.io/acme/widget": {tags: ["t1", "stable"], pins: []}}},
+    rows: {"ghcr.io/acme/widget": [{tag: "t1", digest: $e, pushedAt: 1791000000}]},
+    unlisted: {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-01T00:00:00Z"}}}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  route GET "$WIDGET_VERSIONS" 500
+  route_pull "$GHCR_PULL"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::error::ghcr.io/acme/widget: registry answered 500"* ]]
+  jq -e '.packageRules[0].allowedVersions == "/^(t1|stable)$/"' "$WORK/out/image-age.json"
+  jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable.firstSeen == "2026-10-01T00:00:00Z"' "$WORK/out/image-age-data.json"
+}
+
 @test "render treats an absent data file as a first run and stops when the data repo cannot be read" {
   widget_inventory "$(digest c)"
   route_quay 200 "$FX/quay-tags.json"
@@ -882,11 +1422,11 @@ preset_in() {
   : >"$WORK/art/report.txt"
 }
 
-@test "validate runs the pinned Renovate validator on the preset" {
+@test "validate runs the pinned Renovate validator on the preset with optional dependencies omitted and its RE2 warning off" {
   preset_in
   run fn main validate --in "$WORK/art"
   [ "$status" -eq 0 ]
-  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | token= format=" ]
+  [ "$(cat "$FAKE_NPX_LOG")" = "--yes --package renovate@$RENOVATE_PIN -- renovate-config-validator --strict --no-global $WORK/art/image-age.json | omit=optional re2=true token= format= user= author=" ]
 }
 
 @test "validate stops when the validator rejects the preset" {
@@ -976,6 +1516,45 @@ EOF
   rm "$WORK/art/image-age-data.json"
   run fn main validate --in "$WORK/art"
   [ "$status" -ne 0 ]
+}
+
+@test "validate accepts a data file with unlisted entries and stops on unlisted entries that are not digests and times of tags" {
+  preset_in
+  jq --arg d "$(digest 7)" '. + {unlisted: {"quay.io/acme/widget": {"17": {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}}}}' "$WORK/art/image-age-data.json" >"$WORK/good-data.json"
+  cp "$WORK/good-data.json" "$WORK/art/image-age-data.json"
+  run fn main validate --in "$WORK/art"
+  [ "$status" -eq 0 ]
+
+  local filter
+  while IFS= read -r filter; do
+    jq "$filter" "$WORK/good-data.json" >"$WORK/art/image-age-data.json"
+    run fn main validate --in "$WORK/art" </dev/null
+    if [ "$status" -eq 0 ]; then
+      echo "accepted: $filter" >&2
+      false
+    fi
+    [[ "$output" == *"::error::"*"image-age-data.json"*"unlisted"* ]]
+  done <<'EOF'
+.unlisted = []
+.unlisted = null
+.unlisted = false
+.unlisted = "x"
+.unlisted["quay.io/acme/widget"] = 1
+.unlisted["quay.io/acme/widget"]["17"] = "x"
+.unlisted["quay.io/acme/widget"]["17"].digest = "sha256:x"
+.unlisted["quay.io/acme/widget"]["17"].firstSeen = "yesterday"
+.unlisted["quay.io/acme/widget"]["17"].firstSeen = 1792713600
+del(.unlisted["quay.io/acme/widget"]["17"].digest)
+.unlisted["quay.io/acme/widget"]["bad tag"] = .unlisted["quay.io/acme/widget"]["17"]
+.unlisted["Bad Name"] = .unlisted["quay.io/acme/widget"]
+EOF
+}
+
+@test "validate accepts a data file that has no unlisted key" {
+  preset_in
+  run fn main validate --in "$WORK/art"
+  [ "$status" -eq 0 ]
+  jq -e 'has("unlisted") | not' "$WORK/art/image-age-data.json"
 }
 
 # publish_env: the hashes that render hands to publish

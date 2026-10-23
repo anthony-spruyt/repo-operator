@@ -12,6 +12,8 @@ MAX_PAGES=20
 STALE_SECONDS=$((36 * 3600))
 MAX_BYTES=524288
 MAX_DATA_BYTES=2097152
+DIAGNOSIS_LOG_LINES=15
+DIAGNOSIS_ERR_LINES=10
 DATA_REPO="anthony-spruyt/renovate-data"
 DATA_BRANCH="main"
 DATA_FILE="image-age.json"
@@ -25,6 +27,8 @@ IMAGE_RE='^[a-z0-9]+([.-][a-z0-9]+)*(:[0-9]+)?(/[a-z0-9]+([._-][a-z0-9]+)*)+$'
 TAG_RE='^[A-Za-z0-9_][A-Za-z0-9_.-]{0,127}$'
 DIGEST_RE='^sha256:[0-9a-f]{64}$'
 REPO_RE='^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$'
+ISO_RE='^[0-9]{4}-[0-9]{2}-[0-9]{2}T[0-9]{2}:[0-9]{2}:[0-9]{2}Z$'
+MANIFEST_ACCEPT='application/vnd.oci.image.index.v1+json, application/vnd.docker.distribution.manifest.list.v2+json, application/vnd.oci.image.manifest.v1+json, application/vnd.docker.distribution.manifest.v2+json'
 
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/../.." && pwd)"
 REPOS_FILE="${IMAGE_AGE_REPOS_FILE:-$ROOT/src/repos.yaml}"
@@ -73,7 +77,11 @@ http() {
   local method=$1 url=$2 out=$3 code err rc=0
   shift 3
   local args=(-q -sS --fail --globoff --proto '=https' --proto-redir '=https' --max-time 60 --retry 2)
-  if [[ "$method" != GET ]]; then args+=(-X "$method"); fi
+  case "$method" in
+  GET) ;;
+  HEAD) args+=(--head) ;;
+  *) args+=(-X "$method") ;;
+  esac
   err=$(mktemp)
   code=$(curl "${args[@]}" "$@" -o "$out" -w '%{http_code}' "$url" 2>"$err") || rc=$?
   # Exit 22 is an HTTP error, whose status curl has already printed
@@ -223,7 +231,7 @@ clean_rows() {
 # fetch_rows IMAGE OUT [USED]: every tag of the image with its digest and push time, newest first, one row per tag.
 # USED are the tags in use (space-separated); paging goes on until they are listed. Exit 1: the registry could not be read, 2: no adapter.
 fetch_rows() {
-  local image=$1 out=$2 used=${3:-} host=${1%%/*} path=${1#*/} raw rows stats bad_time dropped tag status=0
+  local image=$1 out=$2 used=${3:-} host=${1%%/*} path=${1#*/} raw rows stats bad_time dropped status=0
   raw=$(mktemp)
   case "$host" in
   ghcr.io) fetch_ghcr "$image" "$raw" "$used" || status=1 ;;
@@ -248,9 +256,6 @@ fetch_rows() {
     else
       if [[ "$dropped" != 0 ]]; then say "::warning::$image: dropped $dropped rows with a malformed tag or digest"; fi
       LC_ALL=C sort -s -t $'\t' -k3,3nr "$rows" | awk -F'\t' '!seen[$1]++' >"$out"
-      while read -r tag; do
-        say "::warning::$image: tag $tag in use was not listed by the registry"
-      done < <(missing_tags "$out" "$used")
     fi
     rm -f "$rows"
   fi
@@ -258,9 +263,130 @@ fetch_rows() {
   return "$status"
 }
 
+# pull_auth URL OUT: writes a curl header file with the anonymous pull token that URL hands out. Prints why on failure.
+pull_auth() {
+  local url=$1 out=$2 body code token
+  body=$(mktemp)
+  code=$(http GET "$url" "$body")
+  token=$(jq -r '.token | strings' "$body" 2>/dev/null) || token=""
+  rm -f "$body"
+  if [[ "$code" != 200 ]]; then
+    echo "the pull token request answered $code"
+    return 1
+  fi
+  if [[ ! "$token" =~ ^[A-Za-z0-9._~+/=-]+$ ]]; then
+    echo "the registry gave no usable pull token"
+    return 1
+  fi
+  printf 'Authorization: Bearer %s\n' "$token" >"$out"
+}
+
+# head_manifest IMAGE TAG OUT: writes the digest that the registry serves for the tag now to OUT, from a HEAD on its manifest. Prints why on failure.
+head_manifest() {
+  local tag=$2 out=$3 host=${1%%/*} path=${1#*/} token_url="" hdr auth code digest why
+  local args=(-H "Accept: $MANIFEST_ACCEPT")
+  case "$host" in
+  ghcr.io) token_url="https://ghcr.io/token?scope=repository:$path:pull&service=ghcr.io" ;;
+  quay.io) token_url="https://quay.io/v2/auth?service=quay.io&scope=repository:$path:pull" ;;
+  gcr.io)
+    token_url="https://gcr.io/v2/token?scope=repository:$path:pull&service=gcr.io"
+    args+=(-L)
+    ;;
+  registry.k8s.io) args+=(-L) ;;
+  mcr.microsoft.com) ;;
+  *)
+    echo "there is no adapter for the registry $host"
+    return 1
+    ;;
+  esac
+  hdr=$(mktemp) auth=$(mktemp)
+  if [[ -n "$token_url" ]]; then
+    if ! why=$(pull_auth "$token_url" "$auth"); then
+      rm -f "$hdr" "$auth"
+      echo "$why"
+      return 1
+    fi
+    args+=(-H "@$auth")
+  fi
+  code=$(http HEAD "https://$host/v2/$path/manifests/$tag" /dev/null -D "$hdr" "${args[@]}")
+  digest=$(sed -n 's/^docker-content-digest:[[:space:]]*//Ip' "$hdr" | tr -d '\r' | tail -1)
+  rm -f "$hdr" "$auth"
+  if [[ "$code" != 2?? ]]; then
+    echo "the registry answered $code"
+    return 1
+  fi
+  if [[ ! "$digest" =~ $DIGEST_RE ]]; then
+    echo "the registry sent no digest"
+    return 1
+  fi
+  printf '%s\n' "$digest" >"$out"
+}
+
+# manifest_digest IMAGE TAG OUT: head_manifest, with a ::warning:: when the registry gives no digest. OUT is empty then.
+manifest_digest() {
+  local image=$1 tag=$2 out=$3 why
+  : >"$out"
+  if why=$(head_manifest "$image" "$tag" "$out"); then return 0; fi
+  : >"$out"
+  say "::warning::$image: could not read the digest of tag $tag ($why)"
+  return 1
+}
+
 iso() {
   local epoch=$1
   date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ
+}
+
+# stored_unlisted IMAGE PREVIOUS [TAG]: the tag, digest and first-seen time (epoch seconds, never later than now) of the entries of the previous data for IMAGE, or just TAG, tab-separated
+stored_unlisted() {
+  local image=$1 previous=$2 tag=${3:-}
+  jq -r --arg i "$image" --arg t "$tag" --argjson now "$(now)" '
+    (.unlisted[$i] // {}) | to_entries[] | select($t == "" or .key == $t)
+    | [.key, .value.digest, ([(.value.firstSeen | fromdateiso8601), $now] | min)] | @tsv' "$previous"
+}
+
+# listed_at IMAGE TAG DIGEST PREVIOUS: when the previous rows list the tag at the digest, the time the registry made it (epoch seconds, never later than now)
+listed_at() {
+  local image=$1 tag=$2 digest=$3 previous=$4
+  jq -r --arg i "$image" --arg t "$tag" --arg d "$digest" --argjson now "$(now)" '
+    [.rows[$i][]? | select(.tag == $t and .digest == $d) | .pushedAt] | max // empty | [., $now] | min' "$previous"
+}
+
+# resolve_unlisted IMAGE ROWS USED PREVIOUS OUT: for each tag in use that ROWS lack, the digest the registry serves now and when it was first seen:
+# the stored entry's time for that digest, else the push time of that tag and digest in the previous rows, else now.
+# OUT gets "tag digest seen current" per tag; current is 1 when the registry gave the digest in this run, 0 for an entry kept from PREVIOUS.
+resolve_unlisted() {
+  local image=$1 rows=$2 used=$3 previous=$4 out=$5 tag got now_at got_digest stored_digest stored_at seen
+  : >"$out"
+  got=$(mktemp)
+  now_at=$(now)
+  while read -r tag; do
+    IFS=$'\t' read -r _ stored_digest stored_at <<<"$(stored_unlisted "$image" "$previous" "$tag")"
+    if manifest_digest "$image" "$tag" "$got"; then
+      got_digest=$(<"$got")
+      seen=$stored_at
+      if [[ "$got_digest" != "$stored_digest" ]]; then
+        seen=$(listed_at "$image" "$tag" "$got_digest" "$previous")
+        seen=${seen:-$now_at}
+      fi
+      printf '%s\t%s\t%s\t1\n' "$tag" "$got_digest" "$seen" >>"$out"
+      if ((seen > now_at - MIN_AGE_SECONDS)); then
+        say "::notice::$image: tag $tag is not among the builds the registry lists; its digest is admitted after 7 days of being seen (first seen $(iso "$seen"))"
+      fi
+    elif [[ -n "$stored_digest" ]]; then
+      printf '%s\t%s\t%s\t0\n' "$tag" "$stored_digest" "$stored_at" >>"$out"
+    fi
+  done < <(missing_tags "$rows" "$used")
+  rm -f "$got"
+}
+
+# carry_unlisted IMAGE USED PREVIOUS OUT: for an image that could not be listed, the stored entries of the tags in use, written to OUT as resolve_unlisted writes the ones it kept
+carry_unlisted() {
+  local image=$1 used=$2 previous=$3 out=$4
+  stored_unlisted "$image" "$previous" | awk -F'\t' -v OFS='\t' -v used="$used" '
+    BEGIN { n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1 }
+    $1 in U { print $1, $2, $3, 0 }
+  ' >"$out"
 }
 
 # select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first. USED and SKIPS are space-separated tags.
@@ -271,6 +397,7 @@ select_rows() {
       n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
       n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
     }
+    $3 !~ /^-?[0-9]+$/ { next }
     $3 > cut || $1 ~ cosign || ($1 in S) { next }
     { eligible++ }
     eligible <= keep || ($1 in U) { print $1, $2 }
@@ -384,18 +511,41 @@ public_repos() {
   yq '.repos[] | select(.files.inherit != false) | .git' "$REPOS_FILE" | while read -r url; do repo_slug "$url"; done
 }
 
-# extract_repo REPO OUT: one JSON object per third-party registry image reference found in REPO
+# diagnose REPO LOG ERR: the first warning and error lines of Renovate's log (msg, errorMessage, err.message), the result of its run and the end of its stderr, for the job log and the report
+# Each line starts with a label, so nothing in Renovate's output can start a workflow command; CR and LF become spaces.
+diagnose() {
+  local repo=$1 log=$2 err=$3 line
+  say "Renovate output for $repo (warnings and errors of its log, the result of its run, end of its stderr):"
+  while IFS= read -r line; do
+    say "  $line"
+  done < <(jq -Rnr --argjson max "$DIAGNOSIS_LOG_LINES" '
+    def clean: tostring | gsub("[\r\n]+"; " ");
+    [inputs | fromjson? | select(type == "object")] as $lines
+    | ($lines | map(select((.level | type) == "number" and .level >= 40)) | .[:$max][]
+        | "log: " + ([.msg // "no message", (.errorMessage | strings), (.err | objects | .message | strings)] | map(clean) | join(": "))),
+      ($lines[] | select(.msg == "Repository finished" and (.result | type) == "string") | "result: " + (.result | clean))' "$log")
+  while IFS= read -r line; do
+    say "  stderr: $line"
+  done < <(tail -n "$DIAGNOSIS_ERR_LINES" "$err" | tr '\r' ' ')
+  return 0
+}
+
+# extract_repo REPO OUT LOGS: one JSON object per third-party registry image reference found in REPO; Renovate's log and stderr stay in LOGS
 extract_repo() {
-  local repo=$1 out=$2 log err all name status=0
-  log=$(mktemp) err=$(mktemp) all=$(mktemp)
-  if ! RENOVATE_TOKEN="$GITHUB_TOKEN" LOG_FORMAT=json LOG_LEVEL=info \
-    npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then
-    tail -n 5 "$err"
-    rm -f "$log" "$err" "$all"
+  local repo=$1 out=$2 logs=$3 log err all name status=0
+  log="$logs/${repo//\//__}.log" err="$logs/${repo//\//__}.err"
+  all=$(mktemp)
+  # Setting both username and git author keeps Renovate from asking GitHub who the token belongs to
+  if ! RENOVATE_TOKEN="$GITHUB_TOKEN" LOG_FORMAT=json LOG_LEVEL=info RENOVATE_X_IGNORE_RE2=true \
+    RENOVATE_USERNAME="github-actions[bot]" RENOVATE_GIT_AUTHOR="github-actions[bot] <41898282+github-actions[bot]@users.noreply.github.com>" \
+    npm_config_omit=optional npx --yes "renovate@$RENOVATE_VERSION" --dry-run=extract --platform=github "$repo" >"$log" 2>"$err"; then
+    diagnose "$repo" "$log" "$err"
+    rm -f "$all"
     return 1
   fi
   if ! jq -Rse 'split("\n") | map(fromjson? // empty) | any(.[]; .msg == "Extracted dependencies" and (.packageFiles | type) == "object")' "$log" >/dev/null; then
-    rm -f "$log" "$err" "$all"
+    diagnose "$repo" "$log" "$err"
+    rm -f "$all"
     return 1
   fi
   jq -Rsc --arg repo "$repo" --argjson moved "$(moved_images)" \
@@ -415,7 +565,8 @@ extract_repo() {
     done < <(jq -r --arg re "$IMAGE_RE" 'select(.image | test($re) | not) | .image | @json' "$all")
     jq -c --arg re "$IMAGE_RE" 'select(.image | test($re))' "$all" >"$out" || status=1
   fi
-  rm -f "$log" "$err" "$all"
+  if ((status != 0)); then diagnose "$repo" "$log" "$err"; fi
+  rm -f "$all"
   return "$status"
 }
 
@@ -427,7 +578,7 @@ cmd_extract() {
   refs=$(mktemp)
   while read -r repo; do
     tmp=$(mktemp)
-    if extract_repo "$repo" "$tmp"; then
+    if extract_repo "$repo" "$tmp" "$out"; then
       cat "$tmp" >>"$refs"
     else
       say "::error::extracting the images of $repo failed, its previous rules stay"
@@ -470,6 +621,12 @@ fetch_contents() {
 ROW_OK='def row_ok: (.tag | type == "string" and test($tag)) and (.digest | type == "string" and test($dig))
   and (.pushedAt | type == "number" and . >= 0 and . == floor);'
 
+# shellcheck disable=SC2016
+UNLISTED_OK='def entries: if type == "object" then to_entries else [] end;
+  def time_ok: type == "string" and test($iso) and (try (fromdateiso8601 | true) catch false);
+  def entry_ok: (.key | test($tag)) and (.value | type == "object") and (.value.digest | type == "string" and test($dig))
+    and (.value.firstSeen | time_ok);'
+
 # previous_data OUT: the data of the last published run, checked as fresh data is. The empty shape on the first run.
 previous_data() {
   local out=$1 raw code inv
@@ -477,7 +634,7 @@ previous_data() {
   code=$(fetch_contents "$API/repos/$DATA_REPO/contents/$STATE_FILE?ref=$DATA_BRANCH" "$raw")
   case "$code" in
   200)
-    if ! jq -e '(.rows | type) == "object" and (.inventory.images | type) == "object"' "$raw" >/dev/null 2>&1; then
+    if ! jq -e '(.rows | type) == "object" and (.inventory.images | type) == "object" and ((.unlisted // {}) | type) == "object"' "$raw" >/dev/null 2>&1; then
       say "::error::the stored $STATE_FILE is not data that render writes"
       rm -f "$raw" "$inv"
       return 1
@@ -493,16 +650,22 @@ previous_data() {
   local name image dropped
   while IFS= read -r name; do
     say "::error::dropped the image name $name from the previous data"
-  done < <(jq -r --arg re "$IMAGE_RE" '.rows | keys[] | select(test($re) | not) | @json' "$raw")
+  done < <(jq -r --arg re "$IMAGE_RE" '[.rows, (.unlisted // {})] | map(keys) | add | unique[] | select(test($re) | not) | @json' "$raw")
   while IFS=$'\t' read -r image dropped; do
     say "::error::dropped $dropped rows of $image from the previous data"
   done < <(jq -r --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" "$ROW_OK"'
     .rows | to_entries[] | select(.key | test($re))
     | [.key, ((.value | length) - (.value | map(select(row_ok)) | length))] | select(.[1] > 0) | @tsv' "$raw")
+  while IFS=$'\t' read -r image dropped; do
+    say "::error::dropped $dropped unlisted entries of $image from the previous data"
+  done < <(jq -r --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" "$UNLISTED_OK"'
+    (.unlisted // {}) | to_entries[] | select(.key | test($re))
+    | [.key, ((if (.value | type) == "object" then (.value | length) else 1 end) - (.value | entries | map(select(entry_ok)) | length))] | select(.[1] > 0) | @tsv' "$raw")
   jq '.inventory' "$raw" >"$inv.in"
   clean_inventory "$inv.in" "$inv" "the previous data"
-  jq -c --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --slurpfile inv "$inv" "$ROW_OK"'
-    {inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries)}' "$raw" >"$out"
+  jq -c --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" --slurpfile inv "$inv" "$ROW_OK $UNLISTED_OK"'
+    {generatedAt: (.generatedAt | if time_ok then . else null end), inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries),
+     unlisted: ((.unlisted // {}) | to_entries | map(select(.key | test($re)) | .value |= (entries | map(select(entry_ok)) | from_entries)) | map(select(.value | length > 0)) | from_entries)}' "$raw" >"$out"
   rm -f "$raw" "$inv" "$inv.in"
 }
 
@@ -512,13 +675,14 @@ stored_rows() {
   jq -r --arg i "$image" '.rows[$i] // [] | .[] | [.tag, .digest, .pushedAt] | @tsv' "$previous" | LC_ALL=C sort -s -t $'\t' -k3,3nr >"$out"
 }
 
-# dated_rules IMAGE INVENTORY SKIPS PREVIOUS WORKDIR: writes the rules for one image to WORKDIR/rules.json and the rows to keep to WORKDIR/stored
+# dated_rules IMAGE INVENTORY SKIPS PREVIOUS WORKDIR: writes the rules for one image to WORKDIR/rules.json, the rows to keep to WORKDIR/stored and the unlisted tags to WORKDIR/unlisted
 dated_rules() {
   local image=$1 inventory=$2 skips=$3 previous=$4 work=$5 used skip status=0
   used=$(jq -r --arg i "$image" '.images[$i].tags | join(" ")' "$inventory")
   skip=$(jq -r --arg i "$image" '.[$i] // [] | join(" ")' <<<"$skips")
   rm -f "$work/rows"
   : >"$work/stored"
+  : >"$work/unlisted"
   fetch_rows "$image" "$work/rows" "$used" || status=$?
   if ((status == 1)); then
     stored_rows "$image" "$previous" "$work/rows"
@@ -528,11 +692,15 @@ dated_rules() {
     fi
   fi
   if ((status != 0)); then
+    carry_unlisted "$image" "$used" "$previous" "$work/unlisted"
     disabling_rule "$image" "$(now)" | jq -s . >"$work/rules.json"
     return 0
   fi
+  resolve_unlisted "$image" "$work/rows" "$used" "$previous" "$work/unlisted"
   trim_rows "$work/rows" "$used" >"$work/stored"
   select_rows "$work/rows" "$used" "$skip" >"$work/selected"
+  awk -F'\t' -v OFS='\t' '$4 == 1 { print $1, $2, $3 }' "$work/unlisted" >"$work/seen"
+  select_rows "$work/seen" "$used" "$skip" >>"$work/selected"
   if [[ -s "$work/selected" ]]; then
     image_rules "$image" "$work/selected" "$(now)" >"$work/rules.json"
   else
@@ -575,6 +743,16 @@ override_guard() {
   rm -f "$raw"
 }
 
+# clock_ok PREVIOUS: the time is not earlier than the last published run; prints why when it is
+clock_ok() {
+  local previous=$1 last
+  last=$(jq -r '(.generatedAt // empty) | fromdateiso8601' "$previous")
+  if [[ -n "$last" ]] && (($(now) < last)); then
+    say "::error::the clock reads $(iso "$(now)"), earlier than the last published run at $(iso "$last")"
+    return 1
+  fi
+}
+
 cmd_render() {
   local in=$1 out=$2 work previous skips image count
   mkdir -p "$out"
@@ -584,6 +762,7 @@ cmd_render() {
   work=$(mktemp -d)
   previous="$work/previous.json"
   previous_data "$previous" || return 1
+  clock_ok "$previous" || return 1
   clean_inventory "$in/inventory.json" "$work/inventory.json" "the inventory"
   if [[ "$(jq '.failedRepos | length' "$work/inventory.json")" -gt 0 ]]; then
     jq -c --slurpfile prev "$previous" '.images = ($prev[0].inventory.images + .images)' "$work/inventory.json" >"$work/merged.json"
@@ -592,6 +771,7 @@ cmd_render() {
   skips=$(yq -o json -I0 '. // {}' "$SKIPS_FILE")
   echo '{}' >"$work/by-image.json"
   echo '{}' >"$work/stored.json"
+  echo '{}' >"$work/unlisted.json"
   while read -r image; do
     dated_rules "$image" "$work/inventory.json" "$skips" "$previous" "$work"
     jq --arg i "$image" --slurpfile r "$work/rules.json" '.[$i] = $r[0]' "$work/by-image.json" >"$work/tmp.json"
@@ -601,11 +781,16 @@ cmd_render() {
         '.[$i] = $s[0]' "$work/stored.json" >"$work/tmp.json"
       mv "$work/tmp.json" "$work/stored.json"
     fi
+    if [[ -s "$work/unlisted" ]]; then
+      jq --arg i "$image" --slurpfile u <(jq -Rn '[inputs | split("\t") | {key: .[0], value: {digest: .[1], firstSeen: (.[2] | tonumber | todate)}}] | from_entries' "$work/unlisted") \
+        '.[$i] = $u[0]' "$work/unlisted.json" >"$work/tmp.json"
+      mv "$work/tmp.json" "$work/unlisted.json"
+    fi
   done < <(jq -r '.images | keys[]' "$work/inventory.json")
   override_guard "$work/inventory.json"
   assemble_preset "$work/by-image.json" "$out/$DATA_FILE" "$(now)"
-  jq -S -n --arg at "$(iso "$(now)")" --slurpfile inv "$work/inventory.json" --slurpfile rows "$work/stored.json" \
-    '{generatedAt: $at, inventory: $inv[0], rows: $rows[0]}' >"$out/$STATE_FILE"
+  jq -S -n --arg at "$(iso "$(now)")" --slurpfile inv "$work/inventory.json" --slurpfile rows "$work/stored.json" --slurpfile unlisted "$work/unlisted.json" \
+    '{generatedAt: $at, inventory: $inv[0], rows: $rows[0], unlisted: $unlisted[0]}' >"$out/$STATE_FILE"
   count=$(jq '.packageRules | length' "$out/$DATA_FILE")
   say "image-age: $count rules for $(jq length "$work/by-image.json") images"
   rm -rf "$work"
@@ -698,9 +883,13 @@ cmd_validate() {
   elif (($(wc -c <"$state") > MAX_DATA_BYTES)); then
     say "::error::$STATE_FILE is above the $MAX_DATA_BYTES byte limit"
     bad=1
+  elif ! jq -e --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" "$UNLISTED_OK"'
+      (if has("unlisted") then .unlisted else {} end) | type == "object" and all(to_entries[]; (.key | test($re)) and (.value | type == "object") and all(.value | entries[]; entry_ok))' "$state" >/dev/null 2>&1; then
+    say "::error::$STATE_FILE: unlisted is not a map of image to tag to a digest and a first-seen time"
+    bad=1
   fi
   if ((bad != 0)); then return 1; fi
-  if ! npx --yes --package "renovate@$RENOVATE_VERSION" -- renovate-config-validator --strict --no-global "$file"; then
+  if ! npm_config_omit=optional RENOVATE_X_IGNORE_RE2=true npx --yes --package "renovate@$RENOVATE_VERSION" -- renovate-config-validator --strict --no-global "$file"; then
     say "::error::the Renovate config validator rejected $DATA_FILE"
     return 1
   fi
