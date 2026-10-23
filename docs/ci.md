@@ -428,6 +428,22 @@ The job is `image` in `ci.yaml` and `images` in `release-please.yaml`; the `rele
 `container-retention.yaml` needs no per-repo setting unless the root image is not named after the repo: it cleans every image `detect-images` finds, so a repo with several images is covered once it is in `release-please-config.json`. Such a repo needs the `image` input, as in `ci.yaml` and `release-please.yaml`. The synced template does not pass it, so set it with a content overlay in
 `repos.yaml`; no repo needs one today.
 
+## Image age
+
+`.github/workflows/image-age.yaml` dates the container images that registries other than Docker Hub serve, so Renovate holds back tags and rebuilds younger than 7 days. It runs every six hours and on dispatch, in four jobs behind harden-runner with `egress-policy: block`; each holds only the token it needs, and an artifact passes the data between them:
+
+1. **extract** (`contents: read`): `.github/scripts/image-age.sh extract` runs the pinned Renovate (`RENOVATE_VERSION` in the script, bumped by Renovate) in `--dry-run=extract` mode on every public repo in `src/repos.yaml`, and lists the images whose registry is neither Docker Hub nor `ghcr.io/anthony-spruyt/`, with the tags and digests in use. The images in the
+   `Registry moves` rules are left out, because Renovate dates them on Docker Hub. A repo that fails to extract is an `::error` and keeps its previous rules.
+2. **render** (`contents: read`, `packages: read`): `image-age.sh render` reads each image's tags, digests and push times from its registry (ghcr.io, quay.io, mcr.microsoft.com, gcr.io, registry.k8s.io) and writes `image-age.json`. Per image, one rule allows the newest 50 tags built at least 7 days ago, plus every tag in use, minus the tags in `image-age-skips.yaml`; a second
+   rule drops a digest update whose digest the registry lists for that tag only as a build younger than 7 days. A catch-all rule holds back an image not yet dated, and a stale rule holds back updates of these images once the data is 36 hours old. An image that cannot be read keeps its previous rules and is an `::error`; an image on a registry the script has no adapter for is
+   held back and is an `::error`. `render` also flags any `renovate-overrides.json5` rule that sets `allowedVersions` or `enabled` for an image it dates, because repo overrides load last.
+3. **validate** (no token): checks `image-age.json` with the pinned `renovate-config-validator --strict --no-global` (as a repo config, the way repos load it) and rejects a file above 512 KB. A failure stops `publish`.
+4. **publish** (`contents: write`, `main` only): writes `image-age.json` to the `renovate-data` branch with one `PUT` to the contents API, so GitHub signs the commit. The first run creates the branch from `main`'s head with `POST /git/refs`. The run fails after publishing when `report.txt` holds an `::error`.
+
+Repos load `image-age.json` after the shared presets, so its `enabled` and `allowedVersions` win over theirs, and before `renovate-overrides.json5`.
+
+The script is tested offline by `test/image-age.bats`, with a fake `curl` and `npx`; `test/ci/renovate-image-age.bats` keeps the workflow, the pins and the rules wired as described.
+
 ## Caller example (Go)
 
 `.github/workflows/ci.yaml`:

@@ -1,0 +1,20 @@
+[
+  {
+    "name": "1.7.2",
+    "digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb",
+    "lastModifiedDate": "2026-10-01T10:00:00.0000000+00:00",
+    "createdDate": "2025-09-09T15:08:22.0000000+00:00"
+  },
+  {
+    "name": "1.8.0",
+    "digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa",
+    "lastModifiedDate": "2026-10-21T19:19:39.0000000+00:00",
+    "createdDate": "2025-09-09T15:08:22.0000000+00:00"
+  },
+  {
+    "name": "1.7.0",
+    "digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc",
+    "lastModifiedDate": "2026-09-01T00:00:01.5000000+00:00",
+    "createdDate": "2025-09-09T15:08:22.0000000+00:00"
+  }
+]

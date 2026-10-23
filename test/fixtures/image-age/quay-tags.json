@@ -1,0 +1,30 @@
+{
+  "tags": [
+    {
+      "name": "latest",
+      "start_ts": 1792557174,
+      "end_ts": null,
+      "manifest_digest": "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+    },
+    {
+      "name": "latest",
+      "start_ts": 1792144390,
+      "end_ts": 1792557174,
+      "manifest_digest": "sha256:bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb"
+    },
+    {
+      "name": "v0.15.1",
+      "start_ts": 1791000000,
+      "end_ts": null,
+      "manifest_digest": "sha256:cccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccccc"
+    },
+    {
+      "name": "v0.14.0",
+      "start_ts": 1789000000,
+      "end_ts": null,
+      "manifest_digest": "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee"
+    }
+  ],
+  "page": 1,
+  "has_additional": false
+}

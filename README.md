@@ -104,6 +104,10 @@ For repo-specific Renovate rules, use `matchRepositories` in `.github/renovate/p
 
 Renovate refreshes npm lockfiles weekly, resolving only releases at least 7 days old. Digest updates wait the same 7 days as version updates.
 
+Only Docker Hub and GitHub Actions give Renovate release dates. The `Image Age` workflow (`.github/workflows/image-age.yaml`) dates the other container images the repos use at their registries every six hours and commits the result to `renovate-data` as `image-age.json`, a Renovate preset that allows only tags built at least 7 days ago and drops digest updates of younger
+rebuilds. A tag to skip for one image goes in `.github/renovate/image-age-skips.yaml`. When the data is older than 36 hours, updates of those images wait for the next successful run. Images with a Docker Hub twin from the same publisher move there through the `Registry moves` rules in `.github/renovate/package-rules.json5`, so Renovate dates them itself. See
+[Image age](docs/ci.md#image-age).
+
 Target repos don't bump the files xfg manages for them. `.github/renovate/xfg-managed.json5` disables Renovate on every file that xfg manages in a repo without `createOnly`. Without it, Renovate's bump would be reverted by the next sync. Renovate bumps those pins here in `src/` instead, and they reach the target repos at the next XFG Apply. `createOnly` files stay with their repo. Vulnerability
 alerts override `enabled: false`, so a security fix can still open a PR in a target repo. Land the same fix in `src/` too, or the next sync reverts it. The preset is generated from `src/`, so regenerate it after any change there:
 
