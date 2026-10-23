@@ -10,8 +10,10 @@ need_jsonata() {
 
 # jsonata_true <expression> <json input>: the Renovate matchJsonata verdict for one set of fields. evaluate() returns a promise in jsonata 2.x.
 jsonata_true() {
+  local expression=$1 json_input=$2
   node -e '
     const jsonata = require("jsonata");
     Promise.resolve(jsonata(process.argv[1]).evaluate(JSON.parse(process.argv[2]))).then((r) => console.log(r === true ? "true" : "false"));
-  ' "$1" "$2"
+  ' "$expression" "$json_input"
+  return $?
 }

@@ -97,27 +97,30 @@ COSIGN_TAG='^sha256-[0-9a-f]+([.](sig|att|sbom))?$'
 
 # old_count ROWS: the distinct tags whose build is at least 7 days old, cosign tags aside
 old_count() {
-  local cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v cut="$cut" -v cosign="$COSIGN_TAG" '$3 <= cut && $1 !~ cosign && !seen[$1]++ { n++ } END { print n + 0 }' "$1"
+  local rows=$1 cut=$(($(now) - MIN_AGE_SECONDS))
+  awk -F'\t' -v cut="$cut" -v cosign="$COSIGN_TAG" '$3 <= cut && $1 !~ cosign && !seen[$1]++ { n++ } END { print n + 0 }' "$rows"
 }
 
 # missing_tags ROWS USED: the tags in use (space-separated) that ROWS do not list, one per line
 missing_tags() {
-  awk -F'\t' -v used="$2" '
+  local rows=$1 used=$2
+  awk -F'\t' -v used="$used" '
     { listed[$1] = 1 }
     END { n = split(used, u, " "); for (i = 1; i <= n; i++) if (!(u[i] in listed)) print u[i] }
-  ' "$1"
+  ' "$rows"
 }
 
 # enough_rows ROWS USED: KEEP_NEWEST old tags are listed and so is every tag in use
 enough_rows() {
-  [[ "$(old_count "$1")" -ge "$KEEP_NEWEST" && -z "$(missing_tags "$1" "$2")" ]]
+  local rows=$1 used=$2
+  [[ "$(old_count "$rows")" -ge "$KEEP_NEWEST" && -z "$(missing_tags "$rows" "$used")" ]]
 }
 
 # page_cap IMAGE RAW: at the page cap the listing counts as complete once one tag is at least 7 days old
 page_cap() {
-  if [[ "$(old_count "$2")" -ge 1 ]]; then return 0; fi
-  say "::error::$1: no tag at least 7 days old in the first $MAX_PAGES pages"
+  local image=$1 raw=$2
+  if [[ "$(old_count "$raw")" -ge 1 ]]; then return 0; fi
+  say "::error::$image: no tag at least 7 days old in the first $MAX_PAGES pages"
   return 1
 }
 
@@ -136,8 +139,9 @@ page_rows() {
 
 # answer_ok IMAGE CODE: a registry answered 200
 answer_ok() {
-  if [[ "$2" == 200 ]]; then return 0; fi
-  say "::error::$1: registry answered $2"
+  local image=$1 code=$2
+  if [[ "$code" == 200 ]]; then return 0; fi
+  say "::error::$image: registry answered $code"
   return 1
 }
 
@@ -164,9 +168,9 @@ ghcr_pages() {
 }
 
 fetch_ghcr() {
-  local hdr body status=0
+  local image=$1 raw=$2 used=$3 hdr body status=0
   hdr=$(mktemp) body=$(mktemp)
-  ghcr_pages "$1" "$2" "$3" "$hdr" "$body" || status=1
+  ghcr_pages "$image" "$raw" "$used" "$hdr" "$body" || status=1
   rm -f "$hdr" "$body"
   return "$status"
 }
@@ -186,9 +190,9 @@ quay_pages() {
 }
 
 fetch_quay() {
-  local body status=0
+  local image=$1 raw=$2 used=$3 body status=0
   body=$(mktemp)
-  quay_pages "$1" "$2" "$3" "$body" || status=1
+  quay_pages "$image" "$raw" "$used" "$body" || status=1
   rm -f "$body"
   return "$status"
 }
@@ -206,13 +210,14 @@ fetch_once() {
 
 # clean_rows IN OUT: copies the well-formed rows to OUT. Prints "<1 if a push time is not a number> <rows dropped for a malformed tag or digest>"
 clean_rows() {
-  : >"$2"
-  awk -F'\t' -v OFS='\t' -v out="$2" '
+  local in=$1 out=$2
+  : >"$out"
+  awk -F'\t' -v OFS='\t' -v out="$out" '
     NF != 3 || $3 !~ /^[0-9]+$/ { bad_time = 1; next }
     length($1) > 128 || $1 !~ /^[A-Za-z0-9_][A-Za-z0-9_.-]*$/ || length($2) != 71 || $2 !~ /^sha256:[0-9a-f]+$/ { dropped++; next }
     { print > out }
     END { printf "%d %d\n", bad_time, dropped }
-  ' "$1"
+  ' "$in"
 }
 
 # fetch_rows IMAGE OUT [USED]: every tag of the image with its digest and push time, newest first, one row per tag.
@@ -253,12 +258,15 @@ fetch_rows() {
   return "$status"
 }
 
-iso() { date -u -d "@$1" +%Y-%m-%dT%H:%M:%SZ; }
+iso() {
+  local epoch=$1
+  date -u -d "@$epoch" +%Y-%m-%dT%H:%M:%SZ
+}
 
 # select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first. USED and SKIPS are space-separated tags.
 select_rows() {
-  local cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$2" -v skip="$3" '
+  local rows=$1 used=$2 skips=$3 cut=$(($(now) - MIN_AGE_SECONDS))
+  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" -v skip="$skips" '
     BEGIN {
       n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
       n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
@@ -266,19 +274,19 @@ select_rows() {
     $3 > cut || $1 ~ cosign || ($1 in S) { next }
     { eligible++ }
     eligible <= keep || ($1 in U) { print $1, $2 }
-  ' "$1"
+  ' "$rows"
 }
 
 # trim_rows ROWS USED: the rows worth storing: every build younger than 7 days, the newest KEEP_NEWEST older ones and the tags in use
 trim_rows() {
-  local cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$2" '
+  local rows=$1 used=$2 cut=$(($(now) - MIN_AGE_SECONDS))
+  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" '
     BEGIN { n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1 }
     $1 ~ cosign { next }
     $3 > cut { print; next }
     { old++ }
     old <= keep || ($1 in U) { print }
-  ' "$1"
+  ' "$rows"
 }
 
 # allowed_regex TAG...: a Renovate regex that matches exactly these tags; fails when there are none
@@ -292,7 +300,7 @@ allowed_regex() {
   printf '/^(%s)$/' "$(IFS='|' && printf '%s' "${escaped[*]}")"
 }
 
-# image_rules IMAGE SELECTED NOW: the allowedVersions rule and the digest rule for one image; fails when no tag is selected
+# image_rules IMAGE SELECTED AT: the allowedVersions rule and the digest rule for one image; fails when no tag is selected
 image_rules() {
   local image=$1 sel=$2 at=$3 tags map re
   [[ -s "$sel" ]] || return 1
@@ -316,9 +324,10 @@ image_rules() {
     }]'
 }
 
-# disabling_rule IMAGE NOW: holds back every update of an image that could not be dated
+# disabling_rule IMAGE AT: holds back every update of an image that could not be dated
 disabling_rule() {
-  jq -n --arg image "$1" --arg at "$(iso "$2")" '{
+  local image=$1 at=$2
+  jq -n --arg image "$image" --arg at "$(iso "$at")" '{
     description: "image-age: \($image) could not be dated, updates held back, \($at)",
     matchDatasources: ["docker"],
     matchPackageNames: [$image],
@@ -332,15 +341,15 @@ moved_images() {
     yq -p yaml -o json -I0 '[.packageRules[] | select(has("replacementName")) | .matchPackageNames[]]'
 }
 
-# assemble_preset BY_IMAGE OUT NOW: BY_IMAGE maps each image to its rules; adds the catch-all and the stale guard
+# assemble_preset BY_IMAGE OUT AT: BY_IMAGE maps each image to its rules; adds the catch-all and the stale guard
 assemble_preset() {
-  local excluded
+  local by_image=$1 out=$2 at=$3 excluded
   excluded=$({
     printf '!%s/**\n' "${DOCKER_HUB_HOSTS[@]}" "${OUT_OF_SCOPE_HOSTS[@]}"
     printf '!%s**\n' "$OWN_IMAGES_PREFIX"
     moved_images | jq -r '.[] | "!" + .'
   } | jq -Rn '[inputs]')
-  jq -S -n --slurpfile by "$1" --argjson excluded "$excluded" --argjson at "$3" --arg when "$(iso "$3")" --argjson stale "$STALE_SECONDS" '
+  jq -S -n --slurpfile by "$by_image" --argjson excluded "$excluded" --argjson at "$at" --arg when "$(iso "$at")" --argjson stale "$STALE_SECONDS" '
     "/^[^/]+\\.[^/]+\\//" as $host
     | ["major", "minor", "patch", "digest"] as $types
     | {
@@ -362,10 +371,13 @@ assemble_preset() {
               enabled: false
             }]
         )
-      }' >"$2"
+      }' >"$out"
 }
 
-repo_slug() { sed -E 's#^https://github\.com/##; s#\.git$##' <<<"$1"; }
+repo_slug() {
+  local url=$1
+  sed -E 's#^https://github\.com/##; s#\.git$##' <<<"$url"
+}
 
 # public_repos: owner/name of every repo that takes the shared Renovate config
 public_repos() {
@@ -436,15 +448,15 @@ cmd_extract() {
 
 # clean_inventory FILE OUT WHERE: FILE's inventory without the image names, tags and pins that are malformed; each dropped name is reported
 clean_inventory() {
-  local name
+  local file=$1 out=$2 where=$3 name
   while IFS= read -r name; do
-    say "::error::dropped the image name $name from $3"
-  done < <(jq -r --arg re "$IMAGE_RE" '.images | keys[] | select(test($re) | not) | @json' "$1")
+    say "::error::dropped the image name $name from $where"
+  done < <(jq -r --arg re "$IMAGE_RE" '.images | keys[] | select(test($re) | not) | @json' "$file")
   jq -c --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg repo "$REPO_RE" '
     .images |= (to_entries | map(select(.key | test($re))
       | .value.tags |= map(select(type == "string" and test($tag)))
       | .value.pins |= map(select((.repo | type == "string" and test($repo)) and (.tag | type == "string" and test($tag)) and (.digest | type == "string" and test($dig)))))
-      | from_entries)' "$1" >"$2"
+      | from_entries)' "$file" >"$out"
 }
 
 # fetch_contents URL OUT: the raw content of a file through the contents API; prints the HTTP status
@@ -460,7 +472,7 @@ ROW_OK='def row_ok: (.tag | type == "string" and test($tag)) and (.digest | type
 
 # previous_data OUT: the data of the last published run, checked as fresh data is. The empty shape on the first run.
 previous_data() {
-  local raw code inv
+  local out=$1 raw code inv
   raw=$(mktemp) inv=$(mktemp)
   code=$(fetch_contents "$API/repos/$DATA_REPO/contents/$STATE_FILE?ref=$DATA_BRANCH" "$raw")
   case "$code" in
@@ -490,13 +502,14 @@ previous_data() {
   jq '.inventory' "$raw" >"$inv.in"
   clean_inventory "$inv.in" "$inv" "the previous data"
   jq -c --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --slurpfile inv "$inv" "$ROW_OK"'
-    {inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries)}' "$raw" >"$1"
+    {inventory: $inv[0], rows: (.rows | to_entries | map(select(.key | test($re)) | .value |= map(select(row_ok))) | from_entries)}' "$raw" >"$out"
   rm -f "$raw" "$inv" "$inv.in"
 }
 
 # stored_rows IMAGE PREVIOUS OUT: the stored rows of an image as tab-separated rows, newest first
 stored_rows() {
-  jq -r --arg i "$1" '.rows[$i] // [] | .[] | [.tag, .digest, .pushedAt] | @tsv' "$2" | LC_ALL=C sort -s -t $'\t' -k3,3nr >"$3"
+  local image=$1 previous=$2 out=$3
+  jq -r --arg i "$image" '.rows[$i] // [] | .[] | [.tag, .digest, .pushedAt] | @tsv' "$previous" | LC_ALL=C sort -s -t $'\t' -k3,3nr >"$out"
 }
 
 # dated_rules IMAGE INVENTORY SKIPS PREVIOUS WORKDIR: writes the rules for one image to WORKDIR/rules.json and the rows to keep to WORKDIR/stored
@@ -598,15 +611,19 @@ cmd_render() {
   rm -rf "$work"
 }
 
-sha256_of() { sha256sum <"$1" | cut -d' ' -f1; }
+sha256_of() {
+  local file=$1
+  sha256sum <"$file" | cut -d' ' -f1
+}
 
 cmd_hashes() {
-  printf 'preset=%s\ndata=%s\n' "$(sha256_of "$1/$DATA_FILE")" "$(sha256_of "$1/$STATE_FILE")"
+  local dir=$1
+  printf 'preset=%s\ndata=%s\n' "$(sha256_of "$dir/$DATA_FILE")" "$(sha256_of "$dir/$STATE_FILE")"
 }
 
 # preset_problems FILE: one line per way FILE differs from the shape that render writes
 preset_problems() {
-  local pre suf
+  local file=$1 pre suf
   # shellcheck disable=SC2016
   pre='($m := '
   # shellcheck disable=SC2016
@@ -656,11 +673,12 @@ preset_problems() {
         ([$rules[] | select(type == "object" and valid and (kind == "allow" or kind == "digest" or kind == "hold"))] | group_by(.matchPackageNames[0])[]
           | select((map(kind) | sort) as $k | $k != ["allow", "digest"] and $k != ["hold"])
           | "the rules of \(.[0].matchPackageNames[0] | @json) are not one allowedVersions rule and one digest rule, or one hold rule")
-    end' "$1"
+    end' "$file"
 }
 
 cmd_validate() {
-  local dir=$1 file="$1/$DATA_FILE" state="$1/$STATE_FILE" size problem bad=0
+  local dir=$1 file state size problem bad=0
+  file="$dir/$DATA_FILE" state="$dir/$STATE_FILE"
   if ! jq -e . "$file" >/dev/null 2>&1; then
     say "::error::$DATA_FILE is not valid JSON"
     return 1
@@ -690,8 +708,9 @@ cmd_validate() {
 
 # check_hash FILE EXPECTED: the artifact file is the one render hashed
 check_hash() {
-  if [[ "$(sha256_of "$1")" == "$2" ]]; then return 0; fi
-  say "::error::$(basename "$1") does not match the hash that render reported"
+  local file=$1 expected=$2
+  if [[ "$(sha256_of "$file")" == "$expected" ]]; then return 0; fi
+  say "::error::$(basename "$file") does not match the hash that render reported"
   return 1
 }
 

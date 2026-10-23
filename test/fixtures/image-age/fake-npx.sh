@@ -9,13 +9,18 @@ case "$*" in
   echo "fake validator: ${*: -1}" >&2
   exit "${FAKE_VALIDATOR_STATUS:-0}"
   ;;
-esac
-
-repo="${*: -1}"
-log="$FAKE_NPX_DIR/${repo//\//__}.log"
-if [[ ! -f "$log" ]]; then
-  echo "fake renovate: no recorded run for $repo" >&2
+*--dry-run=extract*)
+  repo="${*: -1}"
+  log="$FAKE_NPX_DIR/${repo//\//__}.log"
+  if [[ ! -f "$log" ]]; then
+    echo "fake renovate: no recorded run for $repo" >&2
+    exit 1
+  fi
+  echo "npm warn deprecated fake@1.0.0: not JSON on purpose" >&2
+  cat "$log"
+  ;;
+*)
+  echo "fake npx: unexpected arguments: $*" >&2
   exit 1
-fi
-echo "npm warn deprecated fake@1.0.0: not JSON on purpose" >&2
-cat "$log"
+  ;;
+esac
