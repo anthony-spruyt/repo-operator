@@ -1,0 +1,11 @@
+repos:
+  - git: https://github.com/anthony-spruyt/blog.git
+    groups: [renovate]
+  - git: https://github.com/anthony-spruyt/SunGather.git
+    groups: [renovate]
+  - git: https://github.com/anthony-spruyt/spruyt-labs.git
+    groups: [renovate]
+  - git: https://github.com/anthony-spruyt/security.git
+    groups: [private-repo]
+    files:
+      inherit: false

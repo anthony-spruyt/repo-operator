@@ -130,7 +130,7 @@
       matchDatasources: ["docker", "oci"],
       enabled: true,
       commitMessageTopic: "container image {{depName}}",
-      commitMessageExtra: "to {{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}",
+      commitMessageExtra: "to {{#if (equals updateType \"digest\")}}{{{newDigestShort}}}{{else}}{{#if isSingleVersion}}v{{{newVersion}}}{{else}}{{{newValue}}}{{/if}}{{/if}}",
       pinDigests: true
     },
     {
@@ -169,6 +169,44 @@
       matchDatasources: ["docker", "oci"],
       matchUpdateTypes: ["patch"],
       labels: ["renovate/image", "dep/patch"]
+    },
+
+    // ============ Registry moves ============
+    {
+      description: "Move ghcr.io/static-web-server/static-web-server to its Docker Hub twin joseluisq/static-web-server, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/static-web-server/static-web-server"],
+      replacementName: "joseluisq/static-web-server"
+    },
+    {
+      description: "Move ghcr.io/astral-sh/uv to its Docker Hub twin astral/uv, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/astral-sh/uv"],
+      replacementName: "astral/uv"
+    },
+    {
+      description: "Move ghcr.io/druggeri/nut_exporter to its Docker Hub twin druggeri/nut_exporter, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/druggeri/nut_exporter"],
+      replacementName: "druggeri/nut_exporter"
+    },
+    {
+      description: "Move ghcr.io/felddy/foundryvtt to its Docker Hub twin felddy/foundryvtt, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/felddy/foundryvtt"],
+      replacementName: "felddy/foundryvtt"
+    },
+    {
+      description: "Move ghcr.io/unpoller/unpoller to its Docker Hub twin golift/unifi-poller, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["ghcr.io/unpoller/unpoller"],
+      replacementName: "golift/unifi-poller"
+    },
+    {
+      description: "Move public.ecr.aws/docker/library/eclipse-mosquitto to its Docker Hub twin eclipse-mosquitto, where Renovate dates releases",
+      matchDatasources: ["docker"],
+      matchPackageNames: ["public.ecr.aws/docker/library/eclipse-mosquitto"],
+      replacementName: "eclipse-mosquitto"
     },
 
     // ============ Helm ============

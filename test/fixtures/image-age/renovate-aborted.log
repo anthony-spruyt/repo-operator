@@ -1,0 +1,3 @@
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":30,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","renovateVersion":"44.164.7","msg":"Renovate started","time":"2026-10-23T00:41:16.931Z","v":0}
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":50,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","repository":"anthony-spruyt/blog","err":{"message":"Repository not found"},"msg":"Repository has been aborted","time":"2026-10-23T00:41:17.331Z","v":0}
+{"name":"renovate","hostname":"4fbf3ffea5d3","pid":192357,"level":30,"logContext":"0e1d3c5a-0b0a-4d0f-9a8c-5a1d2b3c4d5e","repository":"anthony-spruyt/blog","cloned":false,"durationMs":400,"msg":"Repository finished","time":"2026-10-23T00:41:17.338Z","v":0}
