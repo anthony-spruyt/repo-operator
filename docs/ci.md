@@ -58,7 +58,7 @@ An optional `<path>/metadata.yaml` sets each image's settings. All are optional,
 - `test-command`: shell command run against the built image (`$IMAGE_REF`). A `test.sh` in the package runs only when this calls it, such as `bash ./<path>/test.sh "$IMAGE_REF"`; nothing finds it on its own
 - `language`: the tests to run before the build, `go`, `node`, `python` or `none`; empty uses the calling workflow's `language` input, so a repo with one language sets nothing
 - `workdir` (default: the package path): directory the tests run in, holding `go.mod`, `package.json` or `pyproject.toml`
-- `egress`: `host:port` endpoints the image's tests, build and publish reach besides the shared lists (see [Egress](#egress)), such as `deb.debian.org:80` or `"*.example.com:443"`. Those jobs always run harden-runner with `egress-policy: block`, so an image with no `egress` gets only the shared lists.
+- `egress`: `host:port` endpoints the image's tests, build and publish reach besides the shared lists (see [Egress](#egress)), such as `deb.debian.org:80` or `"*.example.com:443"`. Those jobs run harden-runner with the shared lists plus `egress`, so an image with no `egress` gets only the shared lists.
 
 `prepare-command` and `test-command` run as shell on the runner only in `_build-image.yaml`'s `build` job, which has `contents: read` and no environment, for pull requests and releases alike. On a release it packs the prepared `context` as a tar artifact; `publish` waits for `build`, restores that tar (plain files and directories only) and builds and pushes from it without running either command.
 
@@ -122,11 +122,32 @@ A package whose repository is missing on the first page is skipped with a warnin
 - `packages` (required): comma-separated repository names
 - `older-than` (default `4 weeks`), `keep-n-tagged` (default `5`), `dry-run` (default `"false"`): as in `_container-retention.yaml`
 
+### `harden-runner`
+
+Runs [`step-security/harden-runner`](https://github.com/step-security/harden-runner), pinned by SHA, as the first step of every job. Its one step sets `egress-policy`, so that line in `.github/actions/harden-runner/action.yaml` is the switch for the egress mode of every job that calls it, in this repo and in the repos that call the shared workflows.
+`audit` records each job's outbound calls; `block` refuses calls to hosts off the job's allowlist. Those are the only two values, and the line reads `audit` today.
+
+The action passes `allowed-endpoints` (default empty), `disable-sudo-and-containers` and `disable-telemetry` (both default `"false"`) to harden-runner unchanged. A caller never sets `egress-policy` itself.
+Shared workflows call it as `$/.github/actions/harden-runner`; a repo-owned workflow calls `anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha> # main`. Keep every job's allowlist current in either mode, so a flip to `block` needs no other edit.
+`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs.
+
+`lychee` in `_lint.yaml` calls harden-runner directly with `egress-policy: audit`, whatever the switch says, because link checks reach arbitrary hosts.
+
+To flip the mode, edit the `egress-policy` line. The file is under `.github/`, so the owner approves the PR. After it merges:
+
+1. Tick `repo-operator shared CI` on repo-operator's Renovate dashboard, which opens the pin bump for the synced callers.
+2. Merge the pin bump.
+3. Approve the XFG Apply, which carries the new pin to the synced callers.
+
+Repo-operator's own workflows follow the merge itself. Repo-owned workflows in other repos follow their own repo's Renovate pin bump.
+
+The mode is `audit` because some GitHub-hosted runners drop allowlisted connections under `block` ([step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), [actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925)). Flip back to `block` once both are fixed.
+
 ## Reusable workflows
 
 - `_go-test.yaml`: `go build ./...` and `go test -race ./...` from `workdir` (default `.`). The Go version is the `ARG GO_VERSION=<version>` of the `dockerfile` input, the same one the image build uses; with no such Dockerfile or ARG (a `FROM scratch` plugin image), setup-go reads the `go.mod` `go` directive. Needs `contents: read`.
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
-- `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and blocks all egress except SonarQube Cloud and GitHub.
+- `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and runs harden-runner with an allowlist of SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` with the image's Dockerfile and passes `<workdir>/go.mod` to the build (only whether it is set matters), which sets `VERSION` and `COMMIT` and leaves `GO_VERSION` to the Dockerfile; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js
   `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `release` environment; only that job needs the publishing
@@ -164,17 +185,20 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 
 `_lint.yaml` runs three jobs. Callers grant `actions: read`, `contents: read` and `security-events: write`:
 
-- `megalinter`: every linter but lychee, with no token and harden-runner `block`. On public repos it saves the SARIF report as an artifact.
+- `megalinter`: every linter but lychee, with no token and harden-runner in the [shared mode](#harden-runner). On public repos it saves the SARIF report as an artifact.
 - `lint`: uploads that SARIF to code scanning. It is the only job with `security-events: write`, and it never checks out the PR's code. Its id stays `lint` because the id is part of the code scanning analysis key, so existing alerts carry over.
-- `lychee`: the link checker alone, with no token (MegaLinter hides `*TOKEN*` variables from linters anyway) and harden-runner `audit`, because links reach arbitrary hosts.
+- `lychee`: the link checker alone, with no token (MegaLinter hides `*TOKEN*` variables from linters anyway) and harden-runner always in `audit`, because links reach arbitrary hosts.
 
 The `megalinter` allowlist comes from egress logged across all repos: GitHub, GHCR (the image pull), Trivy's database mirrors, the Go module proxy (golangci-lint), `registry.coder.com` (Trivy on spruyt-labs' Terraform), and the artifact service. A new linter that downloads at runtime fails there until its host is added.
 
 ### Egress
 
-Shared jobs run harden-runner with `egress-policy: block` and their own allowlist, built from the egress logged across all repos. A job that reaches a host off its list fails, so a new download needs its host added. `test/ci/harden-runner.bats` keeps every job on `block` but the ones it lists.
+Shared jobs run harden-runner through the [`harden-runner`](#harden-runner) action, each with its own allowlist built from the egress logged across all repos.
+Under `block` a job that reaches a host off its list fails, so a new download needs its host added; add it under `audit` too, so the list is ready for a flip.
+`test/ci/harden-runner.bats` keeps every job on the action, passing an allowlist, except the ones it lists.
 
-An image's jobs (its Go, Python or Node tests, `build` and `publish`) block too, and add the extra hosts from its `metadata.yaml` `egress`. Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
+An image's jobs (its Go, Python or Node tests, `build` and `publish`) take the same switch, and add the extra hosts from its `metadata.yaml` `egress`.
+Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
 the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so prove a new list with a build that misses the cache.
 
 ### Job timeouts
@@ -442,7 +466,7 @@ The job is `image` in `ci.yaml` and `images` in `release-please.yaml`; the `rele
 
 ## Image age
 
-`.github/workflows/image-age.yaml` dates the container images that registries other than Docker Hub serve, so Renovate holds back tags and rebuilds younger than 7 days. It runs every six hours and on dispatch, in four jobs behind harden-runner with `egress-policy: block`. Every job checks out the commit (`github.sha`, `persist-credentials: false`) and runs `.github/scripts/image-age.sh` from that
+`.github/workflows/image-age.yaml` dates the container images that registries other than Docker Hub serve, so Renovate holds back tags and rebuilds younger than 7 days. It runs every six hours and on dispatch, in four jobs behind harden-runner, each with its own allowlist. Every job checks out the commit (`github.sha`, `persist-credentials: false`) and runs `.github/scripts/image-age.sh` from that
 checkout. The artifacts carry data only: `inventory.json`, `image-age.json`, `image-age-data.json`, `report.txt` and the Renovate logs of the extract job. The extract and validate jobs run Renovate on Node 24 (set up with `actions/setup-node`), the engine Renovate requires.
 
 1. **extract** (`contents: read`): `image-age.sh extract` runs the pinned Renovate (`RENOVATE_VERSION` in the script, bumped by Renovate) in `--dry-run=extract` mode on every public repo in `src/repos.yaml`, and lists the images whose registry is neither Docker Hub nor `ghcr.io/anthony-spruyt/`, with the tags and digests in use. A repo counts as extracted when Renovate logs

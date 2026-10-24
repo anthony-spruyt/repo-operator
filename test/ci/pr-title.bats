@@ -44,7 +44,7 @@ subject_pattern() {
 }
 
 @test "pr-title.yaml hardens the runner with egress block, then runs the pinned action, with no checkout" {
-  harden=$(yq -r '.jobs.check.steps[0].uses' "$REPO_ROOT/.github/workflows/_sonar-new-issues.yaml")
+  harden=$(yq -r '.runs.steps[0].uses' "$REPO_ROOT/.github/actions/harden-runner/action.yaml")
   run yq -o=json -I0 '[.jobs.check.steps[].uses]' "$TEMPLATE"
   [ "$output" = "$(jq -cn --arg h "$harden" --arg a "$ACTION" '[$h, $a]')" ]
   run yq -o=json -I0 '.jobs.check.steps[0].with | [.["egress-policy"], .["disable-sudo-and-containers"], (.["allowed-endpoints"] | split(" "))]' "$TEMPLATE"

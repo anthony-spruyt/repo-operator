@@ -49,12 +49,12 @@ reachable() {
   done
 }
 
-# unhardened <root> <file>... - prints file:job for each job with steps whose first step is not harden-runner
+# unhardened <root> <file>... - prints file:job for each job with steps whose first step is neither harden-runner nor the composite that wraps it
 unhardened() {
   local root="$1" file
   shift
   for file in "$@"; do
-    yq -r '(.jobs // {}) | to_entries[] | select(.value.steps != null) | select((.value.steps[0].uses // "") | test("^step-security/harden-runner@") | not) | .key' "$root/$file" | sed "s|^|$file:|"
+    yq -r '(.jobs // {}) | to_entries[] | select(.value.steps != null) | select((.value.steps[0].uses // "") | test("^(step-security/harden-runner@|[$]/[.]github/actions/harden-runner$)") | not) | .key' "$root/$file" | sed "s|^|$file:|"
   done
 }
 
@@ -168,6 +168,9 @@ jobs:
       - uses: actions/checkout@0123456789abcdef0123456789abcdef01234567
         with:
           persist-credentials: false
+  switched:
+    steps:
+      - uses: $/.github/actions/harden-runner
   bad:
     steps:
       - uses: actions/checkout@v7

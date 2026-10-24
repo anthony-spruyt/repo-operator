@@ -73,10 +73,10 @@ json5() {
   [ "$output" = "$(yq -r '.jobs.extract.steps[] | select(.with.name == "inventory") | .uses' "$WORKFLOW")" ]
 }
 
-@test "every job blocks egress and names the hosts it needs" {
-  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select(.uses // "" | test("^step-security/harden-runner@")) | .with["egress-policy"]] | join(","))' "$WORKFLOW"
-  [ "$output" = $'extract:block\nrender:block\nvalidate:block\npublish:block' ]
-  hosts() { yq -r ".jobs.$1.steps[] | select(.uses // \"\" | test(\"^step-security/harden-runner@\")) | .with[\"allowed-endpoints\"]" "$WORKFLOW" | tr -s '[:space:]' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
+@test "every job hardens the runner through the composite and names the hosts it needs" {
+  run yq -r '.jobs | to_entries[] | .key + ":" + ([.value.steps[] | select((.uses // "") == "$/.github/actions/harden-runner") | .uses] | length | tostring)' "$WORKFLOW"
+  [ "$output" = $'extract:1\nrender:1\nvalidate:1\npublish:1' ]
+  hosts() { yq -r ".jobs.$1.steps[] | select((.uses // \"\") == \"\$/.github/actions/harden-runner\") | .with[\"allowed-endpoints\"]" "$WORKFLOW" | tr -s '[:space:]' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
   run hosts extract
   [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts render
@@ -170,7 +170,7 @@ json5() {
   [[ "$output" == *'jsonata@"$JSONATA_VERSION"'* ]]
   [[ "$output" == *'NODE_PATH='* ]]
   [[ "$output" == *'GITHUB_ENV'* ]]
-  run yq -r '.jobs.guard-test.steps[] | select(.uses // "" | test("^step-security/harden-runner@")) | .with["allowed-endpoints"]' "$CI_REPO"
+  run yq -r '.jobs.guard-test.steps[] | select((.uses // "") == "$/.github/actions/harden-runner") | .with["allowed-endpoints"]' "$CI_REPO"
   [[ "$output" == *"registry.npmjs.org:443"* ]]
   run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata" or .name == "Run bats tests") | .name' "$CI_REPO"
   [ "$output" = $'Install jsonata\nRun bats tests' ]
