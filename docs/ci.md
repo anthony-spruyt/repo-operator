@@ -630,6 +630,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 concurrency:
   group: release-please-${{ github.ref }}
@@ -637,15 +639,28 @@ concurrency:
 permissions: {}
 jobs:
   release:
+    if: github.ref_type == 'branch'
     permissions:
       contents: read
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha> # main
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
       RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
-  images:
+  recover:
     needs: release
-    if: needs.release.outputs.release-created == 'true'
+    if: "!cancelled()"
+    permissions:
+      contents: read
+      actions: write
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-recover.yaml@<sha> # main
+    with:
+      releases: ${{ needs.release.outputs.releases }}
+    secrets:
+      RELEASE_PLEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+      RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+  images:
+    needs: [release, recover]
+    if: "!cancelled() && (needs.release.outputs.release-created == 'true' || needs.recover.outputs.release-created == 'true')"
     permissions:
       contents: write
       packages: write
@@ -653,7 +668,7 @@ jobs:
       attestations: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha> # main
     with:
-      releases: ${{ needs.release.outputs.releases }}
+      releases: ${{ needs.recover.outputs.releases || needs.release.outputs.releases }}
       language: go
 ```
 
