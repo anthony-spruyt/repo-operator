@@ -81,7 +81,8 @@ def key: sub("\\+.*$"; "")
 '
 
 uri() {
-  jq -rn --arg v "$1" '$v | @uri'
+  local value="$1"
+  jq -rn --arg v "$value" '$v | @uri'
 }
 
 fetch() {
@@ -163,7 +164,8 @@ draft_tags() {
 }
 
 tag_exists() {
-  gh api "repos/${GH_REPO}/git/matching-refs/tags/$1" | jq -e --arg r "refs/tags/$1" 'any(.[]; .ref == $r)' >/dev/null
+  local tag="$1"
+  gh api "repos/${GH_REPO}/git/matching-refs/tags/${tag}" | jq -e --arg r "refs/tags/${tag}" 'any(.[]; .ref == $r)' >/dev/null
 }
 
 # A dispatch runs the caller as it is at the tag, so only a caller with a recover job can build a tag-ref run
