@@ -43,12 +43,11 @@ subject_pattern() {
   [ "$(tr -s ' \n' ' ' <<<"$output")" = "$(tr -s ' \n' ' ' <<<"$want")" ]
 }
 
-@test "pr-title.yaml hardens the runner with egress block, then runs the pinned action, with no checkout" {
-  harden=$(yq -r '.runs.steps[0].uses' "$REPO_ROOT/.github/actions/harden-runner/action.yaml")
-  run yq -o=json -I0 '[.jobs.check.steps[].uses]' "$TEMPLATE"
-  [ "$output" = "$(jq -cn --arg h "$harden" --arg a "$ACTION" '[$h, $a]')" ]
-  run yq -o=json -I0 '.jobs.check.steps[0].with | [.["egress-policy"], .["disable-sudo-and-containers"], (.["allowed-endpoints"] | split(" "))]' "$TEMPLATE"
-  [ "$output" = '["block",true,["api.github.com:443","results-receiver.actions.githubusercontent.com:443"]]' ]
+@test "pr-title.yaml hardens the runner through the shared action, then runs the pinned action, with no checkout" {
+  run yq -o=json -I0 '[.jobs.check.steps[].uses | sub("@[0-9a-f]{40}$"; "@<sha>")]' "$TEMPLATE"
+  [ "$output" = "$(jq -cn --arg a "${ACTION%@*}@<sha>" '["anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha>", $a]')" ]
+  run yq -o=json -I0 '.jobs.check.steps[0].with | [keys, .["disable-sudo-and-containers"], (.["allowed-endpoints"] | split(" "))]' "$TEMPLATE"
+  [ "$output" = '[["disable-sudo-and-containers","allowed-endpoints"],true,["api.github.com:443","results-receiver.actions.githubusercontent.com:443"]]' ]
   run grep -n 'actions/checkout' "$TEMPLATE"
   [ "$status" -eq 1 ]
 }
