@@ -17,7 +17,7 @@ jobs:
   extract:
     name: "Extract images"
     runs-on: ubuntu-latest
-    timeout-minutes: 45
+    timeout-minutes: 10
     permissions:
       contents: read
     steps:
@@ -73,7 +73,7 @@ jobs:
     name: "Date images"
     needs: extract
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: read
@@ -130,7 +130,7 @@ jobs:
     name: "Validate preset"
     needs: render
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
       contents: read
     steps:

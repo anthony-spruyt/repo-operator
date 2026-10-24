@@ -11,6 +11,7 @@ jobs:
   megalinter:
     name: MegaLinter
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     concurrency:
@@ -70,6 +71,7 @@ jobs:
   lint:
     name: Upload SARIF
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: megalinter
     if: ${{ !cancelled() && needs.megalinter.outputs.sarif == 'true' }}
     permissions:
@@ -101,6 +103,7 @@ jobs:
   lychee:
     name: lychee
     runs-on: ubuntu-latest
+    timeout-minutes: 15
     permissions:
       contents: read
     concurrency:

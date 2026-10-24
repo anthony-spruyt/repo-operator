@@ -105,7 +105,7 @@ All calls are unauthenticated, so it needs no token and no permissions, and it w
 - `project-key` (default `<owner>_<repo>`): SonarQube Cloud project key
 - `min-severity` (default `INFO`): lowest impact severity that fails: `INFO`, `LOW`, `MEDIUM`, `HIGH` or `BLOCKER`. An issue with no impact severity always fails
 - `include-hotspots` (default `"true"`): also fail on hotspots to review
-- `timeout-seconds` (default `900`): how long to wait for SonarQube Cloud
+- `timeout-seconds` (default `900`): how long to wait for SonarQube Cloud, up to 99999. In `_sonar-new-issues.yaml` the job's 20-minute limit caps it
 
 ### `dockerhub-cleanup`
 
@@ -176,6 +176,18 @@ Shared jobs run harden-runner with `egress-policy: block` and their own allowlis
 
 An image's jobs (its Go, Python or Node tests, `build` and `publish`) block too, and add the extra hosts from its `metadata.yaml` `egress`. Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
 the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so prove a new list with a build that misses the cache.
+
+### Job timeouts
+
+Every job that runs steps sets `timeout-minutes`: in each reusable workflow, each synced template and each workflow of this repo. A job that calls a reusable workflow (`uses:`) sets none, because GitHub rejects it there; the called workflow's own jobs carry the limit. `test/ci/job-timeouts.bats` fails when a step-running job has no limit, or a calling job has one.
+
+A job's limit is the larger of twice its slowest successful job in the last 30 days across every repo that calls it, whatever the run's conclusion, and its own built-in wait plus 5 minutes (`_sonar-new-issues.yaml` polls SonarQube Cloud for up to 900 s, so 20), rounded up to a multiple of 5, with a minimum of 5.
+Aim for 40 or less; where the runs need more (the image `build` job is 50: the slowest healthy build takes 1369 s, and 2x rounds up to 50), use what they need. A job that has no recent runs keeps its limit. Re-size a limit when its job gets slower: a healthy job that hits it needs more minutes, not a retry.
+
+Why: GitHub-hosted runners in one region hit a network error early in a step, then hang at "Cleaning up orphan processes" until "The hosted runner lost communication with the server" after 48 to 50 minutes. GitHub's egress-proxy DNS experiment clashes with harden-runner's `block` policy ([actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925),
+[step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), both open). With a limit of T minutes, GitHub cancels the hung job about T+5 minutes after it starts, so a limit over about 43 gains nothing over that kill; `build` is 50 because healthy builds need it, not to catch a hang.
+
+A job cancelled this way, and its run, end `cancelled` with "The job has exceeded the maximum execution time". Nothing re-runs it: use "Re-run failed jobs" by hand.
 
 ### Images
 

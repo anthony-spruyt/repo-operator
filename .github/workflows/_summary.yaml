@@ -13,6 +13,7 @@ jobs:
   summary:
     name: Check Results
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
@@ -34,7 +35,6 @@ jobs:
             --jq '.jobs[] | select(.name != "summary / Check Results") | {name: .name, conclusion: .conclusion}')
           jobs_json=$(jq -s . <<<"$job_lines")
 
-          # Build summary table
           {
             echo "## CI Results"
             echo ""
@@ -55,7 +55,6 @@ jobs:
 
           echo "" >> "$GITHUB_STEP_SUMMARY"
 
-          # Check for failures
           if echo "$jobs_json" | jq -e '.[] | select(.conclusion == "failure" or .conclusion == "cancelled")' > /dev/null 2>&1; then
             echo "::error::One or more jobs failed or were cancelled"
             exit 1

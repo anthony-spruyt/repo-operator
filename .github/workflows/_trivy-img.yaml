@@ -21,6 +21,7 @@ jobs:
   discover-images:
     name: Discover Images
     runs-on: ubuntu-latest
+    timeout-minutes: 5
     outputs:
       images: ${{ steps.discover.outputs.images }}
     steps:
@@ -59,6 +60,7 @@ jobs:
   scan-images:
     name: Scan ${{ matrix.image }}
     runs-on: ubuntu-latest
+    timeout-minutes: 10
     needs: discover-images
     if: needs.discover-images.outputs.images != '[]'
     permissions:
