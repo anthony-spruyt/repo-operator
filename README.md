@@ -83,7 +83,7 @@ GH_TOKEN=<your-token> npx @aspruyt/xfg sync --config ./src
 
 ## Shared CI
 
-Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_images`, `_build-image`, `_release-please`, `_release-images`, `_container-retention`, `_sonar-new-issues`) and composite actions (`build-image`, `publish-release`, `detect-images`, `sonar-new-issues`, `trivy-scan`, `dockerhub-cleanup`, `harden-runner`) that other repos call. See [docs/ci.md](docs/ci.md).
+Reusable workflows (`_lint`, `_summary`, `_trivy-*`, `_go-test`, `_python-uv-test`, `_images`, `_build-image`, `_release-please`, `_release-recover`, `_release-images`, `_container-retention`, `_sonar-new-issues`) and composite actions (`build-image`, `publish-release`, `detect-images`, `release-drafts`, `sonar-new-issues`, `trivy-scan`, `dockerhub-cleanup`, `harden-runner`) that other repos call. See [docs/ci.md](docs/ci.md).
 
 Every repo's `ci.yaml` has an `image` job that builds each release-please package with a `Dockerfile` or `flavor.yaml` (a MegaLinter flavor, whose Dockerfile is generated) whose files changed, and the release callers publish each released package as its own image. See [Images](docs/ci.md#images).
 

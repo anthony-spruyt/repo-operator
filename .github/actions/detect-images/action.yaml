@@ -38,7 +38,8 @@ outputs:
   matrix:
     description: >-
       JSON matrix, {"include":[...]}, one entry per image. In released mode each
-      entry also has version, tag-name (the git tag) and tag-prefix (the docker tag's)
+      entry also has version, tag-name (the git tag), tag-prefix (the docker tag's)
+      and latest (false for a release a newer one has superseded)
     value: ${{ steps.detect.outputs.matrix }}
   has-images:
     description: '"true" when the matrix holds at least one image, else "false"'

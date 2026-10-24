@@ -162,6 +162,18 @@ groups:
           secrets:
             DOCKERHUB_TOKEN:
               env: DOCKERHUB_TOKEN
+        publish:
+          deploymentBranchPolicy:
+            custom:
+              - type: branch
+                name: main
+              - type: tag
+                name: "*.*.*"
+              - type: tag
+                name: "*/*.*.*"
+          secrets:
+            DOCKERHUB_TOKEN:
+              env: DOCKERHUB_TOKEN
   github:
     files:
       .github/actionlint.yaml:

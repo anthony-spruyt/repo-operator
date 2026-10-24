@@ -117,6 +117,7 @@ jobs:
       prepare-command: ${{ matrix.prepare-command }}
       free-disk: ${{ matrix.free-disk }}
       extra-tags: ${{ matrix.extra-tags }}
+      latest: ${{ matrix.latest }}
       push: true
       version: ${{ matrix.version }}
       tag-name: ${{ matrix.tag-name }}

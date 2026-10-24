@@ -87,6 +87,37 @@ released() {
   [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":".","egress":""}' ]
 }
 
+# detect_from_copy <dir> - runs a copy of the action's directory from the repo root
+detect_from_copy() {
+  run --separate-stderr bash -c 'cd "$1" && "$2"' _ "$REPO" "$1/detect.sh"
+}
+
+@test "detect.sh finds packages.jq beside itself, wherever it is run from" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "true" ]
+}
+
+@test "detect.sh reads the package list from packages.jq" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  echo '[]' >"$BATS_TEST_TMPDIR/copy/packages.jq"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "detect.sh refuses to run without packages.jq" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  rm "$BATS_TEST_TMPDIR/copy/packages.jq"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -ne 0 ]
+  [[ "$stderr" == *"::error::"*"packages.jq"* ]]
+}
+
 @test "single-image repo: REPO_NAME overrides the repository name" {
   use_layout sungather
   export REPO_NAME=mcp-header-proxy
@@ -914,6 +945,25 @@ edit_config() {
   [ "$(images)" = "app,plain" ]
   [ "$(release_of app)" = '["1.2.0","app-v1.2.0","v"]' ]
   [ "$(release_of plain)" = '["1.0.0","plain-1.0.0",""]' ]
+}
+
+@test "released: a release is the latest unless the run marks it superseded" {
+  use_layout spruyt-labs
+  RELEASES=$(jq -c '. + {"ts/agent-queue-worker--superseded": "true", "ts/agent-queue-worker/bull-board--superseded": "false"}' "$FX/releases/spruyt-labs-3183-release-both.json") MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry agent-queue-worker | jq -c .latest)" = "false" ]
+  [ "$(image_entry bull-board | jq -c .latest)" = "true" ]
+  : >"$GITHUB_OUTPUT"
+  released spruyt-labs-3183-release-both
+  [ "$(output_value matrix | jq -c '[.include[].latest]')" = "[true,true]" ]
+}
+
+@test "released: a root package's superseded flag is the unprefixed output" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  RELEASES=$(jq -c '. + {superseded: "true"}' "$FX/releases/sungather-v3.0.0.json") MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry sungather | jq -c .latest)" = "false" ]
 }
 
 @test "released: a run that created no release publishes nothing" {
