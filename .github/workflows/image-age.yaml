@@ -22,9 +22,8 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             api.github.com:443
@@ -82,9 +81,8 @@ jobs:
       data-sha256: ${{ steps.hashes.outputs.data }}
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             api.github.com:443
@@ -135,9 +133,8 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             github.com:443
@@ -177,9 +174,8 @@ jobs:
       contents: read
     steps:
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             api.github.com:443

@@ -49,7 +49,7 @@ Load the `repo-operator` skill (source `src/templates/.claude/skills/repo-operat
   - Only the release bot creates and moves tags, and only in `release-please` repos; other repos take no tags.
   - megalinter-refresh PRs commit unsigned through `git push`, so they need a normal approval until they commit through the API.
   - `gateFilesExtra` is a template var prepended to the gate-files regex, with its own trailing `|`: repo-operator adds `src/` (the config the next Apply syncs), `test/ci/` (the guard tests) and `lint.sh`. A repo may add paths its image prepare and test commands use, as container-images and traefik-api-key-auth do; leave it empty where `src/` is application code.
-- The `main` XFG Plan runs `src/` before the owner reads it with the write key, so it runs behind a harden-runner egress block and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, `files` path with a `.git` segment, secret source env outside the allowed set (the LiteLLM gateway names
+- The `main` XFG Plan runs `src/` before the owner reads it with the write key, so it runs behind harden-runner in the [switch's](docs/ci.md#harden-runner) mode and `.github/scripts/check-xfg-config.sh`, which fails on any non-`github.com` `githubHosts`, repo URL outside `github.com/anthony-spruyt/`, `${VAR}` env reference, `files` path with a `.git` segment, secret source env outside the allowed set (the LiteLLM gateway names
   only in the xfg `integration`/`integration-main` environments), AI endpoint, key env or header env outside the pinned LiteLLM and OpenRouter set, or AI provider with neither `baseUrl` nor `baseUrlEnv` (including `ai: true`).
 
 ### Adding a New Repository
@@ -81,10 +81,10 @@ The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
    and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on dispatch from non-`main` refs and on PRs that have the `xfg/plan` label or change `ci.yaml`, `check-xfg-config.sh` or `xfg-preview-needed.sh`; never on merge queue PRs. The config guard runs on every PR. Any other label skips every job. Partial: merge settings and
    ruleset `bypass_actors` show as changes because the Plan App can't read them.
-3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. Egress is blocked to GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply). This is the plan to read before approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo
+3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. harden-runner runs in the [switch's](docs/ci.md#harden-runner) mode with an allowlist of GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply). This is the plan to read before approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo
    variable).
 4. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, always gated by the `production` environment and its required reviewer; no workflow input skips it. The Apply-side secrets live in that environment (`GHCR_READ_TOKEN` is also a repo secret, because the `github-trivy` sync writes it back for the Trivy scan). Records `LAST_XFG_DEPLOY_SHA` after applying. Egress is blocked to GitHub,
-   npm, OpenRouter and the LiteLLM host. AI commit messages use LiteLLM, with OpenRouter as the fallback.
+   npm, OpenRouter and the LiteLLM host, whatever the [switch](docs/ci.md#harden-runner) says. AI commit messages use LiteLLM, with OpenRouter as the fallback.
 5. **summary** - Aggregates results for branch protection
 
 The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.

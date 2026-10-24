@@ -18,7 +18,7 @@ step_script() {
   run yq -o=json -I0 '.jobs.packages.outputs' "$WF"
   [ "$output" = '{"list":"${{ steps.packages.outputs.list }}"}' ]
   run yq -o=json -I0 '.jobs.cleanup | [.permissions, .needs, .if, ([.steps[] | select(has("uses")) | .uses | sub("@[0-9a-f]{40}$"; "@<sha>")])]' "$WF"
-  [ "$output" = '[{"packages":"write"},"packages","needs.packages.outputs.list != '"''"'",["step-security/harden-runner@<sha>","dataaxiom/ghcr-cleanup-action@<sha>"]]' ]
+  [ "$output" = '[{"packages":"write"},"packages","needs.packages.outputs.list != '"''"'",["$/.github/actions/harden-runner","dataaxiom/ghcr-cleanup-action@<sha>"]]' ]
   run yq -r '.jobs.cleanup.steps[] | select(.name == "Clean up package versions") | .with.package' "$WF"
   [ "$output" = '${{ needs.packages.outputs.list }}' ]
 }
@@ -51,8 +51,8 @@ step_script() {
 }
 
 @test "the Docker Hub job reaches only Docker Hub" {
-  run yq -o=json -I0 '.jobs.dockerhub.steps[0] | [(.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .with["egress-policy"], .with["allowed-endpoints"]]' "$WF"
-  [ "$output" = '["step-security/harden-runner@<sha>","block","hub.docker.com:443"]' ]
+  run yq -o=json -I0 '.jobs.dockerhub.steps[0] | [.uses, .with]' "$WF"
+  [ "$output" = '["$/.github/actions/harden-runner",{"disable-sudo-and-containers":true,"allowed-endpoints":"hub.docker.com:443"}]' ]
 }
 
 @test "the Docker Hub job passes every cleanup input and the Docker Hub token to the action" {

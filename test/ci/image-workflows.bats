@@ -31,7 +31,7 @@ setup() {
   run yq -o=json -I0 '.jobs["test-node"] | [.if, .permissions, .["runs-on"]]' "$WF/_build-image.yaml"
   [ "$output" = '["inputs.language == '"'node'"'",{"contents":"read"},"ubuntu-latest"]' ]
   run yq -o=json -I0 '[.jobs["test-node"].steps[] | select(.uses) | (.uses | sub("@[0-9a-f]{40}$"; "@<sha>"))]' "$WF/_build-image.yaml"
-  [ "$output" = '["step-security/harden-runner@<sha>","actions/checkout@<sha>","actions/setup-node@<sha>"]' ]
+  [ "$output" = '["$/.github/actions/harden-runner","actions/checkout@<sha>","actions/setup-node@<sha>"]' ]
   run yq -o=json -I0 '.jobs["test-node"].steps[] | select(.uses | test("^actions/setup-node@")) | .with' "$WF/_build-image.yaml"
   [ "$output" = '{"node-version":"${{ inputs.node-version }}"}' ]
   run yq -o=json -I0 '[.jobs["test-node"].steps[] | select(.run) | .["working-directory"]] | unique' "$WF/_build-image.yaml"
@@ -327,14 +327,14 @@ EOF
   done
 }
 
-@test "every image chain job blocks egress and appends egress to its allowlist" {
+@test "every image chain job hardens the runner and appends egress to its allowlist" {
   local f job
   for f in _build-image.yaml:test-node _build-image.yaml:build _build-image.yaml:publish _go-test.yaml:test _python-uv-test.yaml:test; do
     job="${f#*:}"
     run yq -o=json -I0 ".on.workflow_call.inputs | [.egress.default, has(\"egress-policy\")]" "$WF/${f%%:*}"
     [ "$output" = '["",false]' ]
-    run yq -o=json -I0 ".jobs.$job.steps[0].with | [.\"egress-policy\", (.\"allowed-endpoints\" | test(\" \\\\$\\\\{\\\\{ inputs\\\\.egress }}$\"))]" "$WF/${f%%:*}"
-    [ "$output" = '["block",true]' ] || {
+    run yq -o=json -I0 ".jobs.$job.steps[0] | [.uses, (.with.\"allowed-endpoints\" | test(\" \\\\$\\\\{\\\\{ inputs\\\\.egress }}$\"))]" "$WF/${f%%:*}"
+    [ "$output" = '["$/.github/actions/harden-runner",true]' ] || {
       echo "$f: $output"
       return 1
     }

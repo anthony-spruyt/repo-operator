@@ -1,0 +1,24 @@
+---
+name: Harden Runner
+description: >-
+  Run step-security/harden-runner with the egress policy every repo-operator
+  job shares. The policy, audit or block, is the egress-policy of the one step
+  below, so a change to it reaches every caller.
+inputs:
+  allowed-endpoints:
+    description: host:port endpoints a job may reach when the policy is block
+    required: false
+    default: ""
+  disable-sudo-and-containers:
+    description: Disable sudo and container access for the runner account
+    required: false
+    default: "false"
+runs:
+  using: composite
+  steps:
+    - name: Harden Runner
+      uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+      with:
+        egress-policy: audit
+        allowed-endpoints: ${{ inputs.allowed-endpoints }}
+        disable-sudo-and-containers: ${{ inputs.disable-sudo-and-containers }}

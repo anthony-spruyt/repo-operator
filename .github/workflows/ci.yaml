@@ -70,11 +70,10 @@ jobs:
       group: "xfg-preview-${{ github.ref }}"
       cancel-in-progress: true
     steps:
-      # Same egress as XFG Plan, so a green preview proves Plan's allowlist on PRs
+      # Same egress as XFG Plan, so under `block` a green preview proves Plan's allowlist on PRs
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             api.github.com:443
@@ -157,9 +156,8 @@ jobs:
     steps:
       # Runs src/ the owner may not have reviewed, with the write key
       - name: Harden Runner
-        uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
+        uses: $/.github/actions/harden-runner
         with:
-          egress-policy: block
           disable-sudo-and-containers: true
           allowed-endpoints: >-
             api.github.com:443
@@ -249,6 +247,7 @@ jobs:
       group: "xfg-apply"
       cancel-in-progress: false
     steps:
+      # Not the shared action: audit mode sends telemetry whatever disable-telemetry says
       - name: Harden Runner
         uses: step-security/harden-runner@dc2769abcc0fcfbadfc1df54081c1608579ef6b2 # v2.22.2
         with:
