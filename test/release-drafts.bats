@@ -517,6 +517,108 @@ dispatched() {
   [ -z "$(dispatched)" ]
 }
 
+@test "recover skips a tag whose run is waiting, requested or pending" {
+  stuck_draft v3.0.0 sungather ""
+  local state
+  for state in waiting requested pending; do
+    rm -f "$FAKE_STATE/runs/v3.0.0.json"
+    add_run v3.0.0 "$state" ""
+    recover
+    [ "$status" -eq 0 ]
+    [ -z "$(dispatched)" ]
+  done
+}
+
+@test "recover counts a dispatched run that failed to start toward the cap" {
+  stuck_draft v3.0.0 sungather ""
+  add_run v3.0.0 completed failure
+  add_run v3.0.0 completed failure
+  add_run v3.0.0 completed startup_failure
+  recover
+  [ "$status" -eq 0 ]
+  [ -z "$(dispatched)" ]
+  [[ "$output" == *"::warning::"* ]]
+}
+
+@test "recover caps at three failures when max-failures is empty" {
+  stuck_draft v3.0.0 sungather ""
+  add_run v3.0.0 completed failure
+  add_run v3.0.0 completed failure
+  add_run v3.0.0 completed failure
+  MAX_FAILURES="" recover
+  [ "$status" -eq 0 ]
+  [ -z "$(dispatched)" ]
+}
+
+@test "recover refuses a max-failures that is not a number" {
+  stuck_draft v3.0.0 sungather ""
+  MAX_FAILURES=abc recover
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"* ]]
+  [ -z "$(dispatched)" ]
+}
+
+@test "recover refuses a workflow ref it cannot read the caller file from" {
+  stuck_draft v3.0.0 sungather ""
+  local ref
+  for ref in \
+    "someone/else/.github/workflows/release-please.yaml@refs/heads/main" \
+    "anthony-spruyt/example/.github/workflows/sub/release-please.yaml@refs/heads/main" \
+    "anthony-spruyt/example/.github/workflows/../release-please.yaml@refs/heads/main" \
+    "anthony-spruyt/example/release-please.yaml@refs/heads/main" \
+    ""; do
+    WORKFLOW_REF="$ref" recover
+    echo "$ref: $output"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"::error::"* ]]
+    [ -z "$(dispatched)" ]
+  done
+}
+
+@test "recover refuses to run without a repository, a mode or an app token" {
+  stuck_draft v3.0.0 sungather ""
+  GH_REPO="" recover
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"*"GH_REPO"* ]]
+  MODE="" run "$SCRIPT"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"* ]]
+  MODE=other run "$SCRIPT"
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"* ]]
+  APP_TOKEN="" recover
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"*"APP_TOKEN"* ]]
+  [ -z "$(dispatched)" ]
+}
+
+@test "recover treats a missing releases input as no releases and refuses one that is not JSON" {
+  stuck_draft v3.0.0 sungather ""
+  MODE=recover run "$SCRIPT"
+  [ "$status" -eq 0 ]
+  [ "$(dispatched)" = "release-please.yaml v3.0.0" ]
+  rm "$FAKE_STATE/dispatched"
+  RELEASES="not json" recover
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"*"RELEASES"* ]]
+  [ -z "$(dispatched)" ]
+}
+
+@test "synthesize refuses a package path that leaves the repo or holds characters outside the path pattern" {
+  local key
+  for key in "../x" "x y" "x?y"; do
+    : >"$GITHUB_OUTPUT"
+    rm -rf "$FAKE_STATE/contents"
+    put_repo x-1.0.0 "{\"include-v-in-tag\":false,\"packages\":{\"$key\":{\"release-type\":\"simple\",\"component\":\"x\"}}}" "{\"$key\":\"1.0.0\"}"
+    put_file x-1.0.0 "$key/Dockerfile"
+    same_on_main x-1.0.0
+    synthesize x-1.0.0
+    echo "$key: $output"
+    [ "$status" -ne 0 ]
+    [ -z "$(output_of releases)" ]
+  done
+}
+
 @test "recover reads every page of the releases" {
   stuck_draft v3.0.0 sungather ""
   jq -c '[., [{tag_name: "v0.0.1", draft: false}]]' "$FAKE_STATE/releases.json" | jq -c '.[0], .[1]' >"$FAKE_STATE/releases.json.pages"
