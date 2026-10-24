@@ -1,0 +1,57 @@
+---
+# No checkout: the repo is read through the API, so the job needs no github.com egress.
+name: Release Drafts
+description: >-
+  Recover release-please drafts that never published. In recover mode, run the
+  caller workflow on the tag of each draft that has a tag and maps to an image
+  package. In synthesize mode, a run on a tag ref writes the outputs
+  release-please-action would have set for that tag, so the images job builds
+  and publishes its draft.
+inputs:
+  mode:
+    description: recover (on the default branch) or synthesize (on a tag ref)
+    required: true
+  github-token:
+    description: >-
+      Reads contents and workflow runs; recover mode dispatches with it, which
+      needs actions write
+    required: false
+    default: ${{ github.token }}
+  app-token:
+    description: recover mode only, a token that can list draft releases
+    required: false
+    default: ""
+  releases:
+    description: >-
+      recover mode only, the release-please-action outputs of this run as JSON;
+      the drafts it lists are left to this run's images job
+    required: false
+    default: ""
+  max-failures:
+    description: recover mode only, stop dispatching a tag once this many of its dispatched runs failed
+    required: false
+    default: "3"
+outputs:
+  release-created:
+    description: synthesize mode only, "true"
+    value: ${{ steps.drafts.outputs.release-created }}
+  releases:
+    description: synthesize mode only, the release-please-action outputs for the tag, as JSON
+    value: ${{ steps.drafts.outputs.releases }}
+runs:
+  using: composite
+  steps:
+    - name: Recover release drafts
+      id: drafts
+      shell: bash
+      env:
+        MODE: ${{ inputs.mode }}
+        GH_TOKEN: ${{ inputs.github-token }}
+        GH_REPO: ${{ github.repository }}
+        APP_TOKEN: ${{ inputs.app-token }}
+        RELEASES: ${{ inputs.releases }}
+        MAX_FAILURES: ${{ inputs.max-failures }}
+        WORKFLOW_REF: ${{ github.workflow_ref }}
+        TAG: ${{ github.ref_name }}
+        DRAFTS_SCRIPT: ${{ github.action_path }}/drafts.sh
+      run: '"$DRAFTS_SCRIPT"'

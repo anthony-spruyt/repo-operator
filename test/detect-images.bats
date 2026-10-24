@@ -916,6 +916,25 @@ edit_config() {
   [ "$(release_of plain)" = '["1.0.0","plain-1.0.0",""]' ]
 }
 
+@test "released: a release is the latest unless the run marks it superseded" {
+  use_layout spruyt-labs
+  RELEASES=$(jq -c '. + {"ts/agent-queue-worker--superseded": "true", "ts/agent-queue-worker/bull-board--superseded": "false"}' "$FX/releases/spruyt-labs-3183-release-both.json") MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry agent-queue-worker | jq -c .latest)" = "false" ]
+  [ "$(image_entry bull-board | jq -c .latest)" = "true" ]
+  : >"$GITHUB_OUTPUT"
+  released spruyt-labs-3183-release-both
+  [ "$(output_value matrix | jq -c '[.include[].latest]')" = "[true,true]" ]
+}
+
+@test "released: a root package's superseded flag is the unprefixed output" {
+  use_layout sungather
+  export GITHUB_REPOSITORY=anthony-spruyt/SunGather
+  RELEASES=$(jq -c '. + {superseded: "true"}' "$FX/releases/sungather-v3.0.0.json") MODE=released detect
+  [ "$status" -eq 0 ]
+  [ "$(image_entry sungather | jq -c .latest)" = "false" ]
+}
+
 @test "released: a run that created no release publishes nothing" {
   use_layout spruyt-labs
   RELEASES='{"releases_created":"false","paths_released":"[]","prs_created":"true"}' MODE=released detect

@@ -118,6 +118,9 @@ image_entry() {
 
 # Version files mirror release-please's src/strategies/*.ts; other release types fall back to building.
 # The docker tag gets a v only when include-v-in-tag is set true.
+# release-drafts/drafts.sh holds a copy of this program; test/release-drafts.bats fails when the two differ.
+# The tag_* fields rebuild release-please's git tag: [component + separator] [v] version. A null tag_component
+# marks a component release-please would read from a package file.
 readonly PACKAGES_JQ='
 def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def list: if type == "array" then .[] | strings else empty end;
@@ -135,6 +138,15 @@ def str_or($d): if type == "string" and . != "" then . else $d end;
     | {
         path: $p,
         docker_prefix: (if flag("include-v-in-tag"; false) then "v" else "" end),
+        tag_v: (if flag("include-v-in-tag"; true) then "v" else "" end),
+        tag_separator: (opt("tag-separator") | str_or("-")),
+        tag_component: (
+          (($v.component // opt("package-name") // "") | tostring) as $comp
+          | if flag("include-component-in-tag"; true) | not then ""
+            elif $comp != "" then $comp
+            elif $type | IN("node", "dart", "helm", "rust", "sfdx") then null
+            else "" end
+        ),
         component: ($v.component // "" | tostring),
         exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
         changelog: (opt("changelog-path") | str_or("CHANGELOG.md") | add_path),
@@ -241,7 +253,8 @@ def rel($p): if $p == "." then . else .[($p | length) + 1:] end;
   ))
 '
 
-# release-please-action sets <path>--<key> outputs, unprefixed for path "."
+# release-please-action sets <path>--<key> outputs, unprefixed for path ".". A <key> of superseded, set only by
+# release-drafts when a newer release exists, keeps the build from taking the latest tags.
 readonly RELEASED_JQ='
 def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
 def valid($tag; $version): ($tag | type) == "string" and ($version | type) == "string"
@@ -249,7 +262,7 @@ def valid($tag; $version): ($tag | type) == "string" and ($version | type) == "s
 $rel[0] as $r
 | ($r.paths_released // "[]" | if type == "string" then fromjson else . end) as $paths
 | [$paths[] | strings | (if . == "." then "" else "\(.)--" end) as $k
-    | {path: norm, tag: $r["\($k)tag_name"], version: $r["\($k)version"]}] as $released
+    | {path: norm, tag: $r["\($k)tag_name"], version: $r["\($k)version"], superseded: $r["\($k)superseded"]}] as $released
 | .packages as $pkgs
 | .images
 | map(
@@ -259,7 +272,8 @@ $rel[0] as $r
     | . + {
         version: $rl.version,
         "tag-name": $rl.tag,
-        "tag-prefix": first($pkgs[] | select(.path == $img.path) | .docker_prefix)
+        "tag-prefix": first($pkgs[] | select(.path == $img.path) | .docker_prefix),
+        latest: ($rl.superseded != "true")
       }
   )
 '
