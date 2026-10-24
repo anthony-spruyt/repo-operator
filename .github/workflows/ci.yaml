@@ -113,7 +113,7 @@ jobs:
 
       - name: "Preview Sync"
         if: "steps.needed.outputs.run == 'true'"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         with:
           config: "./src"
           dry-run: true
@@ -122,7 +122,7 @@ jobs:
 
       - name: "Preview Secrets Sync"
         if: "steps.needed.outputs.run == 'true'"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         with:
           command: "secrets-sync"
           config: "./src"
@@ -208,7 +208,7 @@ jobs:
 
       - name: "Plan Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         with:
           config: "./src"
           dry-run: true
@@ -217,7 +217,7 @@ jobs:
 
       - name: "Plan Secrets Sync"
         if: "steps.changes.outputs.run_sync == 'true'"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         with:
           command: "secrets-sync"
           config: "./src"
@@ -272,7 +272,7 @@ jobs:
         run: ".github/scripts/check-xfg-config.sh src"
 
       - name: "Apply Sync"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         env:
           OPENROUTER_API_KEY: "${{ secrets.OPENROUTER_API_KEY }}"
           LITELLM_BASE_URL: "${{ secrets.LITELLM_HOST != '' && format('https://{0}/v1', secrets.LITELLM_HOST) || '' }}"
@@ -285,7 +285,7 @@ jobs:
           github-app-private-key: "${{ secrets.APP_PRIVATE_KEY }}"
 
       - name: "Apply Secrets Sync"
-        uses: "anthony-spruyt/xfg@eabcfb6e3a92eaf7db6abb9388148616584304bd" # v8.5.3
+        uses: "anthony-spruyt/xfg@f2e4e757c441ddd3b0648f9f1870c39301e2c45f" # v8.5.4
         env:
           RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
           RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
