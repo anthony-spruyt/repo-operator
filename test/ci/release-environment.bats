@@ -7,11 +7,16 @@ setup() {
   WF="$REPO_ROOT/.github/workflows"
   TEMPLATES="$SRC/templates/.github/workflows"
   MAIN_ONLY='{"custom":[{"type":"branch","name":"main"}]}'
+  PUBLISH_REFS='{"custom":[{"type":"branch","name":"main"},{"type":"tag","name":"*.*.*"},{"type":"tag","name":"*/*.*.*"}]}'
   XFG_GIT='https://github.com/anthony-spruyt/xfg.git'
 }
 
 release_env() {
-  yq -o=json -I0 "explode(.) | .groups[\"$1\"].settings.environments.release" "$SRC/groups.yaml"
+  group_env "$1" release
+}
+
+group_env() {
+  yq -o=json -I0 "explode(.) | .groups[\"$1\"].settings.environments[\"$2\"]" "$SRC/groups.yaml"
 }
 
 @test "the release-please group defines a main-only release environment holding the release App secrets" {
@@ -24,9 +29,16 @@ release_env() {
   [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
-@test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release, and adds the integration ones" {
+@test "the dockerhub group defines a publish environment for main and version tags, holding only DOCKERHUB_TOKEN" {
+  run group_env dockerhub publish
+  [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$PUBLISH_REFS" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
+  run group_env release-please publish
+  [ "$output" = "null" ]
+}
+
+@test "only the release-please and dockerhub groups define environments, release and publish, and only xfg overrides one, release, and adds the integration ones" {
   run yq -o=json -I0 '[.groups | to_entries[] | select(.value.settings.environments != null) | {(.key): (.value.settings.environments | keys)}]' "$SRC/groups.yaml"
-  [ "$output" = '[{"dockerhub":["release"]},{"release-please":["release"]}]' ]
+  [ "$output" = '[{"dockerhub":["release","publish"]},{"release-please":["release"]}]' ]
   local f
   for f in settings.yaml base.yaml; do
     run yq -r '[.. | select(tag == "!!map" and has("environments"))] | length' "$SRC/$f"
@@ -77,6 +89,8 @@ release_env() {
   [ "$(jq -c '.secrets | keys' <<<"$output")" = '["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"]' ]
   run release_env dockerhub
   [ "$(jq -c '.secrets | keys' <<<"$output")" = '["DOCKERHUB_TOKEN"]' ]
+  run group_env dockerhub publish
+  [ "$(jq -c '.secrets | keys' <<<"$output")" = '["DOCKERHUB_TOKEN"]' ]
 }
 
 @test "no tag-rules bypass names the container-images-garbo App" {
@@ -88,7 +102,7 @@ release_env() {
   done
 }
 
-@test "every other repo's release environment is main only" {
+@test "every other repo's release environment is main only, and its publish environment takes main and version tags" {
   local repo
   while IFS= read -r repo; do
     run yq -o=json -I0 ".repos[] | select(.git == \"$repo\") | .settings.environments.release.deploymentBranchPolicy" "$SRC/repos.yaml"
@@ -100,6 +114,10 @@ release_env() {
     run release_env "$g"
     [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$MAIN_ONLY")" ]
   done
+  run group_env dockerhub publish
+  [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$PUBLISH_REFS")" ]
+  run yq -o=json -I0 "[.repos[] | select(.settings.environments.publish != null)] | length" "$SRC/repos.yaml"
+  [ "$output" = "0" ]
 }
 
 @test "no npm environment remains in config" {
@@ -111,25 +129,31 @@ release_env() {
   done
 }
 
-@test "the release-please job and the publish job use the release environment" {
+@test "the release-please job uses the release environment and the image publish job the publish one" {
   run yq -r '.jobs["release-please"].environment' "$WF/_release-please.yaml"
   [ "$output" = "release" ]
   run yq -r '.jobs.publish.environment' "$WF/_build-image.yaml"
-  [ "$output" = "release" ]
+  [ "$output" = "publish" ]
+}
+
+@test "the image publish job reads no secret or variable but DOCKERHUB_TOKEN, which is all its environment holds" {
+  run yq -r '.jobs.publish | [.. | select(tag == "!!str")] | .[]' "$WF/_build-image.yaml"
+  run grep -oE '(secrets|vars)([.][A-Za-z0-9_-]+|\[[^]]*\])' <<<"$output"
+  [ "$(sort -u <<<"$output")" = "secrets.DOCKERHUB_TOKEN" ]
 }
 
 secret_jobs() {
   (cd "$1" && yq --no-doc -r '.jobs | to_entries[] | select([.value.steps, .value.env] | [.. | select(tag == "!!str")] | any_c(test("secrets\.(RELEASE_PLEASE_APP_[A-Z_]+|DOCKERHUB_TOKEN)"))) | filename + ":" + .key' _*.yaml | sort)
 }
 
-@test "every shared-workflow job that reads a release secret uses the release environment, and no other job does" {
+@test "every shared-workflow job that reads a release secret runs in the release or publish environment, and no other job has one" {
   local secret_jobs env_jobs
   secret_jobs=$(secret_jobs "$WF")
   env_jobs=$(cd "$WF" && yq --no-doc -r '.jobs | to_entries[] | select(.value.environment != null) | filename + ":" + .key + "=" + (.value.environment | tostring)' _*.yaml | sort)
   echo "secret jobs: $secret_jobs"
   echo "environment jobs: $env_jobs"
-  [ "$secret_jobs" = $'_build-image.yaml:publish\n_container-retention.yaml:dockerhub\n_release-please.yaml:release-please' ]
-  [ "$env_jobs" = $'_build-image.yaml:publish=release\n_container-retention.yaml:dockerhub=release\n_release-please.yaml:release-please=release' ]
+  [ "$secret_jobs" = $'_build-image.yaml:publish\n_container-retention.yaml:dockerhub\n_release-please.yaml:release-please\n_release-recover.yaml:dispatch' ]
+  [ "$env_jobs" = $'_build-image.yaml:publish=publish\n_container-retention.yaml:dockerhub=release\n_release-please.yaml:release-please=release\n_release-recover.yaml:dispatch=release' ]
 }
 
 @test "a release secret in a job-level env block counts as a read" {

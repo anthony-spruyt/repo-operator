@@ -325,3 +325,71 @@ check_pins() {
   run bash -c "git -C '$REPO_ROOT' show '$pin:.github/workflows/_container-retention.yaml' | yq -o=json -I0 '.on.workflow_call | [(.inputs | has(\"dockerhub-namespace\")), (.secrets | has(\"DOCKERHUB_TOKEN\"))]'"
   [ "$output" = '[true,true]' ]
 }
+
+# template_inputs_undeclared <dir> - prints a line for each with: or secrets: key a job in <dir> passes to a repo-operator reusable workflow that the workflow does not declare at the job's pinned SHA, and for each pinned workflow missing at its SHA
+template_inputs_undeclared() {
+  local dir="$1" file job uses path sha called kind declared
+  for file in "$dir"/*.y*ml; do
+    while IFS=$'\t' read -r job uses; do
+      [[ -n "$uses" ]] || continue
+      path="${uses#anthony-spruyt/repo-operator/}"
+      path="${path%@*}"
+      sha="${uses##*@}"
+      if ! called=$(git -C "$REPO_ROOT" show "$sha:$path" 2>/dev/null); then
+        echo "${file##*/}:$job calls $path, which does not exist at $sha"
+        continue
+      fi
+      for kind in inputs secrets; do
+        declared=$(yq -o=json -I0 ".on.workflow_call.$kind // {} | keys" <<<"$called")
+        JOB="$job" yq -o=json -I0 ".jobs[strenv(JOB)].${kind/inputs/with} | select(tag == \"!!map\") | keys" "$file" |
+          jq -r --argjson declared "$declared" --arg f "${file##*/}:$job" --arg p "$path" --arg s "${sha:0:8}" --arg k "$kind" \
+            '.[]? | select(. as $key | $declared | index($key) | not) | "\($f) passes \($k) key \(.) that \($p) does not declare at \($s)"'
+      done
+    done < <(yq -r '.jobs | to_entries[] | select((.value.uses // "") | test("^anthony-spruyt/repo-operator/[.]github/workflows/[^@]+@[0-9a-f]{40}$")) | [.key, .value.uses] | @tsv' "$file")
+  done
+}
+
+skip_if_shallow() {
+  [ "$(git -C "$REPO_ROOT" rev-parse --is-shallow-repository)" = "false" ] ||
+    skip "shallow clone: the SHAs the templates pin are not fetched, so their inputs cannot be read"
+}
+
+@test "template_inputs_undeclared flags a key, a secret and a workflow the pinned SHA lacks" {
+  skip_if_shallow
+  local pin dir="$BATS_TEST_TMPDIR/tpl"
+  pin=$(yq -r '.jobs.release.uses | sub(".*@"; "")' "$WORKFLOWS/release-please.yaml")
+  mkdir -p "$dir"
+  cat >"$dir/bad.yaml" <<YAML
+jobs:
+  keys:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@$pin
+    with:
+      no-such-input: true
+    secrets:
+      RELEASE_PLEASE_APP_CLIENT_ID: x
+      NO_SUCH_SECRET: x
+  missing:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_no-such-workflow.yaml@$pin
+  inherit:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@$pin
+    secrets: inherit
+  local:
+    uses: ./.github/workflows/ci-repo.yaml
+    with:
+      anything: 1
+YAML
+  run template_inputs_undeclared "$dir"
+  echo "$output"
+  [ "${#lines[@]}" -eq 3 ]
+  [[ "${lines[0]}" == "bad.yaml:keys passes inputs key no-such-input that .github/workflows/_release-please.yaml does not declare at ${pin:0:8}" ]]
+  [[ "${lines[1]}" == "bad.yaml:keys passes secrets key NO_SUCH_SECRET that .github/workflows/_release-please.yaml does not declare at ${pin:0:8}" ]]
+  [[ "${lines[2]}" == "bad.yaml:missing calls .github/workflows/_no-such-workflow.yaml, which does not exist at $pin" ]]
+}
+
+@test "every with: key and secret a template passes to a repo-operator reusable workflow is declared at the SHA the template pins" {
+  skip_if_shallow
+  run template_inputs_undeclared "$WORKFLOWS"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
+}

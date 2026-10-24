@@ -31,9 +31,15 @@ inputs:
     required: false
     default: ""
   extra-tags:
-    description: Extra docker/metadata-action tag rules, one per line
+    description: Extra docker/metadata-action tag rules, one per line. Ignored when latest is false
     required: false
     default: ""
+  latest:
+    description: >-
+      Set to "false" to push the version tag only, without latest, the
+      major.minor tag or extra-tags, for a release a newer one has superseded
+    required: false
+    default: "true"
   build-args:
     description: Build args, one KEY=VALUE per line
     required: false
@@ -83,9 +89,14 @@ runs:
         PUSH: ${{ inputs.push }}
         VERSION: ${{ inputs.version }}
         TAG_PREFIX: ${{ inputs.tag-prefix }}
+        LATEST: ${{ inputs.latest }}
         DOCKERHUB_NAMESPACE: ${{ inputs.dockerhub-namespace }}
         DOCKERHUB_TOKEN: ${{ inputs.dockerhub-token }}
       run: |
+        case "$LATEST" in
+          true | false) ;;
+          *) echo "::error::latest must be true or false, got '$LATEST'"; exit 1 ;;
+        esac
         if [ "$PUSH" = "true" ] && [ -z "$VERSION" ]; then
           echo "::error::version is required when push is true"
           exit 1
@@ -161,9 +172,9 @@ runs:
         # The highest-priority tag becomes the version label; semver rules default to 900
         tags: |
           type=raw,value=${{ inputs.tag-prefix }}${{ inputs.version }},enable=${{ inputs.version != '' }},priority=1000
-          type=semver,pattern=${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v${{ inputs.version }},enable=${{ inputs.version != '' }}
-          type=raw,value=latest
-          ${{ inputs.extra-tags }}
+          type=semver,pattern=${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v${{ inputs.version }},enable=${{ inputs.version != '' && inputs.latest != 'false' }}
+          type=raw,value=latest,enable=${{ inputs.latest != 'false' }}
+          ${{ inputs.latest != 'false' && inputs.extra-tags || '' }}
 
     - name: Build test image
       if: inputs.test-command != ''

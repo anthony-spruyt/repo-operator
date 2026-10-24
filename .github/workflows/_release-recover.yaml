@@ -1,0 +1,89 @@
+---
+# yaml-language-server: $schema=https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
+name: Release Recover
+
+on:
+  workflow_call:
+    inputs:
+      releases:
+        description: >-
+          release-please's outputs of this run as JSON (_release-please.yaml's releases output); the
+          drafts it lists are left to this run's images job
+        required: false
+        type: string
+        default: ""
+    secrets:
+      RELEASE_PLEASE_APP_CLIENT_ID:
+        required: true
+      RELEASE_PLEASE_APP_PRIVATE_KEY:
+        required: true
+    outputs:
+      release-created:
+        description: "'true' in a tag-ref run that builds the release of its tag"
+        value: ${{ jobs.synthesize.outputs.release-created }}
+      releases:
+        description: the outputs release-please would have set for the tag, as JSON, for _release-images.yaml
+        value: ${{ jobs.synthesize.outputs.releases }}
+
+jobs:
+  dispatch:
+    name: Dispatch stuck drafts
+    if: github.ref_type == 'branch'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # Callers must still pass each secret by name, or it resolves empty even though the environment holds it.
+    environment: release
+    # The App token lists the drafts; GITHUB_TOKEN reads and dispatches the caller on each draft's tag.
+    permissions:
+      contents: read
+      actions: write
+    steps:
+      - name: Harden Runner
+        uses: $/.github/actions/harden-runner
+        with:
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+
+      - name: Mint app token
+        id: app-token
+        uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
+        with:
+          client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
+          permission-contents: write
+
+      # A failed recovery must not block the images job for this run's own releases.
+      - name: Recover stuck drafts
+        continue-on-error: true
+        uses: $/.github/actions/release-drafts
+        with:
+          mode: recover
+          app-token: ${{ steps.app-token.outputs.token }}
+          releases: ${{ inputs.releases }}
+
+  synthesize:
+    name: Release of this tag
+    if: github.ref_type == 'tag'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+    outputs:
+      release-created: ${{ steps.tag.outputs.release-created }}
+      releases: ${{ steps.tag.outputs.releases }}
+    steps:
+      - name: Harden Runner
+        uses: $/.github/actions/harden-runner
+        with:
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            results-receiver.actions.githubusercontent.com:443
+
+      - name: Use the release of this tag
+        id: tag
+        uses: $/.github/actions/release-drafts
+        with:
+          mode: synthesize

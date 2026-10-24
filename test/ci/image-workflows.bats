@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # shellcheck disable=SC2016
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WF="$REPO_ROOT/.github/workflows"
@@ -158,6 +160,35 @@ go_version_step() {
   [ "$output" = '["${{ jobs.release-please.outputs.release-created }}","${{ jobs.release-please.outputs.releases }}"]' ]
   run yq -o=json -I0 '.jobs["release-please"].outputs' "$WF/_release-please.yaml"
   [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created }}","releases":"${{ toJSON(steps.release.outputs) }}"}' ]
+  run yq -o=json -I0 '.jobs["release-please"].permissions' "$WF/_release-please.yaml"
+  [ "$output" = '{"contents":"read"}' ]
+}
+
+@test "_release-recover.yaml takes the releases of its run and the release App secrets, and outputs a tag-ref run's release" {
+  run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-recover.yaml"
+  [ "$output" = '[["dispatch","synthesize"],["releases"],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
+  run yq -o=json -I0 '.on.workflow_call.inputs.releases | [.type, .required, .default]' "$WF/_release-recover.yaml"
+  [ "$output" = '["string",false,""]' ]
+  run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-recover.yaml"
+  [ "$output" = '["${{ jobs.synthesize.outputs.release-created }}","${{ jobs.synthesize.outputs.releases }}"]' ]
+}
+
+@test "_release-recover.yaml dispatches only from a branch run, in the release environment, with the App token" {
+  run yq -o=json -I0 '.jobs.dispatch | [.if, .environment, (.permissions | to_entries | sort_by(.key) | from_entries), ."timeout-minutes"]' "$WF/_release-recover.yaml"
+  [ "$output" = "[\"github.ref_type == 'branch'\",\"release\",{\"actions\":\"write\",\"contents\":\"read\"},10]" ]
+  run yq -o=json -I0 '.jobs.dispatch.steps[] | select(.id == "app-token") | .with | with_entries(select(.key | test("^permission-")))' "$WF/_release-recover.yaml"
+  [ "$output" = '{"permission-contents":"write"}' ]
+  run yq -o=json -I0 '.jobs.dispatch.steps[] | select(.uses == "$/.github/actions/release-drafts") | [.["continue-on-error"], .with]' "$WF/_release-recover.yaml"
+  [ "$output" = '[true,{"mode":"recover","app-token":"${{ steps.app-token.outputs.token }}","releases":"${{ inputs.releases }}"}]' ]
+}
+
+@test "_release-recover.yaml builds a tag-ref run's release without an environment or the App token" {
+  run yq -o=json -I0 '.jobs.synthesize | [.if, has("environment"), .permissions, ."timeout-minutes", .outputs]' "$WF/_release-recover.yaml"
+  [ "$output" = "[\"github.ref_type == 'tag'\",false,{\"contents\":\"read\"},10,{\"release-created\":\"\${{ steps.tag.outputs.release-created }}\",\"releases\":\"\${{ steps.tag.outputs.releases }}\"}]" ]
+  run yq -o=json -I0 '.jobs.synthesize.steps[] | select(.id == "tag") | [.uses, .with]' "$WF/_release-recover.yaml"
+  [ "$output" = '["$/.github/actions/release-drafts",{"mode":"synthesize"}]' ]
+  run yq -r '.jobs.synthesize | [.. | select(tag == "!!str")] | map(select(test("secrets[.]|create-github-app-token"))) | length' "$WF/_release-recover.yaml"
+  [ "$output" = "0" ]
 }
 
 @test "_release-images.yaml detects the images in the releases it is given" {
@@ -190,7 +221,7 @@ go_version_step() {
 @test "the image workflows pass actionlint with this repo's config" {
   cd "$REPO_ROOT"
   run actionlint -no-color .github/workflows/_images.yaml .github/workflows/_build-image.yaml \
-    .github/workflows/_release-please.yaml .github/workflows/_release-images.yaml
+    .github/workflows/_release-please.yaml .github/workflows/_release-recover.yaml .github/workflows/_release-images.yaml
   echo "$output"
   [ "$status" -eq 0 ]
 }
@@ -339,4 +370,70 @@ EOF
       return 1
     }
   done
+}
+
+@test "a superseded release is built as its version tag only: the matrix flag reaches build-image and publish-release" {
+  run yq -o=json -I0 '.on.workflow_call.inputs.latest | [.type, .default]' "$WF/_build-image.yaml"
+  [ "$output" = '["boolean",true]' ]
+  run yq -r '.jobs.build.with.latest' "$WF/_release-images.yaml"
+  [ "$output" = '${{ matrix.latest }}' ]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/build-image") | .with.latest' "$WF/_build-image.yaml"
+  [ "$output" = '${{ inputs.latest }}' ]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/publish-release") | .with.latest' "$WF/_build-image.yaml"
+  [ "$output" = '${{ inputs.latest }}' ]
+  run yq -r '[.jobs.build.steps[] | select(.uses == "$/.github/actions/build-image") | .with | has("latest")] | any' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
+}
+
+@test "build-image drops the latest, major.minor and extra tags when latest is false" {
+  local action="$REPO_ROOT/.github/actions/build-image/action.yaml"
+  run yq -o=json -I0 '.inputs.latest | [.required, .default]' "$action"
+  [ "$output" = '[false,"true"]' ]
+  run yq -r '.runs.steps[] | select(.id == "meta") | .with.tags' "$action"
+  [[ "$output" == *"type=raw,value=latest,enable=\${{ inputs.latest != 'false' }}"* ]]
+  [[ "$output" == *"type=semver,pattern=\${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v\${{ inputs.version }},enable=\${{ inputs.version != '' && inputs.latest != 'false' }}"* ]]
+  [[ "$output" == *"\${{ inputs.latest != 'false' && inputs.extra-tags || '' }}"* ]]
+  run yq -r '.runs.steps[] | select(.name == "Validate inputs") | .run' "$action"
+  LATEST=maybe PUSH=false run bash -c "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"latest must be true or false"* ]]
+}
+
+# publish_release LATEST: runs publish-release's step against a fake gh that has a draft, prints the gh calls
+publish_release() {
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  cat >"$BATS_TEST_TMPDIR/bin/gh" <<'GH'
+#!/usr/bin/env bash
+echo "gh $*" >>"$GH_CALLS"
+case "$*" in
+  "release view "*"--json isDraft"*) echo true ;;
+  "release view "*"--json body"*) echo notes ;;
+esac
+GH
+  chmod +x "$BATS_TEST_TMPDIR/bin/gh"
+  local script
+  script=$(yq -r '.runs.steps[0].run' "$REPO_ROOT/.github/actions/publish-release/action.yaml")
+  GH_CALLS="$BATS_TEST_TMPDIR/calls" PATH="$BATS_TEST_TMPDIR/bin:$PATH" TAG=v1.0.0 IMAGE_REF=ghcr.io/o/i:1.0.0 DIGEST=sha256:abc \
+    RUN_URL=https://example.invalid/run RUN_ID=1 LATEST="$1" run bash -eo pipefail -c "$script"
+}
+
+@test "publish-release publishes a superseded release without taking the latest marker" {
+  publish_release false
+  [ "$status" -eq 0 ]
+  grep -q '^gh release edit v1.0.0 --notes-file .* --draft=false --latest=false$' "$BATS_TEST_TMPDIR/calls"
+}
+
+@test "publish-release leaves the latest marker to GitHub otherwise" {
+  publish_release true
+  [ "$status" -eq 0 ]
+  grep -q '^gh release edit v1.0.0 --notes-file .* --draft=false$' "$BATS_TEST_TMPDIR/calls"
+  run ! grep -q -- '--latest' "$BATS_TEST_TMPDIR/calls"
+  run yq -o=json -I0 '.inputs.latest | [.required, .default]' "$REPO_ROOT/.github/actions/publish-release/action.yaml"
+  [ "$output" = '[false,"true"]' ]
+}
+
+@test "_build-image.yaml's tag mismatch error names both ways out: _release-recover.yaml, or the next release" {
+  run yq -r '.jobs.publish.steps[] | select(.id == "verify") | .run' "$WF/_build-image.yaml"
+  [[ "$output" == *"A caller that wires _release-recover.yaml rebuilds \${TAG_NAME} from its tag; otherwise cut the next release, then delete the \${TAG_NAME} draft."* ]]
+  [[ "$output" != *"The next Release Please run rebuilds"* ]]
 }
