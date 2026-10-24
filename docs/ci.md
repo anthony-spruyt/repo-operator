@@ -183,11 +183,11 @@ The mode is `audit` because some GitHub-hosted runners drop allowlisted connecti
   `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `publish` environment; only that job needs the publishing
   permissions.
 - `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
-- `_release-recover.yaml`: publishes the release-please drafts that never got their image. See [Release recovery](#release-recovery). Takes `releases`, the output of `_release-please.yaml`, and the same two App secrets. Its `dispatch` job runs on a branch ref in the `release` environment and dispatches the caller on the tag of each stuck draft. Its `synthesize` job runs on a tag ref with no environment and no App token, and outputs `release-created` and `releases` for that tag in the form `_release-images.yaml` reads. Its caller job grants `contents: read` and `actions: write`, because a called job cannot hold more than its caller.
+- `_release-recover.yaml`: publishes the release-please drafts that never got their image. See [Release recovery](#release-recovery). The synced image release caller calls it. Takes `releases`, the output of `_release-please.yaml`, and the same two App secrets. Its `dispatch` job runs on a branch ref in the `release` environment and dispatches the caller on the tag of each stuck draft. Its `synthesize` job runs on a tag ref with no environment and no App token, and outputs `release-created` and `releases` for that tag in the form `_release-images.yaml` reads. Its caller job grants `contents: read` and `actions: write`, because a called job cannot hold more than its caller.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
 
-Neither release workflow sets `concurrency`; the caller sets it once at the top, so release-please and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
+None of the release workflows sets `concurrency`; the caller sets it once at the top, so release-please, recovery and the image builds of one run hold the same group. The same group in the caller and a called workflow deadlocks.
 
 Publishing permissions are `contents`, `packages`, `id-token` and `attestations: write`.
 
@@ -328,7 +328,7 @@ from.
 
 A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft.
 
-If step 2 fails, the release stays a draft, so no public release lacks its image. A repo whose release caller wires `_release-recover.yaml` recovers the draft by itself (see [Release recovery](#release-recovery)). Without it:
+If step 2 fails, the release stays a draft, so no public release lacks its image. The synced image release caller wires `_release-recover.yaml`, which recovers the draft by itself (see [Release recovery](#release-recovery)). For a tag cut before the caller wired it:
 
 - When the cause lies outside the commit (a registry outage, a flaky test, a missing secret), fix it and use **Re-run failed jobs** on the release run. The re-run builds the same commit and tag, and publishes the draft.
 - Otherwise, merge the fix and cut the next release. This covers a cause in the code, the cancelled run above, and a run that dies between creating the release and relabelling the release PR (the next run fails once on the duplicate release and starts no image job). No re-run can publish that draft; delete it once the next release is out.
@@ -337,7 +337,7 @@ If step 2 fails, the release stays a draft, so no public release lacks its image
 
 ### Release recovery
 
-A release caller that wires [`_release-recover.yaml`](#reusable-workflows) recovers a stuck draft without a new release:
+The synced image release caller wires [`_release-recover.yaml`](#reusable-workflows), so a stuck draft recovers without a new release:
 
 1. Every run of the caller on a branch (a push to `main`, a manual dispatch or a schedule) lists the repo's drafts through [`release-drafts`](#release-drafts). For each draft whose tag is an image package's release tag, whose caller at that tag has a job that calls `_release-recover.yaml` and which has no run in progress, it dispatches the caller on the tag.
    The drafts the run created itself are left to its own `images` job.
@@ -348,7 +348,7 @@ A release caller that wires [`_release-recover.yaml`](#reusable-workflows) recov
 
 A draft is not recovered when the caller workflow at its tag has no job that calls `_release-recover.yaml`: that tag was cut before the repo wired it. Re-run its failed jobs for a cause outside the commit, or merge the fix, cut the next release and delete the draft.
 
-**What a caller wires.** The jobs below sit beside the caller's existing `release` and `images` jobs, in a workflow that also runs on a `schedule` so a stuck draft recovers without a push:
+**What a caller wires.** The synced image `release-please.yaml` has the jobs below and also runs on a six-hourly `schedule`, so a stuck draft recovers without a push. A caller kept outside the `image` group wires the same:
 
 ```yaml
 jobs:
@@ -477,10 +477,11 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
 tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and lists neither `release-please` nor `dockerhub` beside it.
 
-A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own
-`release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
+A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets.
+The image caller runs the `release` job on a branch ref only, then a `recover` job (see [Release recovery](#release-recovery)), then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, when a release was created or recovered.
+xfg publishes from its own `release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
 
-xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus the `images` job; a key only the plain caller has would reach every image repo.
+xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus its `schedule`, the `if` on `release`, and the `recover` and `images` jobs; a key only the plain caller has would reach every image repo.
 
 Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The image release caller passes `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-images.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 

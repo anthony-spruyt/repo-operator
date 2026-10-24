@@ -36,16 +36,40 @@ repo() {
   [ "$output" = "$APP_SECRETS" ]
 }
 
-@test "the image caller is the plain caller plus the images job, since xfg deep-merges the two" {
-  run yq -o=json -I0 'del(.jobs.images)' "$WORKFLOWS/image-release-please.yaml"
+@test "the image caller is the plain caller plus a schedule, the release ref guard, the recover job and the images job, since xfg deep-merges the two" {
+  run yq -o=json -I0 'del(.jobs.images, .jobs.recover, .jobs.release.if, .on.schedule)' "$WORKFLOWS/image-release-please.yaml"
   [ "$output" = "$(yq -o=json -I0 '.' "$WORKFLOWS/release-please.yaml")" ]
 }
 
-@test "the image release caller runs the same release job, then images with the publishing permissions and only the Docker Hub secret" {
-  run yq -o=json -I0 '.jobs.release' "$WORKFLOWS/release-please.yaml"
-  [ "$output" = "$(yq -o=json -I0 '.jobs.release' "$WORKFLOWS/image-release-please.yaml")" ]
-  run yq -o=json -I0 '[(.jobs | keys), .jobs.images.needs, .jobs.images.if, (.jobs.images.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .jobs.images.with.releases, .jobs.images.secrets]' "$WORKFLOWS/image-release-please.yaml"
-  [ "$output" = '[["release","images"],"release","needs.release.outputs.release-created == '"'true'"'","anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha>","${{ needs.release.outputs.releases }}",{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}]' ]
+@test "the image release caller also runs on a schedule, so a stuck draft recovers without a push" {
+  run yq -o=json -I0 '[(.on | keys | sort), .on.push.branches, .on.schedule]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '[["push","schedule","workflow_dispatch"],["main"],[{"cron":"23 */6 * * *"}]]' ]
+}
+
+@test "the image release job runs on a branch ref only, with the plain caller's permissions and secrets" {
+  run yq -o=json -I0 '[.jobs.release.if, .jobs.release.permissions, .jobs.release.secrets]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '["github.ref_type == '"'branch'"'",{"contents":"read"},'"$APP_SECRETS"']' ]
+  run yq -o=json -I0 '.jobs.release | has("if")' "$WORKFLOWS/release-please.yaml"
+  [ "$output" = "false" ]
+  run yq -o=json -I0 '.jobs.release | del(.if)' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = "$(yq -o=json -I0 '.jobs.release' "$WORKFLOWS/release-please.yaml")" ]
+}
+
+@test "the image release caller runs recover after release, whatever release did, with the release App secrets and read contents plus write actions" {
+  run yq -o=json -I0 '[(.jobs | keys), .jobs.recover.needs, .jobs.recover.if, (.jobs.recover.permissions | to_entries | sort_by(.key) | from_entries), (.jobs.recover.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .jobs.recover.with, .jobs.recover.secrets]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '[["release","recover","images"],"release","!cancelled()",{"actions":"write","contents":"read"},"anthony-spruyt/repo-operator/.github/workflows/_release-recover.yaml@<sha>",{"releases":"${{ needs.release.outputs.releases }}"},'"$APP_SECRETS"']' ]
+}
+
+@test "every job of the image release caller pins one repo-operator sha, and recover keeps the # main comment Renovate bumps it by" {
+  run yq -o=json -I0 '[.jobs[].uses | sub(".*@"; "")] | [length, (unique | length)]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = "[3,1]" ]
+  run grep -cE '^    uses: "anthony-spruyt/repo-operator/[.]github/workflows/_release-(please|recover|images)[.]yaml@[0-9a-f]{40}" # main$' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = "3" ]
+}
+
+@test "the image release caller builds when its own release or a recovered tag made one, with the publishing permissions and only the Docker Hub secret" {
+  run yq -o=json -I0 '[.jobs.images.needs, .jobs.images.if, (.jobs.images.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .jobs.images.with.releases, .jobs.images.secrets]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '[["release","recover"],"!cancelled() && (needs.release.outputs.release-created == '"'true'"' || needs.recover.outputs.release-created == '"'true'"')","anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha>","${{ needs.recover.outputs.releases || needs.release.outputs.releases }}",{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}]' ]
   run yq -o=json -I0 '.jobs.images.permissions | to_entries | sort_by(.key) | from_entries' "$WORKFLOWS/image-release-please.yaml"
   [ "$output" = "$PUBLISH" ]
 }
