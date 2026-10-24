@@ -30,7 +30,7 @@ jobs:
     name: "Plan"
     runs-on: "ubuntu-latest"
     if: "github.ref != 'refs/heads/main'"
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: "read"
     concurrency:
@@ -60,7 +60,7 @@ jobs:
     name: "Apply"
     runs-on: "ubuntu-latest"
     if: "github.ref == 'refs/heads/main' && github.event_name != 'pull_request'"
-    timeout-minutes: 5
+    timeout-minutes: 10
     environment: "sonar"
     permissions:
       contents: "read"

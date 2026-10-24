@@ -185,7 +185,7 @@ A job's limit is the larger of twice its slowest successful job in the last 30 d
 Aim for 40 or less; where the runs need more (the image `build` job is 50: the slowest healthy build takes 1369 s, and 2x rounds up to 50), use what they need. A job that has no recent runs keeps its limit. Re-size a limit when its job gets slower: a healthy job that hits it needs more minutes, not a retry.
 
 Why: GitHub-hosted runners in one region hit a network error early in a step, then hang at "Cleaning up orphan processes" until "The hosted runner lost communication with the server" after 48 to 50 minutes. GitHub's egress-proxy DNS experiment clashes with harden-runner's `block` policy ([actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925),
-[step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), both open). Egress stays on `block`. With a limit of T minutes, GitHub cancels the hung job about T+5 minutes after it starts, so a limit over about 43 gains nothing over that kill; `build` is 50 because healthy builds need it, not to catch a hang.
+[step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), both open). With a limit of T minutes, GitHub cancels the hung job about T+5 minutes after it starts, so a limit over about 43 gains nothing over that kill; `build` is 50 because healthy builds need it, not to catch a hang.
 
 A job cancelled this way, and its run, end `cancelled` with "The job has exceeded the maximum execution time". Nothing re-runs it: use "Re-run failed jobs" by hand.
 
