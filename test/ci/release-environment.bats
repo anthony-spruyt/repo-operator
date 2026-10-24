@@ -198,13 +198,19 @@ YAML
   [ "$output" = $'0\n0' ]
 }
 
-@test "the release callers run only from main pushes or dispatch, and pass every release secret by name" {
-  local wf
+@test "the release callers run from main pushes or dispatch, the image caller also on a schedule, and pass every release secret by name" {
+  local wf triggers
   for wf in release-please.yaml image-release-please.yaml; do
-    run yq -o=json -I0 '[(.on | keys), .on.push.branches, .jobs.release.secrets]' "$TEMPLATES/$wf"
+    run yq -o=json -I0 '[.on.push.branches, .jobs.release.secrets]' "$TEMPLATES/$wf"
     echo "$wf: $output"
-    [ "$output" = '[["push","workflow_dispatch"],["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
+    [ "$output" = '[["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
+    triggers=$(yq -o=json -I0 '.on | keys | sort' "$TEMPLATES/$wf")
+    echo "$wf: $triggers"
+    case "$wf" in
+    release-please.yaml) [ "$triggers" = '["push","workflow_dispatch"]' ] ;;
+    *) [ "$triggers" = '["push","schedule","workflow_dispatch"]' ] ;;
+    esac
   done
-  run yq -o=json -I0 '.jobs.images.secrets' "$TEMPLATES/image-release-please.yaml"
-  [ "$output" = '{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
+  run yq -o=json -I0 '[.jobs.recover.secrets, .jobs.images.secrets]' "$TEMPLATES/image-release-please.yaml"
+  [ "$output" = '[{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"},{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}]' ]
 }

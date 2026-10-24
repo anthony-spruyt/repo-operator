@@ -209,9 +209,9 @@ go_version_step() {
   [ "$output" = "false" ]
 }
 
-@test "the release workflows leave concurrency to their caller, which runs both" {
+@test "the release workflows leave concurrency to their caller, which runs them all" {
   local wf
-  for wf in _release-please.yaml _release-images.yaml; do
+  for wf in _release-please.yaml _release-recover.yaml _release-images.yaml; do
     run yq -r '[.. | select(tag == "!!map" and has("concurrency"))] | length' "$WF/$wf"
     echo "$wf: $output"
     [ "$output" = "0" ]
