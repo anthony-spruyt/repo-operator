@@ -171,7 +171,7 @@ jobs:
     needs: [render, validate]
     if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     environment: plan-main
     permissions:
       contents: read
