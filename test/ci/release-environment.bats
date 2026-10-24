@@ -6,7 +6,7 @@ setup() {
   SRC="$REPO_ROOT/src"
   WF="$REPO_ROOT/.github/workflows"
   TEMPLATES="$SRC/templates/.github/workflows"
-  MAIN_ONLY='{"custom":[{"type":"branch","name":"main"}]}'
+  RELEASE_REFS='{"custom":[{"type":"branch","name":"main"},{"type":"tag","name":"*.*.*"},{"type":"tag","name":"*/*.*.*"}]}'
   XFG_GIT='https://github.com/anthony-spruyt/xfg.git'
 }
 
@@ -14,14 +14,14 @@ release_env() {
   yq -o=json -I0 "explode(.) | .groups[\"$1\"].settings.environments.release" "$SRC/groups.yaml"
 }
 
-@test "the release-please group defines a main-only release environment holding the release App secrets" {
+@test "the release-please group defines a release environment for main and version tags, holding the release App secrets" {
   run release_env release-please
-  [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {RELEASE_PLEASE_APP_CLIENT_ID: {env: "RELEASE_PLEASE_APP_CLIENT_ID"}, RELEASE_PLEASE_APP_PRIVATE_KEY: {env: "RELEASE_PLEASE_APP_PRIVATE_KEY"}}}')" ]
+  [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$RELEASE_REFS" -n '{deploymentBranchPolicy: $p, secrets: {RELEASE_PLEASE_APP_CLIENT_ID: {env: "RELEASE_PLEASE_APP_CLIENT_ID"}, RELEASE_PLEASE_APP_PRIVATE_KEY: {env: "RELEASE_PLEASE_APP_PRIVATE_KEY"}}}')" ]
 }
 
-@test "the dockerhub group adds DOCKERHUB_TOKEN to the same main-only release environment" {
+@test "the dockerhub group adds DOCKERHUB_TOKEN to the same release environment" {
   run release_env dockerhub
-  [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$MAIN_ONLY" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
+  [ "$(jq -cS . <<<"$output")" = "$(jq -cS --argjson p "$RELEASE_REFS" -n '{deploymentBranchPolicy: $p, secrets: {DOCKERHUB_TOKEN: {env: "DOCKERHUB_TOKEN"}}}')" ]
 }
 
 @test "only the release-please and dockerhub groups define environments, only release, and only xfg overrides one, release, and adds the integration ones" {
@@ -88,7 +88,7 @@ release_env() {
   done
 }
 
-@test "every other repo's release environment is main only" {
+@test "every other repo's release environment takes the groups' refs: main and version tags" {
   local repo
   while IFS= read -r repo; do
     run yq -o=json -I0 ".repos[] | select(.git == \"$repo\") | .settings.environments.release.deploymentBranchPolicy" "$SRC/repos.yaml"
@@ -98,7 +98,7 @@ release_env() {
   local g
   for g in release-please dockerhub; do
     run release_env "$g"
-    [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$MAIN_ONLY")" ]
+    [ "$(jq -cS .deploymentBranchPolicy <<<"$output")" = "$(jq -cS . <<<"$RELEASE_REFS")" ]
   done
 }
 
@@ -174,12 +174,14 @@ YAML
   [ "$output" = $'0\n0' ]
 }
 
-@test "the release callers run only from main pushes or dispatch, and pass every release secret by name" {
-  local wf
+@test "the release callers run only from main pushes, a schedule or dispatch, and pass every release secret by name" {
+  local wf triggers
   for wf in release-please.yaml image-release-please.yaml; do
+    triggers='["push","workflow_dispatch"]'
+    if [[ "$wf" == image-release-please.yaml ]]; then triggers='["push","schedule","workflow_dispatch"]'; fi
     run yq -o=json -I0 '[(.on | keys), .on.push.branches, .jobs.release.secrets]' "$TEMPLATES/$wf"
     echo "$wf: $output"
-    [ "$output" = '[["push","workflow_dispatch"],["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
+    [ "$output" = "[$triggers"',["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
   done
   run yq -o=json -I0 '.jobs.images.secrets' "$TEMPLATES/image-release-please.yaml"
   [ "$output" = '{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]

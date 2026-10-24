@@ -4,6 +4,14 @@ name: Release Please
 
 on:
   workflow_call:
+    inputs:
+      recover-drafts:
+        description: >-
+          Image repos only. On main, run the caller on the tag of each draft that never published. In a
+          run on a tag ref, build and publish that tag's draft instead of running release-please
+        required: false
+        type: boolean
+        default: false
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID:
         required: true
@@ -24,12 +32,13 @@ jobs:
     timeout-minutes: 10
     # Callers must still pass each secret by name, or it resolves empty even though the environment holds it.
     environment: release
-    # release-please acts with the app token; GITHUB_TOKEN needs nothing.
+    # release-please acts with the app token; GITHUB_TOKEN reads, and dispatches the caller on a stuck draft's tag.
     permissions:
       contents: read
+      actions: write
     outputs:
-      release-created: ${{ steps.release.outputs.releases_created }}
-      releases: ${{ toJSON(steps.release.outputs) }}
+      release-created: ${{ steps.release.outputs.releases_created || steps.tag.outputs.release-created }}
+      releases: ${{ steps.tag.outputs.releases || toJSON(steps.release.outputs) }}
     steps:
       - name: Harden Runner
         uses: $/.github/actions/harden-runner
@@ -42,6 +51,7 @@ jobs:
       # GITHUB_TOKEN pull requests do not trigger the status checks that pr-rules requires.
       - name: Mint app token
         id: app-token
+        if: ${{ !(inputs.recover-drafts && github.ref_type == 'tag') }}
         uses: actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510 # v3.3.0
         with:
           client-id: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
@@ -51,6 +61,25 @@ jobs:
 
       - name: Run release-please
         id: release
+        if: ${{ !(inputs.recover-drafts && github.ref_type == 'tag') }}
         uses: googleapis/release-please-action@45996ed1f6d02564a971a2fa1b5860e934307cf7 # v5.0.0
         with:
           token: ${{ steps.app-token.outputs.token }}
+
+      # A failed recovery must not block the images job for this run's own releases.
+      - name: Recover stuck drafts
+        id: recover
+        if: ${{ inputs.recover-drafts && github.ref == 'refs/heads/main' }}
+        continue-on-error: true
+        uses: $/.github/actions/release-drafts
+        with:
+          mode: recover
+          app-token: ${{ steps.app-token.outputs.token }}
+          releases: ${{ toJSON(steps.release.outputs) }}
+
+      - name: Use the release of this tag
+        id: tag
+        if: ${{ inputs.recover-drafts && github.ref_type == 'tag' }}
+        uses: $/.github/actions/release-drafts
+        with:
+          mode: synthesize

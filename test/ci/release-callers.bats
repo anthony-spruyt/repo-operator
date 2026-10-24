@@ -29,21 +29,28 @@ repo() {
   done
 }
 
-@test "the plain release caller runs only _release-please.yaml, read-only, with only the release App secrets" {
-  run yq -o=json -I0 '[(.jobs | keys), .jobs.release.permissions, (.jobs.release.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), has("with")]' "$WORKFLOWS/release-please.yaml"
-  [ "$output" = '[["release"],{"contents":"read"},"anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha>",false]' ]
+@test "the plain release caller runs only _release-please.yaml, read-only plus the right to dispatch, with only the release App secrets" {
+  run yq -o=json -I0 '[(.jobs | keys), .jobs.release.permissions, (.jobs.release.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), has("with"), (.jobs.release | has("with"))]' "$WORKFLOWS/release-please.yaml"
+  [ "$output" = '[["release"],{"contents":"read","actions":"write"},"anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha>",false,false]' ]
   run yq -o=json -I0 '.jobs.release.secrets' "$WORKFLOWS/release-please.yaml"
   [ "$output" = "$APP_SECRETS" ]
 }
 
-@test "the image caller is the plain caller plus the images job, since xfg deep-merges the two" {
-  run yq -o=json -I0 'del(.jobs.images)' "$WORKFLOWS/image-release-please.yaml"
+@test "the image caller is the plain caller plus the images job, the schedule and recover-drafts, since xfg deep-merges the two" {
+  run yq -o=json -I0 'del(.jobs.images) | del(.on.schedule) | del(.jobs.release.with)' "$WORKFLOWS/image-release-please.yaml"
   [ "$output" = "$(yq -o=json -I0 '.' "$WORKFLOWS/release-please.yaml")" ]
 }
 
+@test "only the image release caller recovers drafts, and retries without a push on a schedule" {
+  run yq -o=json -I0 '[.on.schedule, .jobs.release.with]' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = '[[{"cron":"23 */6 * * *"}],{"recover-drafts":true}]' ]
+  run yq -o=json -I0 '[(.on | has("schedule")), (.jobs.release | has("with"))]' "$WORKFLOWS/release-please.yaml"
+  [ "$output" = '[false,false]' ]
+}
+
 @test "the image release caller runs the same release job, then images with the publishing permissions and only the Docker Hub secret" {
-  run yq -o=json -I0 '.jobs.release' "$WORKFLOWS/release-please.yaml"
-  [ "$output" = "$(yq -o=json -I0 '.jobs.release' "$WORKFLOWS/image-release-please.yaml")" ]
+  run yq -o=json -I0 '.jobs.release | del(.with)' "$WORKFLOWS/image-release-please.yaml"
+  [ "$output" = "$(yq -o=json -I0 '.jobs.release' "$WORKFLOWS/release-please.yaml")" ]
   run yq -o=json -I0 '[(.jobs | keys), .jobs.images.needs, .jobs.images.if, (.jobs.images.uses | sub("@[0-9a-f]{40}$"; "@<sha>")), .jobs.images.with.releases, .jobs.images.secrets]' "$WORKFLOWS/image-release-please.yaml"
   [ "$output" = '[["release","images"],"release","needs.release.outputs.release-created == '"'true'"'","anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@<sha>","${{ needs.release.outputs.releases }}",{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}]' ]
   run yq -o=json -I0 '.jobs.images.permissions | to_entries | sort_by(.key) | from_entries' "$WORKFLOWS/image-release-please.yaml"

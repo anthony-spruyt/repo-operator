@@ -1,6 +1,8 @@
 #!/usr/bin/env bats
 # shellcheck disable=SC2016
 
+bats_require_minimum_version 1.5.0
+
 setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WF="$REPO_ROOT/.github/workflows"
@@ -151,13 +153,38 @@ go_version_step() {
   [ "$output" = $'go-version=\ngo-version-file=svc/go.mod' ]
 }
 
-@test "_release-please.yaml runs only release-please and outputs what it released" {
+@test "_release-please.yaml runs one job and outputs what it released, or what a tag-ref run synthesised" {
   run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs // {} | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-please.yaml"
-  [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
+  [ "$output" = '[["release-please"],["recover-drafts"],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
   run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-please.yaml"
   [ "$output" = '["${{ jobs.release-please.outputs.release-created }}","${{ jobs.release-please.outputs.releases }}"]' ]
   run yq -o=json -I0 '.jobs["release-please"].outputs' "$WF/_release-please.yaml"
-  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created }}","releases":"${{ toJSON(steps.release.outputs) }}"}' ]
+  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created || steps.tag.outputs.release-created }}","releases":"${{ steps.tag.outputs.releases || toJSON(steps.release.outputs) }}"}' ]
+}
+
+@test "_release-please.yaml recovers drafts only when a caller opts in, and the job may dispatch workflows" {
+  run yq -o=json -I0 '.on.workflow_call.inputs["recover-drafts"] | [.type, .default, .required]' "$WF/_release-please.yaml"
+  [ "$output" = '["boolean",false,false]' ]
+  run yq -o=json -I0 '.jobs["release-please"] | [.permissions | to_entries | sort_by(.key) | from_entries, .environment, ."timeout-minutes"]' "$WF/_release-please.yaml"
+  [ "$output" = '[{"actions":"write","contents":"read"},"release",10]' ]
+}
+
+@test "_release-please.yaml leaves release-please and the App token out of an opted-in tag-ref run" {
+  local steps='.jobs["release-please"].steps[]'
+  run yq -o=json -I0 "[$steps | select(.id == \"app-token\" or .id == \"release\") | .if]" "$WF/_release-please.yaml"
+  [ "$output" = '["${{ !(inputs.recover-drafts && github.ref_type == '"'tag'"') }}","${{ !(inputs.recover-drafts && github.ref_type == '"'tag'"') }}"]' ]
+}
+
+@test "_release-please.yaml recovers drafts after release-please on main only, without failing the release" {
+  run yq -o=json -I0 '.jobs["release-please"].steps[] | select(.id == "recover") | [.if, .["continue-on-error"], .uses, .with]' "$WF/_release-please.yaml"
+  [ "$output" = '["${{ inputs.recover-drafts && github.ref == '"'refs/heads/main'"' }}",true,"$/.github/actions/release-drafts",{"mode":"recover","app-token":"${{ steps.app-token.outputs.token }}","releases":"${{ toJSON(steps.release.outputs) }}"}]' ]
+  run jq -c 'index("recover") > index("release")' < <(yq -o=json -I0 '[.jobs["release-please"].steps[].id]' "$WF/_release-please.yaml")
+  [ "$output" = "true" ]
+}
+
+@test "_release-please.yaml synthesises a tag-ref run's outputs without the App token" {
+  run yq -o=json -I0 '.jobs["release-please"].steps[] | select(.id == "tag") | [.if, .uses, .with]' "$WF/_release-please.yaml"
+  [ "$output" = '["${{ inputs.recover-drafts && github.ref_type == '"'tag'"' }}","$/.github/actions/release-drafts",{"mode":"synthesize"}]' ]
 }
 
 @test "_release-images.yaml detects the images in the releases it is given" {
@@ -339,4 +366,71 @@ EOF
       return 1
     }
   done
+}
+
+@test "a superseded release is built as its version tag only: the matrix flag reaches build-image and publish-release" {
+  run yq -o=json -I0 '.on.workflow_call.inputs.latest | [.type, .default]' "$WF/_build-image.yaml"
+  [ "$output" = '["boolean",true]' ]
+  run yq -r '.jobs.build.with.latest' "$WF/_release-images.yaml"
+  [ "$output" = '${{ matrix.latest }}' ]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/build-image") | .with.latest' "$WF/_build-image.yaml"
+  [ "$output" = '${{ inputs.latest }}' ]
+  run yq -r '.jobs.publish.steps[] | select(.uses == "$/.github/actions/publish-release") | .with.latest' "$WF/_build-image.yaml"
+  [ "$output" = '${{ inputs.latest }}' ]
+  run yq -r '[.jobs.build.steps[] | select(.uses == "$/.github/actions/build-image") | .with | has("latest")] | any' "$WF/_build-image.yaml"
+  [ "$output" = "false" ]
+}
+
+@test "build-image drops the latest, major.minor and extra tags when latest is false" {
+  local action="$REPO_ROOT/.github/actions/build-image/action.yaml"
+  run yq -o=json -I0 '.inputs.latest | [.required, .default]' "$action"
+  [ "$output" = '[false,"true"]' ]
+  run yq -r '.runs.steps[] | select(.id == "meta") | .with.tags' "$action"
+  [[ "$output" == *"type=raw,value=latest,enable=\${{ inputs.latest != 'false' }}"* ]]
+  [[ "$output" == *"type=semver,pattern=\${{ inputs.tag-prefix }}{{major}}.{{minor}},value=v\${{ inputs.version }},enable=\${{ inputs.version != '' && inputs.latest != 'false' }}"* ]]
+  [[ "$output" == *"\${{ inputs.latest != 'false' && inputs.extra-tags || '' }}"* ]]
+  run yq -r '.runs.steps[] | select(.name == "Validate inputs") | .run' "$action"
+  LATEST=maybe PUSH=false run bash -c "$output"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"latest must be true or false"* ]]
+}
+
+# publish_release LATEST: runs publish-release's step against a fake gh that has a draft, prints the gh calls
+publish_release() {
+  mkdir -p "$BATS_TEST_TMPDIR/bin"
+  cat >"$BATS_TEST_TMPDIR/bin/gh" <<'GH'
+#!/usr/bin/env bash
+echo "gh $*" >>"$GH_CALLS"
+case "$*" in
+  "release view "*"--json isDraft"*) echo true ;;
+  "release view "*"--json body"*) echo notes ;;
+esac
+GH
+  chmod +x "$BATS_TEST_TMPDIR/bin/gh"
+  local script
+  script=$(yq -r '.runs.steps[0].run' "$REPO_ROOT/.github/actions/publish-release/action.yaml")
+  GH_CALLS="$BATS_TEST_TMPDIR/calls" PATH="$BATS_TEST_TMPDIR/bin:$PATH" TAG=v1.0.0 IMAGE_REF=ghcr.io/o/i:1.0.0 DIGEST=sha256:abc \
+    RUN_URL=https://example.invalid/run RUN_ID=1 LATEST="$1" run bash -eo pipefail -c "$script"
+}
+
+@test "publish-release publishes a superseded release without taking the latest marker" {
+  publish_release false
+  [ "$status" -eq 0 ]
+  grep -q '^gh release edit v1.0.0 --notes-file .* --draft=false --latest=false$' "$BATS_TEST_TMPDIR/calls"
+}
+
+@test "publish-release leaves the latest marker to GitHub otherwise" {
+  publish_release true
+  [ "$status" -eq 0 ]
+  grep -q '^gh release edit v1.0.0 --notes-file .* --draft=false$' "$BATS_TEST_TMPDIR/calls"
+  run ! grep -q -- '--latest' "$BATS_TEST_TMPDIR/calls"
+  run yq -o=json -I0 '.inputs.latest | [.required, .default]' "$REPO_ROOT/.github/actions/publish-release/action.yaml"
+  [ "$output" = '[false,"true"]' ]
+}
+
+@test "_build-image.yaml's tag mismatch error says the next Release Please run rebuilds the draft from its tag" {
+  run yq -r '.jobs.publish.steps[] | select(.id == "verify") | .run' "$WF/_build-image.yaml"
+  [[ "$output" != *"Cut the next release instead"* ]]
+  [[ "$output" != *"delete the \${TAG_NAME} draft"* ]]
+  [[ "$output" == *"The next Release Please run rebuilds \${TAG_NAME} from its tag."* ]]
 }

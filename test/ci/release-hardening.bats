@@ -342,6 +342,7 @@ YAML
   [[ "$output" == *".github/actions/build-image/action.yaml"* ]]
   [[ "$output" == *".github/actions/publish-release/action.yaml"* ]]
   [[ "$output" == *".github/actions/detect-images/action.yaml"* ]]
+  [[ "$output" == *".github/actions/release-drafts/action.yaml"* ]]
 }
 
 @test "every release path job starts with harden-runner" {
