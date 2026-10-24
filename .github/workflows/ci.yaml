@@ -230,7 +230,7 @@ jobs:
   xfg-apply:
     name: "XFG Apply"
     runs-on: "ubuntu-latest"
-    timeout-minutes: 10
+    timeout-minutes: 15
     needs:
       - "xfg-plan"
     # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply

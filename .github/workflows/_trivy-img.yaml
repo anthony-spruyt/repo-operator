@@ -60,7 +60,7 @@ jobs:
   scan-images:
     name: Scan ${{ matrix.image }}
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     needs: discover-images
     if: needs.discover-images.outputs.images != '[]'
     permissions:

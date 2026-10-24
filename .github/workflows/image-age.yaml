@@ -73,7 +73,7 @@ jobs:
     name: "Date images"
     needs: extract
     runs-on: ubuntu-latest
-    timeout-minutes: 5
+    timeout-minutes: 10
     permissions:
       contents: read
       packages: read
