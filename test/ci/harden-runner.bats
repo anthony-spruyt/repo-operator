@@ -5,10 +5,14 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   ACTION="$REPO_ROOT/.github/actions/harden-runner/action.yaml"
   export COMPOSITE='$/.github/actions/harden-runner'
-  # lychee checks links on arbitrary hosts; pr-title.yaml is synced from src/templates, which switches to the composite in a follow-up
   DIRECT_ALLOWED=(
+    # Link checks reach arbitrary hosts
     .github/workflows/_lint.yaml:lychee:audit
+    # Audit mode sends telemetry whatever disable-telemetry says, so a job with telemetry off stays on block
+    .github/workflows/ci.yaml:xfg-apply:block
+    # Synced from src/templates; both entries go when the template switches to the composite (anthony-spruyt/repo-operator#1042)
     .github/workflows/pr-title.yaml:check:block
+    src/templates/.github/workflows/pr-title.yaml:check:block
   )
 }
 
@@ -30,6 +34,15 @@ unswitched() {
   done
 }
 
+# telemetry_off <root> <file>... - prints file:job for each step that turns telemetry off without being a direct harden-runner step on block
+telemetry_off() {
+  local root="$1" file
+  shift
+  for file in "$@"; do
+    yq -r '(.jobs // {}) | to_entries[] | select(.value.steps != null) | select([.value.steps[] | select(((.with["disable-telemetry"] // "") | tostring | downcase) == "true") | select((((.uses // "") | test("^step-security/harden-runner@")) and ((.with["egress-policy"] // "") == "block")) | not)] | length > 0) | .key' "$root/$file" | sed "s|^|$file:|"
+  done
+}
+
 # composite_calls <root> <file>... - prints file:job, step index, input names and allowlist length (tab separated) for each composite call
 composite_calls() {
   local root="$1" file
@@ -43,10 +56,23 @@ workflows() {
   (cd "$1" && find .github/workflows -maxdepth 1 -name '*.y*ml' | sort)
 }
 
+template_workflows() {
+  (cd "$1" && find src/templates/.github/workflows -maxdepth 1 -name '*.y*ml' | sort)
+}
+
+# all_workflows <root> - prints the workflows under .github/workflows, then the synced templates
+all_workflows() {
+  workflows "$1"
+  template_workflows "$1"
+}
+
+# allowed_jobs - prints file:job for each listed direct step in .github/workflows, the only files the first-step check reads
 allowed_jobs() {
   local entry
   for entry in "${DIRECT_ALLOWED[@]}"; do
-    echo "${entry%:*}"
+    if [[ "$entry" == .github/workflows/* ]]; then
+      echo "${entry%:*}"
+    fi
   done
 }
 
@@ -92,8 +118,46 @@ YAML
   [ "$output" = $'.github/workflows/w.yaml:good\t0\tallowed-endpoints,disable-sudo-and-containers\t2\n.github/workflows/w.yaml:late\t1\tallowed-endpoints\t1\n.github/workflows/w.yaml:stray\t0\tegress-policy\t0' ]
 }
 
+@test "the telemetry helper flags telemetry off on a composite call, an audit step and a quoted value, not on a direct block step" {
+  mkdir -p "$BATS_TEST_TMPDIR/.github/workflows"
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/t.yaml" <<'YAML'
+jobs:
+  composite:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          disable-telemetry: true
+  audit:
+    steps:
+      - uses: step-security/harden-runner@0123456789abcdef0123456789abcdef01234567
+        with:
+          egress-policy: audit
+          disable-telemetry: true
+  quoted:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          disable-telemetry: "true"
+  block:
+    steps:
+      - uses: step-security/harden-runner@0123456789abcdef0123456789abcdef01234567
+        with:
+          egress-policy: block
+          disable-telemetry: true
+  off:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          disable-telemetry: false
+  call:
+    uses: $/.github/workflows/x.yaml
+YAML
+  run telemetry_off "$BATS_TEST_TMPDIR" .github/workflows/t.yaml
+  [ "$output" = $'.github/workflows/t.yaml:composite\n.github/workflows/t.yaml:audit\n.github/workflows/t.yaml:quoted' ]
+}
+
 @test "the only direct harden-runner steps are the listed ones" {
-  mapfile -t files < <(workflows "$REPO_ROOT")
+  mapfile -t files < <(all_workflows "$REPO_ROOT")
   run direct_steps "$REPO_ROOT" "${files[@]}"
   [ "$status" -eq 0 ]
   [ "$(sort <<<"$output")" = "$(printf '%s\n' "${DIRECT_ALLOWED[@]}" | sort)" ]
@@ -121,7 +185,7 @@ YAML
   [ -z "$output" ]
 }
 
-@test "the lychee job is the only audit job and keeps its link checks open" {
+@test "lychee always runs in audit and keeps its link checks open" {
   run yq -o=json -I0 '.jobs.lychee.steps[0] | [.uses, .with]' "$REPO_ROOT/.github/workflows/_lint.yaml"
   [[ "$output" =~ ^\[\"step-security/harden-runner@[0-9a-f]{40}\",\{\"egress-policy\":\"audit\"\}\]$ ]]
 }
@@ -135,24 +199,39 @@ YAML
   [ "$output" = "1" ]
 }
 
-@test "the composite passes through allowed-endpoints and the two disable flags with harden-runner's defaults, and takes no mode" {
+@test "the composite passes through allowed-endpoints and disable-sudo-and-containers with harden-runner's defaults, and takes no mode" {
   run yq -o=json -I0 '[.inputs | to_entries[] | [.key, .value.default]]' "$ACTION"
-  [ "$output" = '[["allowed-endpoints",""],["disable-sudo-and-containers","false"],["disable-telemetry","false"]]' ]
+  [ "$output" = '[["allowed-endpoints",""],["disable-sudo-and-containers","false"]]' ]
   run yq -o=json -I0 '.runs.steps[0].with | del(.["egress-policy"])' "$ACTION"
-  [ "$output" = '{"allowed-endpoints":"${{ inputs.allowed-endpoints }}","disable-sudo-and-containers":"${{ inputs.disable-sudo-and-containers }}","disable-telemetry":"${{ inputs.disable-telemetry }}"}' ]
+  [ "$output" = '{"allowed-endpoints":"${{ inputs.allowed-endpoints }}","disable-sudo-and-containers":"${{ inputs.disable-sudo-and-containers }}"}' ]
+}
+
+@test "the composite has no disable-telemetry input, because audit mode sends telemetry whatever it says" {
+  run yq -r '.inputs | has("disable-telemetry")' "$ACTION"
+  [ "$output" = "false" ]
+  run grep -c 'disable-telemetry' "$ACTION"
+  [ "$output" = "0" ]
+}
+
+@test "a job that turns telemetry off keeps a direct harden-runner step on block" {
+  mapfile -t files < <(all_workflows "$REPO_ROOT")
+  run telemetry_off "$REPO_ROOT" "${files[@]}"
+  [ "$status" -eq 0 ]
+  [ -z "$output" ]
 }
 
 @test "every direct harden-runner step uses the composite's pin" {
+  # Root pr-title.yaml is left out: xfg writes it without the tag comment, so Renovate never bumps it
   local pin
   pin=$(yq -r '.runs.steps[0].uses' "$ACTION")
-  run yq -N -r '(.jobs // {})[] | .steps[] | select((.uses // "") | test("^step-security/harden-runner@")) | .uses' "$REPO_ROOT/.github/workflows/_lint.yaml" "$REPO_ROOT/.github/workflows/pr-title.yaml" "$REPO_ROOT/src/templates/.github/workflows/pr-title.yaml"
+  run yq -N -r '(.jobs // {})[] | select(.steps != null) | .steps[] | select((.uses // "") | test("^step-security/harden-runner@")) | .uses' "$REPO_ROOT/.github/workflows/_lint.yaml" "$REPO_ROOT/.github/workflows/ci.yaml" "$REPO_ROOT/src/templates/.github/workflows/pr-title.yaml"
   [ "$status" -eq 0 ]
   [ -n "$output" ]
   run grep -vxF "$pin" <<<"$output"
   [ "$status" -eq 1 ]
 }
 
-@test "Lint Canary skips lychee, which the blocked egress would fail" {
+@test "Lint Canary skips lychee, which egress under block would fail" {
   run yq -r '.jobs.lint.steps[] | select(.name == "Run MegaLinter") | .env | .DISABLE_LINTERS + " " + .ENABLE_DISABLE_LINTERS_PRIORITY' "$REPO_ROOT/.github/workflows/lint-canary.yaml"
   [ "$output" = "SPELL_LYCHEE DISABLE" ]
 }

@@ -1,3 +1,4 @@
+---
 name: Harden Runner
 description: >-
   Run step-security/harden-runner with the egress policy every repo-operator
@@ -12,10 +13,6 @@ inputs:
     description: Disable sudo and container access for the runner account
     required: false
     default: "false"
-  disable-telemetry:
-    description: Disable telemetry to the StepSecurity API; harden-runner applies it when the policy is block
-    required: false
-    default: "false"
 runs:
   using: composite
   steps:
@@ -25,4 +22,3 @@ runs:
         egress-policy: audit
         allowed-endpoints: ${{ inputs.allowed-endpoints }}
         disable-sudo-and-containers: ${{ inputs.disable-sudo-and-containers }}
-        disable-telemetry: ${{ inputs.disable-telemetry }}

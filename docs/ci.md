@@ -124,14 +124,19 @@ A package whose repository is missing on the first page is skipped with a warnin
 
 ### `harden-runner`
 
-Runs [`step-security/harden-runner`](https://github.com/step-security/harden-runner), pinned by SHA, as the first step of every job. Its one step sets `egress-policy`, so that line in `.github/actions/harden-runner/action.yaml` is the switch for the egress mode of every job that calls it, in this repo and in the repos that call the shared workflows.
-`audit` records each job's outbound calls; `block` refuses calls to hosts off the job's allowlist. Those are the only two values, and the line reads `audit` today.
+Runs [`step-security/harden-runner`](https://github.com/step-security/harden-runner), pinned by SHA, as the first step of every job except `lychee`, XFG Apply and the synced `pr-title.yaml` (below).
+Its one step sets `egress-policy`, so that line in `.github/actions/harden-runner/action.yaml` is the switch for the egress mode of every job that calls it, in this repo and in the repos that call the shared workflows.
+`audit` records each job's outbound calls; `block` refuses calls to hosts off the job's allowlist. Those are the only two values.
 
-The action passes `allowed-endpoints` (default empty), `disable-sudo-and-containers` and `disable-telemetry` (both default `"false"`) to harden-runner unchanged. A caller never sets `egress-policy` itself.
+The action passes `allowed-endpoints` (default empty) and `disable-sudo-and-containers` (default `"false"`) to harden-runner unchanged. A caller never sets `egress-policy` itself.
 Shared workflows call it as `$/.github/actions/harden-runner`; a repo-owned workflow calls `anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha> # main`. Keep every job's allowlist current in either mode, so a flip to `block` needs no other edit.
-`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs.
+`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs, except `lychee`, XFG Apply and `pr-title.yaml`.
 
-`lychee` in `_lint.yaml` calls harden-runner directly with `egress-policy: audit`, whatever the switch says, because link checks reach arbitrary hosts.
+Three jobs call harden-runner directly:
+
+- `lychee` in `_lint.yaml` runs in `audit`, whatever the switch says, because link checks reach arbitrary hosts.
+- XFG Apply (`xfg-apply` in `ci.yaml`) keeps its own step in `block` with telemetry off, because audit mode always sends telemetry. The action has no `disable-telemetry` input, and `test/ci/harden-runner.bats` fails if a job sets `disable-telemetry: true` on any step but a direct `block` one.
+- The root `pr-title.yaml` is synced from `src/templates/`, and its direct `block` step stays until the template switches to the action.
 
 To flip the mode, edit the `egress-policy` line. The file is under `.github/`, so the owner approves the PR. After it merges:
 
@@ -189,7 +194,7 @@ Go linting is not a workflow job. MegaLinter (`_lint.yaml`) owns it.
 - `lint`: uploads that SARIF to code scanning. It is the only job with `security-events: write`, and it never checks out the PR's code. Its id stays `lint` because the id is part of the code scanning analysis key, so existing alerts carry over.
 - `lychee`: the link checker alone, with no token (MegaLinter hides `*TOKEN*` variables from linters anyway) and harden-runner always in `audit`, because links reach arbitrary hosts.
 
-The `megalinter` allowlist comes from egress logged across all repos: GitHub, GHCR (the image pull), Trivy's database mirrors, the Go module proxy (golangci-lint), `registry.coder.com` (Trivy on spruyt-labs' Terraform), and the artifact service. A new linter that downloads at runtime fails there until its host is added.
+The `megalinter` allowlist comes from egress logged across all repos: GitHub, GHCR (the image pull), Trivy's database mirrors, the Go module proxy (golangci-lint), `registry.coder.com` (Trivy on spruyt-labs' Terraform), and the artifact service. Under `block`, a new linter that downloads at runtime fails there until its host is added.
 
 ### Egress
 
@@ -199,7 +204,7 @@ Under `block` a job that reaches a host off its list fails, so a new download ne
 
 An image's jobs (its Go, Python or Node tests, `build` and `publish`) take the same switch, and add the extra hosts from its `metadata.yaml` `egress`.
 Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
-the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so prove a new list with a build that misses the cache.
+the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so under `block` prove a new list with a build that misses the cache.
 
 ### Job timeouts
 
