@@ -18,7 +18,8 @@ A reusable workflow resolves `uses: ./...` against the caller's checkout, not ag
 
 Builds an image with buildx. With `push: "true"` it also pushes to GHCR, and to Docker Hub when `dockerhub-namespace` is set. The push includes an SBOM, `provenance: mode=max` and an `actions/attest-build-provenance` attestation.
 
-Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first: labels such as `org.opencontainers.image.revision` come from the checked-out commit (`docker/metadata-action` `context: git`). Check out a branch, tag or pull request ref, not a bare SHA, which
+Tags are `<prefix><version>`, `<prefix><major>.<minor>` and `latest`, plus any `extra-tags` rules. With `latest: "false"` the push carries the `<prefix><version>` tag only, for a release that a newer one has superseded.
+The `org.opencontainers.image.version` label is `<prefix><version>`. Check out the repo first: labels such as `org.opencontainers.image.revision` come from the checked-out commit (`docker/metadata-action` `context: git`). Check out a branch, tag or pull request ref, not a bare SHA, which
 metadata-action v6.2.0 can't resolve ([docker/metadata-action#720](https://github.com/docker/metadata-action/issues/720)). Pushing needs `packages`, `id-token` and `attestations: write`.
 
 - `image` (default: repository name): image and GHCR package name
@@ -27,7 +28,8 @@ metadata-action v6.2.0 can't resolve ([docker/metadata-action#720](https://githu
 - `push` (default `"false"`): push the image, SBOM and attestation
 - `version`: version without a leading `v`; required when pushing
 - `tag-prefix`: `""` or `v`, applied to the version tags only
-- `extra-tags`: extra `docker/metadata-action` tag rules
+- `extra-tags`: extra `docker/metadata-action` tag rules; ignored when `latest` is `"false"`
+- `latest` (default `"true"`): `"false"` pushes the version tag only; a value other than `"true"` or `"false"` fails the action
 - `build-args`: `KEY=VALUE` lines
 - `go-mod`: set it for a Go image (the value is not read); adds `VERSION` (`v<version>`) and `COMMIT` build args. The Go version comes from the Dockerfile's `ARG GO_VERSION`, which Renovate bumps; Renovate never updates the `go.mod` `go` directive
 - `dockerhub-namespace`: also push to `docker.io/<namespace>/<image>`
@@ -42,7 +44,7 @@ The action outputs `digest` and `image-ref` (`ghcr.io/<owner>/<image>:<prefix><v
 
 Appends the image reference, digest and run link to a release-please draft release, then publishes it. Run it as the last step of the job that pushed the image. If any earlier step fails, the release stays a draft, so a published release always has an image behind it. The action refuses to publish with an empty digest, and leaves an already published release unchanged.
 
-Inputs: `tag`, `image-ref`, `digest`, and `github-token` (defaults to `github.token`, which needs `contents: write`).
+Inputs: `tag`, `image-ref`, `digest`, `latest` (default `"true"`; `"false"` publishes with `--latest=false`, so the release does not take the repo's latest-release marker), and `github-token` (defaults to `github.token`, which needs `contents: write`).
 
 ### `detect-images`
 
@@ -85,11 +87,35 @@ Other release types count only their changelog and `extra-files`, so their relea
 - `root-name`: image name for a package at path `.`; empty uses the lowercased repository name
 
 The action outputs `matrix` (`{"include":[...]}`) and `has-images` (`"true"` or `"false"`). Each entry holds `name`, `path`, `context`, `dockerfile`, `watch`, `prepare-command`, `free-disk` (a boolean), `extra-tags`, `test-command`, `language` (empty when `metadata.yaml` sets none), `workdir` and `egress` (space-separated), with the defaults filled in. In `released` mode each entry also holds
-`version`, `tag-name` (the git tag) and `tag-prefix` (the docker tag's).
+`version`, `tag-name` (the git tag), `tag-prefix` (the docker tag's) and `latest` (a boolean).
 
-`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. A released package without a `Dockerfile` or `flavor.yaml` is not an image and is left out.
+`released` mode reads each released path's `<path>--tag_name` and `<path>--version` outputs (unprefixed for path `.`) and fails unless the tag ends with the version. `latest` is `false` only when the path's `<path>--superseded` output is `"true"`, which only [`release-drafts`](#release-drafts) sets. A released package without a `Dockerfile` or `flavor.yaml` is not an image and is left out.
 
 The docker tag prefix is `v` only when `include-v-in-tag` is set to `true` on the package or at the top level. Left unset it is empty, even though release-please's git tag then has a `v`, so a `v1.2.3` release keeps its `1.2.3` docker tag.
+
+### `release-drafts`
+
+Publishes the release-please drafts that never got their image. `_release-please.yaml` runs it in two modes, only for a caller that passes `recover-drafts: true`. It reads the repo through the API and checks out nothing, so the job needs only `api.github.com`. The scripts are `drafts.sh` and the action's `action.yaml`; `test/release-drafts.bats` covers them with a fake `gh`.
+
+- `mode`: `recover` on `main`, `synthesize` on a tag ref
+- `github-token` (default `github.token`): reads contents and workflow runs; `recover` dispatches with it, which needs `actions: write`
+- `app-token`: `recover` only, a token that can list draft releases, the release App token in `_release-please.yaml`
+- `releases`: `recover` only, the run's own release-please outputs as JSON; the drafts it names belong to this run's `images` job and are left alone
+- `max-failures` (default `3`): `recover` only, the number of failed dispatched runs of one tag after which it is no longer retried
+
+`recover` lists the draft releases and dispatches the caller workflow (`gh workflow run <caller file> --ref <tag>`, the file named by `github.workflow_ref`) on the tag of each draft that passes every check. A draft is skipped, with a notice, when:
+
+- its tag is not a plain tag name, or does not exist
+- the tag is not the exact release tag of an image package. Each package's tag is rebuilt from the `release-please-config.json` and `.release-please-manifest.json` at that tag, with the `detect-images` package reading and release-please's `[component + separator][v]version` form, and the package must hold a `Dockerfile` or `flavor.yaml` there.
+  A component that release-please reads from a package file (`node`, `dart`, `helm`, `rust`, `sfdx` without a `component` or `package-name`) cannot be rebuilt, so that draft is skipped
+- the caller workflow at that tag does not pass `recover-drafts: true`. **This is the signal that a draft is recoverable**: a tag cut before the caller had the feature would run a workflow that ignores the tag ref, so it is left for the next release
+- a run of the caller on that tag is queued or in progress
+
+When `max-failures` or more dispatched runs of the tag have failed, the step adds a warning annotation to the run instead of dispatching again. A failure to list, read or dispatch never fails the release job: the step runs with `continue-on-error`, and the `images` job for the run's own releases still runs.
+
+`synthesize` runs when the caller is a `workflow_dispatch` run on a tag ref. It checks that the tag is an image package's release tag at that tag, then outputs `release-created` (`true`) and `releases`, the JSON that `release-please-action` would have written,
+in the form `detect-images` reads in `released` mode: `paths_released` as a JSON string, `<path>--tag_name` and `<path>--version` (unprefixed for path `.`), and `<path>--superseded`, which is `"true"` when the default branch's manifest holds a newer version of that package.
+The run's `images` job then builds the draft from its tag and publishes it. A tag-ref run never dispatches another run.
 
 ### `sonar-new-issues`
 
@@ -157,7 +183,8 @@ The mode is `audit` because some GitHub-hosted runners drop allowlisted connecti
 - `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` with the image's Dockerfile and passes `<workdir>/go.mod` to the build (only whether it is set matters), which sets `VERSION` and `COMMIT` and leaves `GO_VERSION` to the Dockerfile; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js
   `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `release` environment; only that job needs the publishing
   permissions.
-- `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
+- `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write. Outputs `release-created` and `releases`, release-please's outputs as JSON. Its caller job grants `contents: read` and `actions: write`, because a called job cannot hold more than its caller; only `recover-drafts` uses `actions: write`.
+  Image callers pass `recover-drafts: true` (default `false`), which adds [`release-drafts`](#release-drafts): on `main` it dispatches the caller on the tag of each stuck draft, and in a `workflow_dispatch` run on a tag ref it skips release-please and outputs that tag's release, so the `images` job publishes the draft.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
 
@@ -177,8 +204,10 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` needs `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
-The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`. These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
-them. Neither `_images.yaml` nor `_build-image.yaml`'s `build` job uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
+The `release-please` group creates a `release` environment whose deployment policy allows `main` and version tags (`*.*.*`, and `*/*.*.*` for a tag that contains a slash), and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN`.
+These three secrets live only in `release`, never at repo level. The `Release please` job and `_build-image.yaml`'s publish job run in `release`, so a run from any other ref is refused before it reads
+them. The tag policies let a [`release-drafts`](#release-drafts) run on a release tag publish its draft; a tag ref outside the patterns is refused like a branch other than `main`.
+Neither `_images.yaml` nor `_build-image.yaml`'s `build` job uses the environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
 xfg publishes from its own `release.yaml`, whose `Publish` job runs in `release` on a push of a `v*.*.*` tag, and `docs.yaml` deploys on a push of the floating `vN` tag. xfg's entry in `src/repos.yaml` therefore sets its `release` policy to `main` and the tag pattern `v*`, which covers both. A repo-level policy replaces the group's whole, so the entry restates `main`; the secrets still come from
 the group. `tag-rules` lets only its bypass actors create those tags. Every other repo's `release` allows only `main`.
@@ -299,10 +328,21 @@ from.
 
 A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft.
 
-If step 2 fails, the release stays a draft, so no public release lacks its image. To recover a stuck draft:
+If step 2 fails, the release stays a draft, so no public release lacks its image. A draft recovers by itself in an image repo whose release caller passes `recover-drafts: true` (the synced image caller does):
 
-- When the cause lies outside the commit (a registry outage, a flaky test, a missing secret), fix it and use **Re-run failed jobs** on the release run. The re-run builds the same commit and tag, and publishes the draft.
-- Otherwise, merge the fix and cut the next release. This covers a cause in the code, the cancelled run above, and a run that dies between creating the release and relabelling the release PR (the next run fails once on the duplicate release and starts no image job). No re-run can publish that draft; delete it once the next release is out.
+1. Every Release Please run on `main` (a push, a manual dispatch or the 6-hourly schedule) lists the repo's drafts through [`release-drafts`](#release-drafts). For each draft whose tag is an image package's release tag, whose caller at that tag has `recover-drafts: true` and which has no run in progress, it dispatches the caller on the tag.
+   The drafts the run created itself are left to its own image job.
+2. The dispatched run is a `workflow_dispatch` run on the tag ref: it skips release-please and outputs that tag's release, so its `images` job builds the draft from the tag (the run's commit is the tag's commit, so the provenance check passes) and publishes it.
+   This covers the cancelled run above, a cause outside the commit once it is fixed (a registry outage, a flaky test, a missing secret), and a run that dies between creating the release and relabelling the release PR.
+3. When a newer release of the same package exists on the default branch, the recovered build pushes only its own version tag and publishes with `--latest=false`, so it never replaces `latest`, the `major.minor` tag or the latest-release marker.
+4. After three failed dispatched runs of one tag, recovery stops dispatching it and adds a warning to the Release Please run. A cause in the code is fixed on `main`; the next release is cut, and the stuck draft is deleted once it is out.
+
+A draft is not recovered when the caller workflow at its tag does not pass `recover-drafts: true`: that tag was cut before the repo had the feature. Re-run its failed jobs for a cause outside the commit, or merge the fix, cut the next release and delete the draft.
+
+**Rollout order.** The synced callers pin `_release-please.yaml` by SHA, and `recover-drafts` exists only at a SHA that includes this feature. Merge the change here, merge the Renovate pin bump (tick `repo-operator shared CI`), and only then approve the XFG Apply that syncs the callers.
+An Apply before the pin bump sends `recover-drafts` to a workflow that does not declare it, and the image repos' Release Please runs fail to start.
+
+To test it end to end, create the tag and a draft release for an image package's manifest version in a repo whose caller at that tag has `recover-drafts: true`, then run `gh workflow run release-please.yaml --ref <tag>`; the `images` job builds the tag and publishes the draft. A push to `main` or the next schedule makes the same dispatch without the manual step.
 
 `publish-release` leaves a release that is already published unchanged.
 
@@ -390,10 +430,11 @@ Image repos don't write these callers themselves. The xfg groups in `src/groups.
 A repo whose images use more than one language, such as spruyt-labs or container-images, joins `image` without a language group, and each image's `metadata.yaml` can set its `language`; an image that sets none gets the group default, `none`, and runs no language tests. A .NET repo such as agent-platform joins `image` and `dotnet` (the .NET SDK in the dev container): `_build-image.yaml` has no .NET
 tests, so its image builds with `language: none` and the repo runs `dotnet test` in its `ci-repo.yaml`. Every image repo gets `image`, directly or through `go-image` or `python-image`, and lists neither `release-please` nor `dockerhub` beside it.
 
-A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read` and the two App secrets. The image caller runs the same `release` job, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created. xfg publishes from its own
+A repo that releases without images, such as claude-plugins, joins `release-please` alone. Its caller has one `release` job with `contents: read`, `actions: write` and the two App secrets.
+The image caller runs the same `release` job with `recover-drafts: true`, then an `images` job that calls `_release-images.yaml` with the publishing permissions and `DOCKERHUB_TOKEN`, only when a release was created, and also runs on a six-hourly schedule so a stuck draft recovers without a push. xfg publishes from its own
 `release.yaml`, so its entry turns the synced caller off with `.github/workflows/release-please.yaml: false`.
 
-xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus the `images` job; a key only the plain caller has would reach every image repo.
+xfg deep-merges the `image` entry over the `release-please` one, so the image caller must be the plain caller plus the `images` job, the schedule and the `release` job's `with:`; a key only the plain caller has would reach every image repo.
 
 Every image publishes to GHCR and to Docker Hub as `aspruyt/<image>`, because GHCR is often slow or down. The image release caller passes `dockerhub-namespace: aspruyt` and the `DOCKERHUB_TOKEN` secret, which `image` syncs through the `dockerhub` group, to `_release-images.yaml`. The `image` job in `ci.yaml` never pushes, so it gets no token.
 
@@ -542,6 +583,8 @@ name: Release Please
 on:
   push:
     branches: [main]
+  schedule:
+    - cron: "23 */6 * * *"
   workflow_dispatch:
 concurrency:
   group: release-please-${{ github.ref }}
@@ -551,7 +594,10 @@ jobs:
   release:
     permissions:
       contents: read
+      actions: write
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@<sha> # main
+    with:
+      recover-drafts: true
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: ${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}
       RELEASE_PLEASE_APP_PRIVATE_KEY: ${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}
