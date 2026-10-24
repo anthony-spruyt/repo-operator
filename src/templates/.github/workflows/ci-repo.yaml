@@ -13,5 +13,6 @@ jobs:
     name: "No repo jobs yet"
     if: "github.event_name == 'never'"
     runs-on: "ubuntu-latest"
+    timeout-minutes: 5
     steps:
       - run: "true"

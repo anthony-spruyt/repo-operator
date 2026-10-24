@@ -13,6 +13,7 @@ jobs:
   scan:
     name: Scan Filesystem
     runs-on: ubuntu-latest
+    timeout-minutes: 5
 
     steps:
       - name: Harden Runner

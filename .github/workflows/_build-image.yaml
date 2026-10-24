@@ -217,7 +217,7 @@ jobs:
       && (needs.test-python.result == 'success' || needs.test-python.result == 'skipped')
       && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 50
     permissions:
       contents: read
     steps:
@@ -321,7 +321,7 @@ jobs:
       && (needs.test-node.result == 'success' || needs.test-node.result == 'skipped')
       && needs.build.result == 'success'
     runs-on: ubuntu-latest
-    timeout-minutes: 30
+    timeout-minutes: 35
     environment: release
     # No permissions block on purpose: requesting write here fails read-only PR callers at startup, even though the job is skipped.
     outputs:

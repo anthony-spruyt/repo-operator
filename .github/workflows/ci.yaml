@@ -56,6 +56,7 @@ jobs:
   xfg-preview:
     name: "XFG Plan (preview)"
     runs-on: "ubuntu-latest"
+    timeout-minutes: 10
     needs:
       - "lint"
     if: >-
@@ -135,6 +136,7 @@ jobs:
   xfg-plan:
     name: "XFG Plan"
     runs-on: "ubuntu-latest"
+    timeout-minutes: 10
     needs:
       - "lint"
     # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
@@ -228,6 +230,7 @@ jobs:
   xfg-apply:
     name: "XFG Apply"
     runs-on: "ubuntu-latest"
+    timeout-minutes: 10
     needs:
       - "xfg-plan"
     # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply

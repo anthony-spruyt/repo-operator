@@ -177,6 +177,18 @@ Shared jobs run harden-runner with `egress-policy: block` and their own allowlis
 An image's jobs (its Go, Python or Node tests, `build` and `publish`) block too, and add the extra hosts from its `metadata.yaml` `egress`. Each shared list covers GitHub, the artifact and cache store and the job's toolchain: the Go module proxy, PyPI and uv, or Node.js and npm. `build` adds Docker Hub (buildx pulls BuildKit from it) and GHCR; `publish` adds Sigstore and the OIDC token service for
 the attestation. A base image from another registry, and every host a `Dockerfile`, `prepare-command`, `test-command` or test reaches, goes in `egress`. The build cache hides fetches that a cold build makes, so prove a new list with a build that misses the cache.
 
+### Job timeouts
+
+Every job that runs steps sets `timeout-minutes`: in each reusable workflow, each synced template and each workflow of this repo. A job that calls a reusable workflow (`uses:`) sets none, because GitHub rejects it there; the called workflow's own jobs carry the limit. `test/ci/job-timeouts.bats` fails when a step-running job has no limit, or a calling job has one.
+
+A job's limit is the larger of twice its slowest successful run in the last 30 days across every repo that calls it, and its own built-in wait plus 5 minutes (`_sonar-new-issues.yaml` polls SonarQube Cloud for up to 900 s, so 20), rounded up to a multiple of 5, with a minimum of 5. Aim for 40 or less; where the runs need more (the image `build` and `publish` jobs), use what they need. A job that
+has no recent runs keeps its limit. Re-size a limit when its job gets slower: a healthy job that hits it needs more minutes, not a retry.
+
+Why: GitHub-hosted runners in one region hit a network error early in a step, then hang at "Cleaning up orphan processes" until "The hosted runner lost communication with the server" after 48 to 50 minutes. GitHub's egress-proxy DNS experiment clashes with harden-runner's `block` policy ([actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925),
+[step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), both open). Egress stays on `block`. With a limit of T minutes, GitHub cancels the hung job about T+5 minutes after it starts, so a limit over about 43 gains nothing over that kill.
+
+A job cancelled this way, and its run, end `cancelled` with "The job has exceeded the maximum execution time". Nothing re-runs it: use "Re-run failed jobs" by hand.
+
 ### Images
 
 The standard `ci.yaml`'s `image` job calls `_images.yaml` after `lint` and `repo`. It runs when `lint` succeeded and `repo` succeeded or was skipped (the seeded `ci-repo.yaml` has no job that runs, so `repo` is skipped); a failed `lint` or `repo`, or a cancelled run, skips it. Its `Detect` job runs [`detect-images`](#detect-images) and a matrix job runs `_build-image.yaml` for each image whose
