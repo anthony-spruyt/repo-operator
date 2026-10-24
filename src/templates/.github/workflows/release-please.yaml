@@ -18,7 +18,7 @@ jobs:
   release:
     permissions:
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@6e84aee2275994d138c536405bc89314bc648571" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@374b36b982a09ab7d445d6767bdf2e272470dcdb" # main
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
       RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
