@@ -1,6 +1,5 @@
 #!/usr/bin/env bash
 # shellcheck disable=SC2016 # $vars in single quotes are jq's
-# Reads the repo through the API only: the release job has no checkout. Modes are described in docs/ci.md.
 set -euo pipefail
 shopt -s inherit_errexit
 
@@ -17,6 +16,10 @@ die() {
   exit 1
 }
 
+PACKAGES_JQ_FILE="$(dirname -- "${BASH_SOURCE[0]}")/../detect-images/packages.jq"
+readonly PACKAGES_JQ_FILE
+[[ -f "$PACKAGES_JQ_FILE" ]] || die "packages.jq not found beside the detect-images action"
+
 # Paths go into API URLs and must stay repo-relative
 safe_path() {
   local p="$1"
@@ -26,12 +29,10 @@ safe_path() {
   return 1
 }
 
-# Copy of detect-images/detect.sh's PACKAGES_JQ; test/release-drafts.bats fails when the two differ.
-# The tag_* fields rebuild release-please's tag: [component + separator] [v] version. A null tag_component
-# marks a component release-please would read from a package file, which the API-only read cannot rebuild.
-readonly PACKAGES_JQ='
-def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
-def list: if type == "array" then .[] | strings else empty end;
+readonly NORM_JQ='def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;'
+
+# release-please's tag is [component + separator] [v] version; a null component is one it reads from a package file
+readonly TAG_PARTS_JQ="$NORM_JQ"'
 def str_or($d): if type == "string" and . != "" then . else $d end;
 . as $c
 | ($c.packages // {}) | to_entries
@@ -40,49 +41,34 @@ def str_or($d): if type == "string" and . != "" then . else $d end;
     | .value as $v
     | def opt($k): $v[$k] // $c[$k];
       def flag($k; $d): if $v | has($k) then $v[$k] elif $c | has($k) then $c[$k] else $d end == true;
-      def add_path: (if $p == "." or startswith("/") then sub("^/+"; "") else "\($p)/\(.)" end) | sub("/+$"; "");
     (opt("release-type") | str_or("node")) as $type
-    | (opt("version-file") | str_or("")) as $vf
     | {
-        path: $p,
-        docker_prefix: (if flag("include-v-in-tag"; false) then "v" else "" end),
-        tag_v: (if flag("include-v-in-tag"; true) then "v" else "" end),
-        tag_separator: (opt("tag-separator") | str_or("-")),
-        tag_component: (
-          (($v.component // opt("package-name") // "") | tostring) as $comp
-          | if flag("include-component-in-tag"; true) | not then ""
-            elif $comp != "" then $comp
-            elif $type | IN("node", "dart", "helm", "rust", "sfdx") then null
-            else "" end
-        ),
-        component: ($v.component // "" | tostring),
-        exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
-        changelog: (opt("changelog-path") | str_or("CHANGELOG.md") | add_path),
-        version_files: (
-          [opt("extra-files") | if type == "array" then .[] else empty end
-            | if type == "object" and (.glob | not) then .path else . end | strings | add_path]
-          + ({
-              node: ["package.json", "package-lock.json", "npm-shrinkwrap.json", "samples/package.json"],
-              python: ["setup.cfg", "setup.py", "pyproject.toml"],
-              simple: [$vf | str_or("version.txt")],
-              go: [$vf | select(. != "")]
-            }[$type] // [] | map(add_path))
-          + (if $type == "node" or $type == "python" then ["changelog.json"] else [] end)
-        ),
-        python: ($type == "python")
+        key: $p,
+        value: {
+          v: (if flag("include-v-in-tag"; true) then "v" else "" end),
+          separator: (opt("tag-separator") | str_or("-")),
+          component: (
+            (($v.component // opt("package-name") // "") | tostring) as $comp
+            | if flag("include-component-in-tag"; true) | not then ""
+              elif $comp != "" then $comp
+              elif $type | IN("node", "dart", "helm", "rust", "sfdx") then null
+              else "" end
+          )
+        }
       }
   )
+| from_entries
 '
 
-readonly TAGS_JQ='
-def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
+readonly TAGS_JQ="$NORM_JQ"'
 if ($manifest | type) != "object" then error("manifest must be an object") else . end
 | ($manifest | to_entries | map({key: (.key | norm), value}) | from_entries) as $m
-| map(select(.tag_component != null and ($m[.path] | type) == "string")
+| map($parts[.path] as $t
+    | select($t.component != null and ($m[.path] | type) == "string")
     | {
         path,
         version: $m[.path],
-        tag: ((if .tag_component == "" then "" else .tag_component + .tag_separator end) + .tag_v + $m[.path])
+        tag: ((if $t.component == "" then "" else $t.component + $t.separator end) + $t.v + $m[.path])
       })
 '
 
@@ -112,11 +98,12 @@ is_image() {
 }
 
 package_for_tag() {
-  local tag="$1" ref="$2" config manifest pkgs match path
+  local tag="$1" ref="$2" config manifest pkgs parts match path
   config=$(fetch release-please-config.json "$ref" 2>/dev/null) || return 1
   manifest=$(fetch "$MANIFEST" "$ref" 2>/dev/null) || return 1
-  pkgs=$(jq -c "$PACKAGES_JQ" <<<"$config" 2>/dev/null) || return 1
-  match=$(jq -c --argjson manifest "$manifest" --arg tag "$tag" \
+  pkgs=$(jq -c -f "$PACKAGES_JQ_FILE" <<<"$config" 2>/dev/null) || return 1
+  parts=$(jq -c "$TAG_PARTS_JQ" <<<"$config" 2>/dev/null) || return 1
+  match=$(jq -c --argjson manifest "$manifest" --argjson parts "$parts" --arg tag "$tag" \
     "$TAGS_JQ | map(select(.tag == \$tag)) | first // empty" <<<"$pkgs" 2>/dev/null) || return 1
   [[ -n "$match" ]] || return 1
   path=$(jq -r '.path' <<<"$match")
@@ -130,8 +117,7 @@ superseded() {
   local path="$1" version="$2" default manifest latest
   default=$(gh api "repos/${GH_REPO}" | jq -er '.default_branch') || die "Cannot read the default branch"
   manifest=$(fetch "$MANIFEST" "$default") || die "Cannot read $MANIFEST on $default"
-  latest=$(jq -er --arg p "$path" '
-    def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
+  latest=$(jq -er --arg p "$path" "$NORM_JQ"'
     to_entries | map(select(.key | norm == $p)) | .[0].value | strings' <<<"$manifest") ||
     die "No version for $path in $MANIFEST on $default"
   jq -nr --arg latest "$latest" --arg version "$version" "$NEWER_JQ" || die "Cannot compare $version with $latest"

@@ -87,6 +87,37 @@ released() {
   [ "$(image_entry sungather)" = '{"name":"sungather","path":".","context":".","dockerfile":"Dockerfile","watch":[],"prepare-command":"","free-disk":false,"extra-tags":"","test-command":"","language":"","workdir":".","egress":""}' ]
 }
 
+# detect_from_copy <dir> - runs a copy of the action's directory from the repo root
+detect_from_copy() {
+  run --separate-stderr bash -c 'cd "$1" && "$2"' _ "$REPO" "$1/detect.sh"
+}
+
+@test "detect.sh finds packages.jq beside itself, wherever it is run from" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "true" ]
+}
+
+@test "detect.sh reads the package list from packages.jq" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  echo '[]' >"$BATS_TEST_TMPDIR/copy/packages.jq"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -eq 0 ]
+  [ "$(output_value has-images)" = "false" ]
+}
+
+@test "detect.sh refuses to run without packages.jq" {
+  use_layout sungather
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "$BATS_TEST_TMPDIR/copy"
+  rm "$BATS_TEST_TMPDIR/copy/packages.jq"
+  MODE=all detect_from_copy "$BATS_TEST_TMPDIR/copy"
+  [ "$status" -ne 0 ]
+  [[ "$stderr" == *"::error::"*"packages.jq"* ]]
+}
+
 @test "single-image repo: REPO_NAME overrides the repository name" {
   use_layout sungather
   export REPO_NAME=mcp-header-proxy

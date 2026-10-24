@@ -627,14 +627,52 @@ dispatched() {
   [ "$(dispatched)" = "release-please.yaml v3.0.0" ]
 }
 
-packages_jq() {
-  sed -n "/^readonly PACKAGES_JQ='/,/^'\$/p" "$1"
+# actions_copy - copies the two actions to a directory of their own, away from the repo checkout
+actions_copy() {
+  local dest="$BATS_TEST_TMPDIR/actions"
+  mkdir -p "$dest"
+  cp -R "${BATS_TEST_DIRNAME}/../.github/actions/detect-images" "${BATS_TEST_DIRNAME}/../.github/actions/release-drafts" "$dest/"
+  echo "$dest"
 }
 
-@test "drafts.sh holds the same PACKAGES_JQ as detect.sh, so both read a package's tag the same way" {
-  local detect="${BATS_TEST_DIRNAME}/../.github/actions/detect-images/detect.sh"
-  [ -n "$(packages_jq "$detect")" ]
-  [ "$(packages_jq "$SCRIPT")" = "$(packages_jq "$detect")" ]
+@test "drafts.sh finds packages.jq beside the detect-images action, wherever it is run from" {
+  local dest
+  dest=$(actions_copy)
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  same_on_main v3.0.0
+  SCRIPT="$dest/release-drafts/drafts.sh"
+  cd /
+  synthesize v3.0.0
+  [ "$status" -eq 0 ]
+  [ "$(output_of releases | jq -r '.tag_name')" = "v3.0.0" ]
+}
+
+@test "drafts.sh reads the package list from packages.jq" {
+  local dest
+  dest=$(actions_copy)
+  echo '[]' >"$dest/detect-images/packages.jq"
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  same_on_main v3.0.0
+  SCRIPT="$dest/release-drafts/drafts.sh"
+  synthesize v3.0.0
+  [ "$status" -ne 0 ]
+  [ -z "$(output_of releases)" ]
+}
+
+@test "drafts.sh refuses to run without packages.jq" {
+  local dest
+  dest=$(actions_copy)
+  rm "$dest/detect-images/packages.jq"
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  same_on_main v3.0.0
+  SCRIPT="$dest/release-drafts/drafts.sh"
+  synthesize v3.0.0
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"*"packages.jq"* ]]
+  [ -z "$(output_of releases)" ]
 }
 
 # detect_released FIXTURE REPOSITORY: detect.sh released mode over the fixture, reading the synthesized releases

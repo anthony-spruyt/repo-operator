@@ -11,6 +11,8 @@ readonly PATH_RE='^[A-Za-z0-9._][A-Za-z0-9._/-]*$'
 readonly SHA_RE='^([0-9a-f]{40}|[0-9a-f]{64})$'
 readonly VERSION_RE='^[0-9]+\.[0-9]+\.[0-9]+([-+][0-9A-Za-z.-]+)?$'
 readonly TAG_RE='^[A-Za-z0-9][A-Za-z0-9._/@+-]*$'
+PACKAGES_JQ_FILE="$(dirname -- "${BASH_SOURCE[0]}")/packages.jq"
+readonly PACKAGES_JQ_FILE
 readonly NAMES_JQ='map(.name) | if length == 0 then "(none)" else join(", ") end'
 
 mode="${MODE:-changed}"
@@ -26,6 +28,8 @@ die() {
   printf '::error::%s\n' "${msg//$'\n'/%0A}" >&2
   exit 1
 }
+
+[[ -f "$PACKAGES_JQ_FILE" ]] || die "$PACKAGES_JQ_FILE not found"
 
 # Paths are repo-relative; ".." could reach outside the checkout
 safe_path() {
@@ -116,63 +120,13 @@ image_entry() {
   return 0
 }
 
-# Version files mirror release-please's src/strategies/*.ts; other release types fall back to building.
-# The docker tag gets a v only when include-v-in-tag is set true.
-# release-drafts/drafts.sh holds a copy of this program; test/release-drafts.bats fails when the two differ.
-# The tag_* fields rebuild release-please's git tag: [component + separator] [v] version. A null tag_component
-# marks a component release-please would read from a package file.
-readonly PACKAGES_JQ='
-def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
-def list: if type == "array" then .[] | strings else empty end;
-def str_or($d): if type == "string" and . != "" then . else $d end;
-. as $c
-| ($c.packages // {}) | to_entries
-| map(
-    (.key | norm) as $p
-    | .value as $v
-    | def opt($k): $v[$k] // $c[$k];
-      def flag($k; $d): if $v | has($k) then $v[$k] elif $c | has($k) then $c[$k] else $d end == true;
-      def add_path: (if $p == "." or startswith("/") then sub("^/+"; "") else "\($p)/\(.)" end) | sub("/+$"; "");
-    (opt("release-type") | str_or("node")) as $type
-    | (opt("version-file") | str_or("")) as $vf
-    | {
-        path: $p,
-        docker_prefix: (if flag("include-v-in-tag"; false) then "v" else "" end),
-        tag_v: (if flag("include-v-in-tag"; true) then "v" else "" end),
-        tag_separator: (opt("tag-separator") | str_or("-")),
-        tag_component: (
-          (($v.component // opt("package-name") // "") | tostring) as $comp
-          | if flag("include-component-in-tag"; true) | not then ""
-            elif $comp != "" then $comp
-            elif $type | IN("node", "dart", "helm", "rust", "sfdx") then null
-            else "" end
-        ),
-        component: ($v.component // "" | tostring),
-        exclude: [opt("exclude-paths") | list | sub("^/+"; "") | norm],
-        changelog: (opt("changelog-path") | str_or("CHANGELOG.md") | add_path),
-        version_files: (
-          [opt("extra-files") | if type == "array" then .[] else empty end
-            | if type == "object" and (.glob | not) then .path else . end | strings | add_path]
-          + ({
-              node: ["package.json", "package-lock.json", "npm-shrinkwrap.json", "samples/package.json"],
-              python: ["setup.cfg", "setup.py", "pyproject.toml"],
-              simple: [$vf | str_or("version.txt")],
-              go: [$vf | select(. != "")]
-            }[$type] // [] | map(add_path))
-          + (if $type == "node" or $type == "python" then ["changelog.json"] else [] end)
-        ),
-        python: ($type == "python")
-      }
-  )
-'
-
 list_images() {
   local config="$1" label="$2" pkgs entries=() line path component name entry
   if [[ ! -f "$config" ]]; then
     echo '{"packages":[],"images":[]}'
     return 0
   fi
-  pkgs=$(jq -c "$PACKAGES_JQ" "$config") || die "$label: invalid config"
+  pkgs=$(jq -c -f "$PACKAGES_JQ_FILE" "$config") || die "$label: invalid config"
   while IFS= read -r line; do
     path=$(jq -r '.path' <<<"$line")
     component=$(jq -r '.component' <<<"$line")
