@@ -49,6 +49,13 @@ output_of() {
   sed -n "s/^$1=//p" "$GITHUB_OUTPUT"
 }
 
+# same_on_main REF - the default branch holds what REF holds, so the release of REF is the newest
+same_on_main() {
+  local dir="$FAKE_STATE/contents/${1//\//%2F}"
+  mkdir -p "$FAKE_STATE/contents/main"
+  cp "$dir/release-please-config.json" "$dir/.release-please-manifest.json" "$FAKE_STATE/contents/main/"
+}
+
 synthesize() {
   MODE=synthesize TAG="$1" run "$SCRIPT"
 }
@@ -56,6 +63,7 @@ synthesize() {
 @test "synthesize maps a component tag with a slash separator to its image package" {
   put_fixture shutdown-orchestrator/v1.1.25 spruyt-labs
   put_file shutdown-orchestrator/v1.1.25 cmd/shutdown-orchestrator/Dockerfile
+  same_on_main shutdown-orchestrator/v1.1.25
   synthesize shutdown-orchestrator/v1.1.25
   echo "$output"
   [ "$status" -eq 0 ]
@@ -65,6 +73,7 @@ synthesize() {
 @test "synthesize maps a root package without a component to a bare v tag" {
   put_fixture v3.0.0 sungather
   put_file v3.0.0 Dockerfile
+  same_on_main v3.0.0
   synthesize v3.0.0
   echo "$output"
   [ "$status" -eq 0 ]
@@ -74,6 +83,7 @@ synthesize() {
 @test "synthesize maps a component tag with a dash separator and no v" {
   put_fixture chrony-5.0.6 container-images
   put_file chrony-5.0.6 chrony/Dockerfile
+  same_on_main chrony-5.0.6
   synthesize chrony-5.0.6
   echo "$output"
   [ "$status" -eq 0 ]
@@ -83,6 +93,7 @@ synthesize() {
 @test "synthesize counts a package holding flavor.yaml as an image" {
   put_fixture chrony-5.0.6 container-images
   put_file chrony-5.0.6 chrony/flavor.yaml
+  same_on_main chrony-5.0.6
   synthesize chrony-5.0.6
   echo "$output"
   [ "$status" -eq 0 ]
@@ -91,6 +102,7 @@ synthesize() {
 @test "synthesize applies the top-level defaults and a dot separator" {
   put_repo dotted.0.2.0 '{"include-v-in-tag":false,"packages":{"tools/dotted":{"release-type":"simple","component":"dotted","tag-separator":"."}}}' '{"tools/dotted":"0.2.0"}'
   put_file dotted.0.2.0 tools/dotted/Dockerfile
+  same_on_main dotted.0.2.0
   synthesize dotted.0.2.0
   echo "$output"
   [ "$status" -eq 0 ]
@@ -133,6 +145,7 @@ synthesize() {
 @test "synthesize writes the outputs release-please-action would, as strings keyed by package path" {
   put_fixture shutdown-orchestrator/v1.1.25 spruyt-labs
   put_file shutdown-orchestrator/v1.1.25 cmd/shutdown-orchestrator/Dockerfile
+  same_on_main shutdown-orchestrator/v1.1.25
   synthesize shutdown-orchestrator/v1.1.25
   [ "$status" -eq 0 ]
   [ "$(output_of release-created)" = "true" ]
@@ -142,6 +155,7 @@ synthesize() {
 @test "synthesize leaves the keys of a root package unprefixed" {
   put_fixture v3.0.0 sungather
   put_file v3.0.0 Dockerfile
+  same_on_main v3.0.0
   synthesize v3.0.0
   [ "$status" -eq 0 ]
   [ "$(output_of releases)" = '{"paths_released":"[\".\"]","tag_name":"v3.0.0","version":"3.0.0","superseded":"false"}' ]
@@ -199,13 +213,51 @@ synthesize() {
   [ "$(output_of releases | jq -r '.superseded')" = "true" ]
 }
 
-@test "synthesize does not mark a release superseded when the default branch no longer lists the package" {
+# refuses_synthesis - synthesize failed with an error and wrote no outputs
+refuses_synthesis() {
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::error::"* ]]
+  [ -z "$(output_of releases)" ]
+}
+
+@test "synthesize refuses when the default branch cannot be read" {
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  touch "$FAKE_STATE/repo-fail"
+  synthesize v3.0.0
+  refuses_synthesis
+}
+
+@test "synthesize refuses when the default branch manifest cannot be read" {
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  synthesize v3.0.0
+  refuses_synthesis
+  [[ "$output" == *".release-please-manifest.json"* ]]
+}
+
+@test "synthesize refuses when the default branch manifest is not JSON" {
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  put_file main .release-please-manifest.json 'not json'
+  synthesize v3.0.0
+  refuses_synthesis
+}
+
+@test "synthesize refuses when the default branch no longer lists the package" {
   put_fixture v3.0.0 sungather
   put_file v3.0.0 Dockerfile
   put_repo main '{"packages":{}}' '{}'
   synthesize v3.0.0
-  [ "$status" -eq 0 ]
-  [ "$(output_of releases | jq -r '.superseded')" = "false" ]
+  refuses_synthesis
+}
+
+@test "synthesize refuses when a version cannot be compared" {
+  put_fixture v3.0.0 sungather
+  put_file v3.0.0 Dockerfile
+  put_repo main "$(<"$FX/detect-images/sungather/release-please-config.json")" '{".":"latest"}'
+  synthesize v3.0.0
+  refuses_synthesis
 }
 
 # add_release TAG DRAFT
@@ -454,6 +506,15 @@ dispatched() {
   [ "$status" -eq 0 ]
   [ -z "$(dispatched)" ]
   [ ! -s "$FAKE_STATE/calls" ]
+}
+
+@test "recover warns and fails when the draft listing fails" {
+  stuck_draft v3.0.0 sungather ""
+  touch "$FAKE_STATE/releases-fail"
+  recover
+  [ "$status" -ne 0 ]
+  [[ "$output" == *"::warning::"* ]]
+  [ -z "$(dispatched)" ]
 }
 
 @test "recover reads every page of the releases" {

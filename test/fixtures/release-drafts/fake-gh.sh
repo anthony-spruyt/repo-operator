@@ -6,6 +6,8 @@
 #   runs/<tag, / as %2F>.json         the workflow runs of a tag
 #   dispatch-fail                     tags whose dispatch fails
 #   default_branch                    the default branch (main when absent)
+#   repo-fail                         when present, the repository API call fails
+#   releases-fail                     when present, listing the releases fails
 # Every call is logged to FAKE_STATE/calls as "token=<GH_TOKEN> <args>"; dispatches also go to FAKE_STATE/dispatched.
 set -euo pipefail
 
@@ -51,6 +53,10 @@ repos/*/contents/*)
   cat "$file"
   ;;
 repos/*/releases\?*)
+  if [[ -f "$FAKE_STATE/releases-fail" ]]; then
+    echo "gh: Server Error (HTTP 502)" >&2
+    exit 1
+  fi
   if [[ -f "$FAKE_STATE/releases.json" ]]; then cat "$FAKE_STATE/releases.json"; else echo '[]'; fi
   ;;
 repos/*/git/matching-refs/tags/*)
@@ -71,6 +77,10 @@ repos/*/actions/workflows/*/runs\?*)
   if [[ -f "$file" ]]; then cat "$file"; else echo '{"workflow_runs":[]}'; fi
   ;;
 repos/*/*)
+  if [[ -f "$FAKE_STATE/repo-fail" ]]; then
+    echo "gh: Server Error (HTTP 500)" >&2
+    exit 1
+  fi
   if [[ -f "$FAKE_STATE/default_branch" ]]; then branch=$(<"$FAKE_STATE/default_branch"); else branch=main; fi
   jq -nc --arg b "$branch" '{default_branch: $b}'
   ;;

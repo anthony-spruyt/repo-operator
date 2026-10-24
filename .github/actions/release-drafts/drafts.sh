@@ -89,9 +89,9 @@ if ($manifest | type) != "object" then error("manifest must be an object") else 
 # True when the latest version is newer than this one; a prerelease sorts below its release
 readonly NEWER_JQ='
 def key: sub("\\+.*$"; "")
-  | capture("^(?<core>[0-9]+(\\.[0-9]+)*)(-(?<pre>.*))?$")
+  | (capture("^(?<core>[0-9]+(\\.[0-9]+)*)(-(?<pre>.*))?$") // error("not a version"))
   | [(.core | split(".") | map(tonumber)), (if .pre == null then [1, ""] else [0, .pre] end)];
-try (($latest | key) > ($version | key)) catch false
+($latest | key) > ($version | key)
 '
 
 uri() {
@@ -127,16 +127,14 @@ package_for_tag() {
 }
 
 superseded() {
-  local path="$1" version="$2" default latest
-  default=$(gh api "repos/${GH_REPO}" | jq -r '.default_branch')
-  latest=$(fetch "$MANIFEST" "$default" 2>/dev/null | jq -r --arg p "$path" '
+  local path="$1" version="$2" default manifest latest
+  default=$(gh api "repos/${GH_REPO}" | jq -er '.default_branch') || die "Cannot read the default branch"
+  manifest=$(fetch "$MANIFEST" "$default") || die "Cannot read $MANIFEST on $default"
+  latest=$(jq -er --arg p "$path" '
     def norm: sub("^(\\./)+"; "") | sub("/+$"; "") | if . == "" then "." else . end;
-    to_entries | map(select(.key | norm == $p)) | first.value // ""' 2>/dev/null) || latest=""
-  [[ -n "$latest" ]] || {
-    echo false
-    return 0
-  }
-  jq -nr --arg latest "$latest" --arg version "$version" "$NEWER_JQ"
+    to_entries | map(select(.key | norm == $p)) | .[0].value | strings' <<<"$manifest") ||
+    die "No version for $path in $MANIFEST on $default"
+  jq -nr --arg latest "$latest" --arg version "$version" "$NEWER_JQ" || die "Cannot compare $version with $latest"
   return 0
 }
 
@@ -234,7 +232,7 @@ recover_one() {
 }
 
 recover() {
-  local ref="${WORKFLOW_REF#"${GH_REPO}/"}" path skip tag
+  local ref="${WORKFLOW_REF#"${GH_REPO}/"}" path skip drafts tag
   if [[ "${GITHUB_REF_TYPE:-}" == "tag" ]]; then
     echo "::notice::Tag-ref runs do not recover drafts"
     return 0
@@ -245,9 +243,14 @@ recover() {
   MAX_FAILURES="${MAX_FAILURES:-3}"
   [[ -n "${APP_TOKEN:-}" ]] || die "APP_TOKEN is required"
   skip=$(released_tags)
+  drafts=$(draft_tags "$skip" | jq -r '.[]') || {
+    echo "::warning::Could not list the draft releases"
+    return 1
+  }
   while IFS= read -r tag; do
+    [[ -n "$tag" ]] || continue
     recover_one "$tag" "$path" "${path##*/}"
-  done < <(draft_tags "$skip" | jq -r '.[]')
+  done <<<"$drafts"
   return 0
 }
 
