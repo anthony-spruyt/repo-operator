@@ -26,11 +26,16 @@ direct_steps() {
 # unswitched <root> <regex> <file>... - prints file:job for each job with steps whose first step's uses does not match the regex
 unswitched() {
   local root="$1" file
-  export RE="$2"
+  local -x RE="$2"
   shift 2
   for file in "$@"; do
     yq -r '(.jobs // {}) | to_entries[] | select(.value.steps != null) | select(((.value.steps[0].uses // "") | test(strenv(RE))) | not) | .key' "$root/$file" | sed "s|^|$file:|"
   done
+}
+
+# loose_pins <file>... - prints file: line for each reference to the composite that is not a full-SHA pin with a # main comment
+loose_pins() {
+  awk '/[.]github\/actions\/harden-runner@/ && !/^ +(- )?uses: "anthony-spruyt\/repo-operator\/[.]github\/actions\/harden-runner@[0-9a-f]{40}" # main$/ { print FILENAME ": " $0 }' "$@"
 }
 
 # telemetry_off <root> <file>... - prints file:job for each step that turns telemetry off without being a direct harden-runner step on block
@@ -70,8 +75,19 @@ owned() {
 }
 
 # synced_sources <root> - prints the src/templates source of each synced workflow, which stays right before and after xfg rewrites the copy
+# The template is the last "@templates/" content that files.yaml, the repo's groups (extends first) and its repos.yaml entry give the path; object content overlays are skipped
 synced_sources() {
-  synced "$1" | sed 's|^|src/templates/|'
+  local root="$1"
+  jq -n -r --slurpfile managed "$root/.github/xfg-managed.json" \
+    --argjson base "$(yq -o=json '.files // {}' "$root/src/files.yaml")" \
+    --argjson groups "$(yq -o=json '.groups' "$root/src/groups.yaml")" \
+    --argjson repo "$(yq -o=json '.repos[] | select(.git | test("/repo-operator[.]git$"))' "$root/src/repos.yaml")" '
+    def files_of($g): ([$groups[$g].extends // empty] | flatten | map(files_of(.)) | add // []) + [($groups[$g].files // {}) | to_entries[]];
+    ([$base | to_entries[]] + (($repo.groups // []) | map(files_of(.)) | add // []) + [($repo.files // {}) | to_entries[]])
+    | map(select((.value | type) == "object" and (.value.content | type) == "string" and (.value.content | startswith("@templates/"))) | {(.key): (.value.content | sub("^@templates/"; "src/templates/"))})
+    | add // {}
+    | . as $source
+    | $managed[0]["anthony-spruyt/repo-operator"][] | select(startswith(".github/workflows/")) | $source[.] // empty'
 }
 
 # all_workflows <root> - prints the owned workflows, then every template
@@ -125,6 +141,8 @@ YAML
   [ "$output" = $'.github/workflows/w.yaml:late\n.github/workflows/w.yaml:direct\n.github/workflows/w.yaml:bare' ]
   run composite_calls "$BATS_TEST_TMPDIR" "$OWN_RE" .github/workflows/w.yaml
   [ "$output" = $'.github/workflows/w.yaml:good\t0\tallowed-endpoints,disable-sudo-and-containers\t2\n.github/workflows/w.yaml:late\t1\tallowed-endpoints\t1\n.github/workflows/w.yaml:stray\t0\tegress-policy\t0' ]
+  unswitched "$BATS_TEST_TMPDIR" "$OWN_RE" .github/workflows/w.yaml >/dev/null
+  [ -z "${RE+x}" ]
 }
 
 @test "the synced pattern takes only a full-SHA pin of this repo's composite, and flags a short SHA, a tag, another owner and the local form" {
@@ -157,16 +175,58 @@ YAML
   [ "$output" = $'.github/workflows/s.yaml:short\n.github/workflows/s.yaml:tag\n.github/workflows/s.yaml:foreign\n.github/workflows/s.yaml:local\n.github/workflows/s.yaml:late' ]
   run composite_calls "$BATS_TEST_TMPDIR" "$SYNCED_RE" .github/workflows/s.yaml
   [ "$output" = $'.github/workflows/s.yaml:pinned\t0\tallowed-endpoints\t1\n.github/workflows/s.yaml:late\t1\t\t0' ]
+  local f="$BATS_TEST_TMPDIR/.github/workflows/s.yaml" h=anthony-spruyt/repo-operator/.github/actions/harden-runner
+  run loose_pins "$f"
+  [ "$output" = "$f:       - uses: ${h}@0123456"$'\n'"$f:       - uses: ${h}@main"$'\n'"$f:       - uses: someone/else/.github/actions/harden-runner@0123456789abcdef0123456789abcdef01234567"$'\n'"$f:       - uses: ${h}@0123456789abcdef0123456789abcdef01234567" ]
 }
 
-@test "the ownership helpers drop the synced workflows from the owned list and map each to its template" {
-  mkdir -p "$BATS_TEST_TMPDIR/.github/workflows"
-  touch "$BATS_TEST_TMPDIR/.github/workflows/own.yaml" "$BATS_TEST_TMPDIR/.github/workflows/copy.yaml"
-  echo '{"anthony-spruyt/repo-operator":["lint.sh",".github/workflows/copy.yaml"],"anthony-spruyt/other":[".github/workflows/own.yaml"]}' >"$BATS_TEST_TMPDIR/.github/xfg-managed.json"
+@test "the ownership helpers drop the synced workflows from the owned list and map each to the template its group or repo entry names" {
+  mkdir -p "$BATS_TEST_TMPDIR/.github/workflows" "$BATS_TEST_TMPDIR/src"
+  touch "$BATS_TEST_TMPDIR/.github/workflows/own.yaml" "$BATS_TEST_TMPDIR/.github/workflows/copy.yaml" "$BATS_TEST_TMPDIR/.github/workflows/solo.yaml"
+  echo '{"anthony-spruyt/repo-operator":["lint.sh",".github/workflows/copy.yaml",".github/workflows/solo.yaml"],"anthony-spruyt/other":[".github/workflows/own.yaml"]}' >"$BATS_TEST_TMPDIR/.github/xfg-managed.json"
+  cat >"$BATS_TEST_TMPDIR/src/files.yaml" <<'YAML'
+files:
+  lint.sh:
+    content: "@templates/lint.sh"
+YAML
+  cat >"$BATS_TEST_TMPDIR/src/groups.yaml" <<'YAML'
+groups:
+  plain:
+    files:
+      .github/workflows/copy.yaml:
+        content: "@templates/.github/workflows/copy.yaml"
+  base:
+    files:
+      .github/workflows/copy.yaml:
+        content: "@templates/.github/workflows/copy.yaml"
+  image:
+    extends: base
+    files:
+      .github/workflows/copy.yaml:
+        content: "@templates/.github/workflows/image-copy.yaml"
+  lang:
+    files:
+      .github/workflows/copy.yaml:
+        content:
+          jobs: {}
+YAML
+  cat >"$BATS_TEST_TMPDIR/src/repos.yaml" <<'YAML'
+repos:
+  - git: https://github.com/anthony-spruyt/other.git
+    groups:
+      - plain
+  - git: https://github.com/anthony-spruyt/repo-operator.git
+    groups:
+      - image
+      - lang
+    files:
+      .github/workflows/solo.yaml:
+        content: "@templates/.github/workflows/solo-template.yaml"
+YAML
   run owned "$BATS_TEST_TMPDIR"
   [ "$output" = ".github/workflows/own.yaml" ]
   run synced_sources "$BATS_TEST_TMPDIR"
-  [ "$output" = "src/templates/.github/workflows/copy.yaml" ]
+  [ "$output" = $'src/templates/.github/workflows/image-copy.yaml\nsrc/templates/.github/workflows/solo-template.yaml' ]
 }
 
 @test "the telemetry helper flags telemetry off on a composite call, an audit step and a quoted value, not on a direct block step" {
@@ -221,13 +281,14 @@ YAML
   [ "$(sort <<<"$output")" = "$(allowed_jobs | sort)" ]
 }
 
-@test "every synced workflow, read at its template, starts each job with the composite pinned by a full SHA of this repo" {
+@test "every synced workflow, read at its template, starts each job with the composite pinned by a full SHA of this repo with a # main comment" {
   mapfile -t files < <(synced_sources "$REPO_ROOT")
   [ "${#files[@]}" -gt 0 ]
+  [ "${#files[@]}" -eq "$(synced "$REPO_ROOT" | wc -l)" ]
   run unswitched "$REPO_ROOT" "$SYNCED_RE" "${files[@]}"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
-  run awk '/[.]github\/actions\/harden-runner@/ && !/^ +uses: "anthony-spruyt\/repo-operator\/[.]github\/actions\/harden-runner@[0-9a-f]{40}" # main$/ { print FILENAME ": " $0 }' "${files[@]/#/$REPO_ROOT/}"
+  run loose_pins "${files[@]/#/$REPO_ROOT/}"
   [ "$status" -eq 0 ]
   [ -z "$output" ]
 }

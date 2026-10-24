@@ -129,8 +129,8 @@ Its one step sets `egress-policy`, so that line in `.github/actions/harden-runne
 `audit` records each job's outbound calls; `block` refuses calls to hosts off the job's allowlist. Those are the only two values.
 
 The action passes `allowed-endpoints` (default empty) and `disable-sudo-and-containers` (default `"false"`) to harden-runner unchanged. A caller never sets `egress-policy` itself.
-Shared workflows call it as `$/.github/actions/harden-runner`. Workflows that a repo owns (not synced) call `anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha> # main`, and Renovate bumps that pin with the `repo-operator shared CI` group. The synced `pr-title.yaml` calls it that way from its template. Keep every job's allowlist current in either mode, so a flip to `block` needs no other edit.
-`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs, except `lychee` and XFG Apply. It reads a synced workflow at its `src/templates/` source and wants the pin to be a full SHA of `anthony-spruyt/repo-operator`.
+Repo-operator's own workflows call it as `$/.github/actions/harden-runner`; workflows in other repos, and the synced `pr-title.yaml` template, call `anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha> # main`. Renovate bumps that pin with the `repo-operator shared CI` group. Keep every job's allowlist current in either mode, so a flip to `block` needs no other edit.
+`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs, except `lychee` and XFG Apply. It reads a synced workflow at its `src/templates/` source and wants the pin to be a full SHA of `anthony-spruyt/repo-operator` with a `# main` comment.
 
 Two jobs call harden-runner directly:
 
@@ -143,7 +143,7 @@ To flip the mode, edit the `egress-policy` line. The file is under `.github/`, s
 2. Merge the pin bump.
 3. Approve the XFG Apply, which carries the new pin to the synced callers.
 
-Repo-operator's own workflows follow the merge itself. Repo-owned workflows in other repos follow their own repo's Renovate pin bump.
+Repo-operator's own workflows follow the merge itself, but its synced copies (`pr-title.yaml`, `trivy-scan.yaml`) change only after the pin bump and the XFG Apply. Repo-owned workflows in other repos follow their own repo's Renovate pin bump.
 
 The mode is `audit` because some GitHub-hosted runners drop allowlisted connections under `block` ([step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708), [actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925)). Flip back to `block` once both are fixed.
 
@@ -369,10 +369,10 @@ Repos squash-merge with the PR title and a blank body, so the title becomes the 
 | Breaking | `!` after the type or scope: `feat(api)!: ...`                                                 |
 | Subject  | Must not start with an uppercase letter: `fix: Add x` fails, `fix: add x` passes               |
 
-It runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request), pinned by SHA, on `pull_request` into `main` (`opened`, `edited`, `synchronize`, `reopened`). The job has only `pull-requests: read`, checks out nothing, and runs behind the [`harden-runner`](#harden-runner) action with an allowlist of the GitHub API. The action reads the PR's current title through the API, so it works
+It runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request), pinned by SHA, on `pull_request` into `main` (`opened`, `edited`, `synchronize`, `reopened`). The job has only `pull-requests: read`, checks out nothing, and runs behind the [`harden-runner`](#harden-runner) action with an allowlist of the GitHub API and the Actions results service. The action reads the PR's current title through the API, so it works
 the same on fork PRs, whose `GITHUB_TOKEN` is read-only. Renaming a PR re-runs only this workflow, not `CI`. It skips Mergify merge-queue PRs, with the same condition as `_sonar-new-issues.yaml`, and a skipped required check counts as a pass.
 
-`PR Title` is a required check in every `pr-rules` ruleset, next to `summary / Check Results`. Repos without `pr-rules` run it as advisory. repo-operator's own copy in `.github/workflows/` is the synced file, and Guard Tests keep it equal to the template.
+`PR Title` is a required check in every `pr-rules` ruleset, next to `summary / Check Results`. Repos without `pr-rules` run it as advisory. repo-operator's own copy in `.github/workflows/` is written by XFG Apply from the template, and the tests check the template.
 
 ## Managed image repos
 
