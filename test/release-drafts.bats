@@ -216,18 +216,18 @@ add_release() {
   mv "$f.tmp" "$f"
 }
 
-# caller_at REF [without]
+# caller_at REF [without]: the caller file at REF, with a job that calls _release-recover.yaml unless "without"
 caller_at() {
-  local with='    with:
-      recover-drafts: true'
-  [[ "${2:-}" != "without" ]] || with=""
+  local uses="anthony-spruyt/repo-operator/.github/workflows/_release-recover.yaml@0000000000000000000000000000000000000000"
+  [[ "${2:-}" != "without" ]] || uses="anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0000000000000000000000000000000000000000"
   put_file "$1" .github/workflows/release-please.yaml "on:
   push:
     branches: [main]
 jobs:
   release:
     uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0000000000000000000000000000000000000000
-$with"
+  recover:
+    uses: $uses"
 }
 
 # stuck_draft TAG FIXTURE IMAGE_DIR: a draft whose tag exists and is an image package's release tag
@@ -336,6 +336,29 @@ dispatched() {
   caller_at v3.0.0 without
   recover
   [ "$status" -eq 0 ]
+  [ -z "$(dispatched)" ]
+}
+
+@test "recover takes a caller with a job that calls _release-recover.yaml for one that recovers, and nothing else" {
+  stuck_draft v3.0.0 sungather ""
+  put_file v3.0.0 .github/workflows/release-please.yaml "jobs:
+  recover:
+    uses: someone-else/repo-operator/.github/workflows/_release-recover.yaml@0000000000000000000000000000000000000000"
+  recover
+  [ "$status" -eq 0 ]
+  [ -z "$(dispatched)" ]
+  put_file v3.0.0 .github/workflows/release-please.yaml "jobs:
+  release:
+    name: _release-recover.yaml
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0000000000000000000000000000000000000000"
+  recover
+  [ -z "$(dispatched)" ]
+  put_file v3.0.0 .github/workflows/release-please.yaml "jobs:
+  release:
+    uses: anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0000000000000000000000000000000000000000
+    with:
+      recover-drafts: true"
+  recover
   [ -z "$(dispatched)" ]
 }
 

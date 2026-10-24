@@ -153,38 +153,42 @@ go_version_step() {
   [ "$output" = $'go-version=\ngo-version-file=svc/go.mod' ]
 }
 
-@test "_release-please.yaml runs one job and outputs what it released, or what a tag-ref run synthesised" {
+@test "_release-please.yaml runs only release-please and outputs what it released" {
   run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs // {} | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-please.yaml"
-  [ "$output" = '[["release-please"],["recover-drafts"],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
+  [ "$output" = '[["release-please"],[],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
   run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-please.yaml"
   [ "$output" = '["${{ jobs.release-please.outputs.release-created }}","${{ jobs.release-please.outputs.releases }}"]' ]
   run yq -o=json -I0 '.jobs["release-please"].outputs' "$WF/_release-please.yaml"
-  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created || steps.tag.outputs.release-created }}","releases":"${{ steps.tag.outputs.releases || toJSON(steps.release.outputs) }}"}' ]
+  [ "$output" = '{"release-created":"${{ steps.release.outputs.releases_created }}","releases":"${{ toJSON(steps.release.outputs) }}"}' ]
+  run yq -o=json -I0 '.jobs["release-please"].permissions' "$WF/_release-please.yaml"
+  [ "$output" = '{"contents":"read"}' ]
 }
 
-@test "_release-please.yaml recovers drafts only when a caller opts in, and the job may dispatch workflows" {
-  run yq -o=json -I0 '.on.workflow_call.inputs["recover-drafts"] | [.type, .default, .required]' "$WF/_release-please.yaml"
-  [ "$output" = '["boolean",false,false]' ]
-  run yq -o=json -I0 '.jobs["release-please"] | [.permissions | to_entries | sort_by(.key) | from_entries, .environment, ."timeout-minutes"]' "$WF/_release-please.yaml"
-  [ "$output" = '[{"actions":"write","contents":"read"},"release",10]' ]
+@test "_release-recover.yaml takes the releases of its run and the release App secrets, and outputs a tag-ref run's release" {
+  run yq -o=json -I0 '[(.jobs | keys), (.on.workflow_call.inputs | keys), (.on.workflow_call.secrets | keys), (.on.workflow_call.outputs | keys)]' "$WF/_release-recover.yaml"
+  [ "$output" = '[["dispatch","synthesize"],["releases"],["RELEASE_PLEASE_APP_CLIENT_ID","RELEASE_PLEASE_APP_PRIVATE_KEY"],["release-created","releases"]]' ]
+  run yq -o=json -I0 '.on.workflow_call.inputs.releases | [.type, .required, .default]' "$WF/_release-recover.yaml"
+  [ "$output" = '["string",false,""]' ]
+  run yq -o=json -I0 '.on.workflow_call.outputs | [.["release-created"].value, .releases.value]' "$WF/_release-recover.yaml"
+  [ "$output" = '["${{ jobs.synthesize.outputs.release-created }}","${{ jobs.synthesize.outputs.releases }}"]' ]
 }
 
-@test "_release-please.yaml leaves release-please and the App token out of an opted-in tag-ref run" {
-  local steps='.jobs["release-please"].steps[]'
-  run yq -o=json -I0 "[$steps | select(.id == \"app-token\" or .id == \"release\") | .if]" "$WF/_release-please.yaml"
-  [ "$output" = '["${{ !(inputs.recover-drafts && github.ref_type == '"'tag'"') }}","${{ !(inputs.recover-drafts && github.ref_type == '"'tag'"') }}"]' ]
+@test "_release-recover.yaml dispatches only from a branch run, in the release environment, with the App token" {
+  run yq -o=json -I0 '.jobs.dispatch | [.if, .environment, (.permissions | to_entries | sort_by(.key) | from_entries), ."timeout-minutes"]' "$WF/_release-recover.yaml"
+  [ "$output" = "[\"github.ref_type == 'branch'\",\"release\",{\"actions\":\"write\",\"contents\":\"read\"},10]" ]
+  run yq -o=json -I0 '.jobs.dispatch.steps[] | select(.id == "app-token") | .with | with_entries(select(.key | test("^permission-")))' "$WF/_release-recover.yaml"
+  [ "$output" = '{"permission-contents":"write"}' ]
+  run yq -o=json -I0 '.jobs.dispatch.steps[] | select(.uses == "$/.github/actions/release-drafts") | [.["continue-on-error"], .with]' "$WF/_release-recover.yaml"
+  [ "$output" = '[true,{"mode":"recover","app-token":"${{ steps.app-token.outputs.token }}","releases":"${{ inputs.releases }}"}]' ]
 }
 
-@test "_release-please.yaml recovers drafts after release-please on main only, without failing the release" {
-  run yq -o=json -I0 '.jobs["release-please"].steps[] | select(.id == "recover") | [.if, .["continue-on-error"], .uses, .with]' "$WF/_release-please.yaml"
-  [ "$output" = '["${{ inputs.recover-drafts && github.ref == '"'refs/heads/main'"' }}",true,"$/.github/actions/release-drafts",{"mode":"recover","app-token":"${{ steps.app-token.outputs.token }}","releases":"${{ toJSON(steps.release.outputs) }}"}]' ]
-  run jq -c 'index("recover") > index("release")' < <(yq -o=json -I0 '[.jobs["release-please"].steps[].id]' "$WF/_release-please.yaml")
-  [ "$output" = "true" ]
-}
-
-@test "_release-please.yaml synthesises a tag-ref run's outputs without the App token" {
-  run yq -o=json -I0 '.jobs["release-please"].steps[] | select(.id == "tag") | [.if, .uses, .with]' "$WF/_release-please.yaml"
-  [ "$output" = '["${{ inputs.recover-drafts && github.ref_type == '"'tag'"' }}","$/.github/actions/release-drafts",{"mode":"synthesize"}]' ]
+@test "_release-recover.yaml builds a tag-ref run's release without an environment or the App token" {
+  run yq -o=json -I0 '.jobs.synthesize | [.if, has("environment"), .permissions, ."timeout-minutes", .outputs]' "$WF/_release-recover.yaml"
+  [ "$output" = "[\"github.ref_type == 'tag'\",false,{\"contents\":\"read\"},10,{\"release-created\":\"\${{ steps.tag.outputs.release-created }}\",\"releases\":\"\${{ steps.tag.outputs.releases }}\"}]" ]
+  run yq -o=json -I0 '.jobs.synthesize.steps[] | select(.id == "tag") | [.uses, .with]' "$WF/_release-recover.yaml"
+  [ "$output" = '["$/.github/actions/release-drafts",{"mode":"synthesize"}]' ]
+  run yq -r '.jobs.synthesize | [.. | select(tag == "!!str")] | map(select(test("secrets[.]|create-github-app-token"))) | length' "$WF/_release-recover.yaml"
+  [ "$output" = "0" ]
 }
 
 @test "_release-images.yaml detects the images in the releases it is given" {
@@ -217,7 +221,7 @@ go_version_step() {
 @test "the image workflows pass actionlint with this repo's config" {
   cd "$REPO_ROOT"
   run actionlint -no-color .github/workflows/_images.yaml .github/workflows/_build-image.yaml \
-    .github/workflows/_release-please.yaml .github/workflows/_release-images.yaml
+    .github/workflows/_release-please.yaml .github/workflows/_release-recover.yaml .github/workflows/_release-images.yaml
   echo "$output"
   [ "$status" -eq 0 ]
 }

@@ -5,7 +5,7 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   WF="$REPO_ROOT/.github/workflows"
   export PR_TRIGGERS='^(pull_request(_target|_review|_review_comment)?|merge_group|issue_comment|workflow_run|check_run|check_suite|status|deployment_status)$'
-  RELEASE_ENTRIES=(.github/workflows/_release-please.yaml .github/workflows/_release-images.yaml src/templates/.github/workflows/release-please.yaml src/templates/.github/workflows/image-release-please.yaml)
+  RELEASE_ENTRIES=(.github/workflows/_release-please.yaml .github/workflows/_release-recover.yaml .github/workflows/_release-images.yaml src/templates/.github/workflows/release-please.yaml src/templates/.github/workflows/image-release-please.yaml)
 }
 
 # local_target <root> <from> <uses> - prints the repo path a same-repo uses: in <from> points at, or nothing for another repo's action; a template's $/ and ./ are its target repo
@@ -88,7 +88,7 @@ pr_triggered() {
 release_jobs() {
   local root="$1" file
   while IFS= read -r file; do
-    yq -r '(.jobs // {}) | to_entries[] | select(.value.uses != null) | select((.value.uses | test("/_release-(please|images)\.yaml(@|$)")) or ((.value.uses | test("/_build-image\.yaml(@|$)")) and ((.value.with.push // false) != false))) | .key' "$root/$file" | sed "s|^|$file:|"
+    yq -r '(.jobs // {}) | to_entries[] | select(.value.uses != null) | select((.value.uses | test("/_release-(please|recover|images)\.yaml(@|$)")) or ((.value.uses | test("/_build-image\.yaml(@|$)")) and ((.value.with.push // false) != false))) | .key' "$root/$file" | sed "s|^|$file:|"
   done < <(reachable "$root" "$2")
 }
 
@@ -105,7 +105,7 @@ pr_release_calls() {
 overlay_release_calls() {
   local src="$1" file key tpl
   for file in "$src"/*.yaml; do
-    yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$file" | sed "s|^|${file##*/}: |"
+    yq -r 'explode(.) | [.. | select(tag == "!!map" and has("files")) | .files | select(tag == "!!map") | to_entries[] | select(.key | test("^\.github/workflows/")) | select(.value.content | tag == "!!map") | select([.value.content | .. | select(tag == "!!map") | select(((.uses // "") | test("/_release-(please|recover|images)\.yaml(@|$)")) or ((.with // {}) | has("push")))] | length > 0) | .key] | unique | .[]' "$file" | sed "s|^|${file##*/}: |"
     while IFS= read -r key; do
       while IFS= read -r tpl; do
         [ -f "$src/templates/$tpl" ] || {
@@ -234,11 +234,18 @@ jobs:
   images:
     uses: $/.github/workflows/_release-images.yaml
 YAML
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/status.yaml" <<'YAML'
+on: [status]
+jobs:
+  recover:
+    uses: $/.github/workflows/_release-recover.yaml
+YAML
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_build-image.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-please.yaml"
   echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-images.yaml"
+  echo 'jobs: {}' >"$BATS_TEST_TMPDIR/.github/workflows/_release-recover.yaml"
   run pr_release_calls "$BATS_TEST_TMPDIR"
-  [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/check.yaml -> .github/workflows/check.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
+  [ "$output" = $'.github/workflows/after.yaml -> .github/workflows/after.yaml:images\n.github/workflows/check.yaml -> .github/workflows/check.yaml:images\n.github/workflows/pr.yaml -> .github/workflows/mid.yaml:build\n.github/workflows/status.yaml -> .github/workflows/status.yaml:recover\nsrc/templates/.github/workflows/ci.yaml -> src/templates/.github/workflows/ci.yaml:release' ]
 }
 
 @test "overlay_release_calls catches an overlay that adds a release call or a push, or a pull request trigger to a release caller" {
@@ -369,4 +376,9 @@ YAML
 @test "the release App token asks for only what release-please uses" {
   run yq -o=json -I0 '.jobs.release-please.steps[] | select(.id == "app-token") | .with | with_entries(select(.key | test("^permission-")))' "$WF/_release-please.yaml"
   [ "$output" = '{"permission-contents":"write","permission-pull-requests":"write"}' ]
+}
+
+@test "the recovery App token asks for only the contents permission" {
+  run yq -o=json -I0 '.jobs.dispatch.steps[] | select(.id == "app-token") | .with | with_entries(select(.key | test("^permission-")))' "$WF/_release-recover.yaml"
+  [ "$output" = '{"permission-contents":"write"}' ]
 }

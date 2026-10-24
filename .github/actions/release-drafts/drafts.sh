@@ -182,11 +182,11 @@ tag_exists() {
   gh api "repos/${GH_REPO}/git/matching-refs/tags/$1" | jq -e --arg r "refs/tags/$1" 'any(.[]; .ref == $r)' >/dev/null
 }
 
-# Dispatching runs the caller file as it is at the tag; one without recover-drafts would not treat the tag ref as a recovery
+# A dispatch runs the caller as it is at the tag, so only a caller with a recover job can build a tag-ref run
 caller_recovers() {
   local path="$1" ref="$2"
   fetch "$path" "$ref" 2>/dev/null |
-    yq -e '[.jobs[] | .with["recover-drafts"]] | any_c(. == true or . == "true")' >/dev/null 2>&1
+    yq -e '[.jobs[] | .uses // ""] | any_c(test("^anthony-spruyt/repo-operator/[.]github/workflows/_release-recover[.]yaml@"))' >/dev/null 2>&1
 }
 
 run_counts() {
