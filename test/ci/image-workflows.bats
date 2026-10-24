@@ -432,9 +432,8 @@ GH
   [ "$output" = '[false,"true"]' ]
 }
 
-@test "_build-image.yaml's tag mismatch error says the next Release Please run rebuilds the draft from its tag" {
+@test "_build-image.yaml's tag mismatch error names both ways out: _release-recover.yaml, or the next release" {
   run yq -r '.jobs.publish.steps[] | select(.id == "verify") | .run' "$WF/_build-image.yaml"
-  [[ "$output" != *"Cut the next release instead"* ]]
-  [[ "$output" != *"delete the \${TAG_NAME} draft"* ]]
-  [[ "$output" == *"The next Release Please run rebuilds \${TAG_NAME} from its tag."* ]]
+  [[ "$output" == *"A caller that wires _release-recover.yaml rebuilds \${TAG_NAME} from its tag; otherwise cut the next release, then delete the \${TAG_NAME} draft."* ]]
+  [[ "$output" != *"The next Release Please run rebuilds"* ]]
 }
