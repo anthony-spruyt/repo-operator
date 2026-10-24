@@ -326,7 +326,7 @@ On a scheduled run `github.event_name == 'workflow_dispatch'` is false, so `dry-
 The image job checks out the commit the run started from, never a caller-supplied ref, and refuses to publish unless the release tag points at that commit. The provenance attestation always names the run's commit (`github.sha`), and no input overrides it, so building any other commit would sign the wrong source. release-please tags the release PR's merge commit, which is the commit its run starts
 from.
 
-A push to `main` while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft.
+A new run on `main` (a push or the schedule) while a Release Please run is pending makes GitHub cancel that run. If the cancelled run was the release PR's merge, the next run's release-please creates the release for the earlier merge commit, and its image job refuses: the tag is not the commit that run started from. The release stays a draft.
 
 If step 2 fails, the release stays a draft, so no public release lacks its image. The synced image release caller wires `_release-recover.yaml`, which recovers the draft by itself (see [Release recovery](#release-recovery)). For a tag cut before the caller wired it:
 
