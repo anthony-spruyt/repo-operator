@@ -174,14 +174,12 @@ YAML
   [ "$output" = $'0\n0' ]
 }
 
-@test "the release callers run only from main pushes, a schedule or dispatch, and pass every release secret by name" {
-  local wf triggers
+@test "the release callers run only from main pushes or dispatch, and pass every release secret by name" {
+  local wf
   for wf in release-please.yaml image-release-please.yaml; do
-    triggers='["push","workflow_dispatch"]'
-    if [[ "$wf" == image-release-please.yaml ]]; then triggers='["push","schedule","workflow_dispatch"]'; fi
     run yq -o=json -I0 '[(.on | keys), .on.push.branches, .jobs.release.secrets]' "$TEMPLATES/$wf"
     echo "$wf: $output"
-    [ "$output" = "[$triggers"',["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
+    [ "$output" = '[["push","workflow_dispatch"],["main"],{"RELEASE_PLEASE_APP_CLIENT_ID":"${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}","RELEASE_PLEASE_APP_PRIVATE_KEY":"${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"}]' ]
   done
   run yq -o=json -I0 '.jobs.images.secrets' "$TEMPLATES/image-release-please.yaml"
   [ "$output" = '{"DOCKERHUB_TOKEN":"${{ secrets.DOCKERHUB_TOKEN }}"}' ]
