@@ -327,7 +327,7 @@ jobs:
       && needs.build.result == 'success'
     runs-on: ubuntu-latest
     timeout-minutes: 35
-    environment: release
+    environment: publish
     # No permissions block on purpose: requesting write here fails read-only PR callers at startup, even though the job is skipped.
     outputs:
       digest: ${{ steps.build.outputs.digest }}

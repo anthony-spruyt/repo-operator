@@ -159,6 +159,14 @@ groups:
             custom:
               - type: branch
                 name: main
+          secrets:
+            DOCKERHUB_TOKEN:
+              env: DOCKERHUB_TOKEN
+        publish:
+          deploymentBranchPolicy:
+            custom:
+              - type: branch
+                name: main
               - type: tag
                 name: "*.*.*"
               - type: tag
@@ -468,10 +476,6 @@ groups:
             custom:
               - type: branch
                 name: main
-              - type: tag
-                name: "*.*.*"
-              - type: tag
-                name: "*/*.*.*"
           secrets:
             RELEASE_PLEASE_APP_CLIENT_ID:
               env: RELEASE_PLEASE_APP_CLIENT_ID
