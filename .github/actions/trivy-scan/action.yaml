@@ -62,6 +62,7 @@ runs:
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        limit-severities-for-sarif: "true"
         output: trivy-results.sarif
 
     - name: Trivy scan (SARIF)
@@ -77,6 +78,7 @@ runs:
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        limit-severities-for-sarif: "true"
         output: trivy-results.sarif
 
     - name: Check SARIF exists
