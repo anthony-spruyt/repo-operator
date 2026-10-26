@@ -114,6 +114,7 @@ runs:
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        skip-files: trivy-results.sarif
         output: trivy-secret-results.sarif
 
     - name: Trivy secret scan (SARIF)
@@ -126,6 +127,7 @@ runs:
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        skip-files: trivy-results.sarif
         output: trivy-secret-results.sarif
 
     - name: Check SARIF exists

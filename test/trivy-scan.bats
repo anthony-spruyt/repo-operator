@@ -48,6 +48,11 @@ split_scanners() {
   [ "$output" = $'[["Trivy secret scan (SARIF with ignores)","${{ (success() || failure()) && inputs.trivyignores != \'\' && steps.scanner-split.outputs.secret == \'true\' }}","${{ inputs.trivyignores }}"],["Trivy secret scan (SARIF)","${{ (success() || failure()) && inputs.trivyignores == \'\' && steps.scanner-split.outputs.secret == \'true\' }}",null]]' ]
 }
 
+@test "the secret scans skip the non-secret SARIF report" {
+  run yq -o=json -I0 "[$TRIVY_STEPS | $SECRET_STEPS | .with[\"skip-files\"]]" "$ACTION"
+  [ "$output" = '["trivy-results.sarif","trivy-results.sarif"]' ]
+}
+
 @test "all four scans target the same thing" {
   run yq -o=json -I0 "[$TRIVY_STEPS | [.with[\"scan-type\"], .with[\"image-ref\"], .with[\"scan-ref\"], .with[\"exit-code\"]]] | unique" "$ACTION"
   [ "$output" = '[["${{ inputs.scan-type }}","${{ inputs.image-ref }}",".","0"]]' ]
