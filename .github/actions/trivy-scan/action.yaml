@@ -21,7 +21,7 @@ inputs:
     required: false
     default: "misconfig,secret,vuln"
   severity:
-    description: Severity levels to report
+    description: Severity levels to report (secret findings are reported at every severity)
     required: false
     default: "CRITICAL,HIGH"
   ignore-unfixed:
@@ -41,20 +41,43 @@ inputs:
     required: false
     default: ""
   category:
-    description: SARIF upload category (must be unique per scan in the same repo/run)
+    description: SARIF upload category (must be unique per scan in the same repo/run); secret findings upload under "<category>-secret"
     required: false
     default: "trivy"
 
 runs:
   using: composite
   steps:
+    # Trivy's severity filter applies to secret findings too, so secret scans separately with no filter
+    - name: Split scanners
+      id: scanner-split
+      if: ${{ success() || failure() }}
+      shell: bash
+      env:
+        SCANNERS: ${{ inputs.scanners }}
+      run: |
+        non_secret=()
+        secret=false
+        IFS=',' read -ra requested <<< "$SCANNERS"
+        for scanner in "${requested[@]}"; do
+          scanner="${scanner//[[:space:]]/}"
+          case "$scanner" in
+            "") ;;
+            secret) secret=true ;;
+            *) non_secret+=("$scanner") ;;
+          esac
+        done
+        {
+          echo "non-secret=$(IFS=,; echo "${non_secret[*]}")"
+          echo "secret=$secret"
+        } >> "$GITHUB_OUTPUT"
+
     - name: Trivy scan (SARIF with ignores)
-      if: ${{ (success() || failure()) && inputs.trivyignores != '' }}
+      if: ${{ (success() || failure()) && inputs.trivyignores != '' && steps.scanner-split.outputs.non-secret != '' }}
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         scan-type: ${{ inputs.scan-type }}
-        trivy-config: ${{ inputs.trivy-config }}
-        scanners: ${{ inputs.scanners }}
+        scanners: ${{ steps.scanner-split.outputs.non-secret }}
         severity: ${{ inputs.severity }}
         ignore-unfixed: ${{ inputs.ignore-unfixed }}
         trivyignores: ${{ inputs.trivyignores }}
@@ -62,22 +85,50 @@ runs:
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        limit-severities-for-sarif: "true"
         output: trivy-results.sarif
 
     - name: Trivy scan (SARIF)
-      if: ${{ (success() || failure()) && inputs.trivyignores == '' }}
+      if: ${{ (success() || failure()) && inputs.trivyignores == '' && steps.scanner-split.outputs.non-secret != '' }}
       uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
       with:
         scan-type: ${{ inputs.scan-type }}
-        trivy-config: ${{ inputs.trivy-config }}
-        scanners: ${{ inputs.scanners }}
+        scanners: ${{ steps.scanner-split.outputs.non-secret }}
         severity: ${{ inputs.severity }}
         ignore-unfixed: ${{ inputs.ignore-unfixed }}
         image-ref: ${{ inputs.image-ref }}
         scan-ref: "."
         exit-code: "0"
         format: sarif
+        limit-severities-for-sarif: "true"
         output: trivy-results.sarif
+
+    - name: Trivy secret scan (SARIF with ignores)
+      if: ${{ (success() || failure()) && inputs.trivyignores != '' && steps.scanner-split.outputs.secret == 'true' }}
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: ${{ inputs.scan-type }}
+        scanners: secret
+        trivyignores: ${{ inputs.trivyignores }}
+        image-ref: ${{ inputs.image-ref }}
+        scan-ref: "."
+        exit-code: "0"
+        format: sarif
+        skip-files: trivy-results.sarif
+        output: trivy-secret-results.sarif
+
+    - name: Trivy secret scan (SARIF)
+      if: ${{ (success() || failure()) && inputs.trivyignores == '' && steps.scanner-split.outputs.secret == 'true' }}
+      uses: aquasecurity/trivy-action@ed142fd0673e97e23eac54620cfb913e5ce36c25 # v0.36.0
+      with:
+        scan-type: ${{ inputs.scan-type }}
+        scanners: secret
+        image-ref: ${{ inputs.image-ref }}
+        scan-ref: "."
+        exit-code: "0"
+        format: sarif
+        skip-files: trivy-results.sarif
+        output: trivy-secret-results.sarif
 
     - name: Check SARIF exists
       id: sarif-check
@@ -87,20 +138,26 @@ runs:
         if [ -f trivy-results.sarif ] && [ -s trivy-results.sarif ]; then
           echo "exists=true" >> "$GITHUB_OUTPUT"
         fi
+        if [ -f trivy-secret-results.sarif ] && [ -s trivy-secret-results.sarif ]; then
+          echo "secret-exists=true" >> "$GITHUB_OUTPUT"
+        fi
 
     - name: Inject image name into SARIF
-      if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' && inputs.image-name != '' }}
+      if: ${{ (success() || failure()) && inputs.image-name != '' && (steps.sarif-check.outputs.exists == 'true' || steps.sarif-check.outputs.secret-exists == 'true') }}
       shell: bash
       env:
         IMAGE_NAME: ${{ inputs.image-name }}
       run: |
-        jq --arg image "$IMAGE_NAME" '
-          .runs |= map(.results |= map(
-            .message.text = ("Image: " + $image + "\n" + .message.text)
-          ))
-        ' trivy-results.sarif > trivy-results.tmp && mv trivy-results.tmp trivy-results.sarif
+        for sarif in trivy-results.sarif trivy-secret-results.sarif; do
+          [ -s "$sarif" ] || continue
+          jq --arg image "$IMAGE_NAME" '
+            .runs |= map(.results |= map(
+              .message.text = ("Image: " + $image + "\n" + .message.text)
+            ))
+          ' "$sarif" > "$sarif.tmp"
+          mv "$sarif.tmp" "$sarif"
+        done
 
-    # Upload SARIF to GitHub code scanning
     - name: Upload SARIF to GitHub Security
       id: sarif-upload
       if: ${{ (success() || failure()) && steps.sarif-check.outputs.exists == 'true' }}
@@ -110,7 +167,16 @@ runs:
         sarif_file: trivy-results.sarif
         category: ${{ inputs.category }}
 
+    - name: Upload secret SARIF to GitHub Security
+      id: sarif-secret-upload
+      if: ${{ (success() || failure()) && steps.sarif-check.outputs.secret-exists == 'true' }}
+      uses: github/codeql-action/upload-sarif@6f2ac81f5cd81fe351a197ba0b00d91d03cd2aee # v4.39.0
+      continue-on-error: true
+      with:
+        sarif_file: trivy-secret-results.sarif
+        category: ${{ inputs.category }}-secret
+
     - name: Warn on SARIF upload failure
-      if: ${{ (success() || failure()) && steps.sarif-upload.outcome == 'failure' }}
+      if: ${{ (success() || failure()) && (steps.sarif-upload.outcome == 'failure' || steps.sarif-secret-upload.outcome == 'failure') }}
       shell: bash
       run: echo "::warning::SARIF upload failed — GitHub Advanced Security may not be enabled for this repository"
