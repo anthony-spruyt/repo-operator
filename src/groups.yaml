@@ -548,7 +548,7 @@ groups:
           jobs:
             sonar:
               permissions: {}
-              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@9076654792d422d5dc15822db3b1d3bf3f3d3a17" # main
+              uses: "anthony-spruyt/repo-operator/.github/workflows/_sonar-new-issues.yaml@631f5e0ccf29160e222e1a40700a23b36aacb60f" # main
             summary:
               needs:
                 $arrayMerge: append
