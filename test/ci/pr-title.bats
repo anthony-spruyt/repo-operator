@@ -21,8 +21,8 @@ subject_pattern() {
 }
 
 @test "pr-title.yaml runs only on pull_request into main, title edits included" {
-  run yq -o=json -I0 '[(.on | keys), .on.pull_request.branches, (.on.pull_request.types | contains(["edited"]))]' "$TEMPLATE"
-  [ "$output" = '[["pull_request"],["main"],true]' ]
+  run yq -o=json -I0 '[(.on | keys), (.on.pull_request | keys | sort), .on.pull_request.branches, (.on.pull_request.types | contains(["edited"]))]' "$TEMPLATE"
+  [ "$output" = '[["pull_request"],["branches","types"],["main"],true]' ]
   run grep -n 'pull_request_target' "$TEMPLATE"
   [ "$status" -eq 1 ]
 }
@@ -58,8 +58,8 @@ subject_pattern() {
 }
 
 @test "the action reads the PR with the job's GITHUB_TOKEN and checks Conventional Commits types, any scope, no WIP or single-commit check" {
-  run yq -o=json -I0 '.jobs.check.steps[1] | [.env.GITHUB_TOKEN, .with.requireScope, .with.validateSingleCommit, .with.wip]' "$TEMPLATE"
-  [ "$output" = '["${{ secrets.GITHUB_TOKEN }}",false,false,false]' ]
+  run yq -o=json -I0 '.jobs.check.steps[1] | [(.env | keys), .env.GITHUB_TOKEN, .with.requireScope, .with.validateSingleCommit, .with.wip]' "$TEMPLATE"
+  [ "$output" = '[["GITHUB_TOKEN"],"${{ secrets.GITHUB_TOKEN }}",false,false,false]' ]
   run yq -o=json -I0 '.jobs.check.steps[1].with | has("headerPattern") or has("scopes") or has("disallowScopes")' "$TEMPLATE"
   [ "$output" = "false" ]
   allowed=" feat fix docs style refactor perf test build ci chore revert "
