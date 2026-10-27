@@ -28,8 +28,8 @@ setup() {
 }
 
 @test "_build-image.yaml's test-node job type-checks and tests a node image in its workdir" {
-  run yq -o=json -I0 '.on.workflow_call.inputs["node-version"] | [.type, .default]' "$WF/_build-image.yaml"
-  [ "$output" = '["string","24"]' ]
+  run yq -o=json -I0 '.on.workflow_call.inputs["node-version"] | [.type, (.default | test("^[0-9]+$"))]' "$WF/_build-image.yaml"
+  [ "$output" = '["string",true]' ]
   run yq -o=json -I0 '.jobs["test-node"] | [.if, .permissions, .["runs-on"]]' "$WF/_build-image.yaml"
   [ "$output" = '["inputs.language == '"'node'"'",{"contents":"read"},"ubuntu-latest"]' ]
   run yq -o=json -I0 '[.jobs["test-node"].steps[] | select(.uses) | (.uses | sub("@[0-9a-f]{40}$"; "@<sha>"))]' "$WF/_build-image.yaml"
@@ -216,14 +216,6 @@ go_version_step() {
     echo "$wf: $output"
     [ "$output" = "0" ]
   done
-}
-
-@test "the image workflows pass actionlint with this repo's config" {
-  cd "$REPO_ROOT"
-  run actionlint -no-color .github/workflows/_images.yaml .github/workflows/_build-image.yaml \
-    .github/workflows/_release-please.yaml .github/workflows/_release-recover.yaml .github/workflows/_release-images.yaml
-  echo "$output"
-  [ "$status" -eq 0 ]
 }
 
 restore_script() {

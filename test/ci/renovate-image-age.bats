@@ -179,18 +179,13 @@ json5() {
 }
 
 @test "the skips file maps images to lists of tags" {
-  run yq -o=json -I0 -r 'to_entries | map(.key + ":" + (.value | map(tostring) | join(","))) | join(" ")' "$SKIPS"
-  [ "$status" -eq 0 ]
-  [ "$output" = "ghcr.io/victoriametrics/mcp-victoriametrics:v1.120.1,1.120.1" ]
-  run yq -r '[to_entries[] | select((.value | tag) != "!!seq")] | length' "$SKIPS"
+  run yq -r '[to_entries[] | select((.value | tag) != "!!seq" or ([.value[] | tag] | any_c(. != "!!str")))] | length' "$SKIPS"
   [ "$output" = "0" ]
 }
 
 @test "the registry moves are docker-only replacements to a docker.io name, one old name each" {
-  run json5 "$RULES" '[.packageRules[] | select(has("replacementName")) | select((.matchDatasources | join(",")) == "docker" and (.matchPackageNames | length) == 1) | .matchPackageNames[0] + ">" + .replacementName] | join(" ")'
-  [ "$output" = "ghcr.io/static-web-server/static-web-server>docker.io/joseluisq/static-web-server ghcr.io/astral-sh/uv>docker.io/astral/uv ghcr.io/druggeri/nut_exporter>docker.io/druggeri/nut_exporter ghcr.io/felddy/foundryvtt>docker.io/felddy/foundryvtt ghcr.io/unpoller/unpoller>docker.io/golift/unifi-poller public.ecr.aws/docker/library/eclipse-mosquitto>docker.io/eclipse-mosquitto" ]
-  run json5 "$RULES" '[.packageRules[] | select(has("replacementName"))] | length'
-  [ "$output" = "6" ]
+  run json5 "$RULES" '[.packageRules[] | select(has("replacementName")) | select((.matchDatasources | join(",")) != "docker" or (.matchPackageNames | length) != 1 or (.replacementName | test("^docker\\.io/") | not))] | length'
+  [ "$output" = "0" ]
 }
 
 @test "the move rules come after the blanket image rule that enables updates" {

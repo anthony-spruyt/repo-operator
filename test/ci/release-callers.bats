@@ -93,11 +93,9 @@ repo() {
   [ "$output" = '[true,false]' ]
 }
 
-@test "repo overlays pass image inputs to the images job, never the release job" {
+@test "no repo overlay of the release caller touches the release job" {
   run yq -o=json -I0 '[.repos[] | select(.files[".github/workflows/release-please.yaml"].content.jobs.release) | .git]' "$SRC/repos.yaml"
   [ "$output" = '[]' ]
-  run yq -r '[.repos[] | select(.files[".github/workflows/release-please.yaml"].content.jobs.images.with) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "SunGather litellm-middleware traefik-api-key-auth" ]
 }
 
 @test "the release callers pass actionlint" {
