@@ -6,7 +6,7 @@ files:
   .devcontainer/Dockerfile:
     content: "@templates/.devcontainer/Dockerfile"
   .devcontainer/devcontainer.json:
-    content: "@templates/.devcontainer/devcontainer.json"
+    content: "@templates/.devcontainer/devcontainer.json5"
   .devcontainer/podman-seccomp.json:
     content: "@templates/.devcontainer/podman-seccomp.json"
   .devcontainer/README.md:

@@ -365,6 +365,12 @@
       matchDatasources: ["github-releases"],
       extractVersion: "^azure-cli-(?<version>.+)$"
     },
+    {
+      description: "jq release tags are prefixed (jq-<version>)",
+      matchPackageNames: ["jqlang/jq"],
+      matchDatasources: ["github-releases"],
+      extractVersion: "^jq-(?<version>.+)$"
+    },
 
     // ============ n8n stable pins ============
     {
