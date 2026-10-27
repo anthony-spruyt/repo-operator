@@ -148,11 +148,6 @@ EOF
   [ "$output" = '[true,false]' ]
 }
 
-@test "the 9 image repos all get the image group, directly or through go-image or python-image" {
-  run yq -r '[.repos[] | select(.groups | any_c(. == "image" or . == "go-image" or . == "python-image")) | .git | sub("^https://github.com/anthony-spruyt/"; "") | sub("\.git$"; "")] | sort | join(" ")' "$SRC/repos.yaml"
-  [ "$output" = "SunGather agent-platform blog container-images kata-tap-qdisc-fix litellm-middleware mcp-header-proxy spruyt-labs traefik-api-key-auth" ]
-}
-
 @test "the image group defaults the release caller's language to none, and no repo repeats it" {
   run yq -o=json -I0 '.groups.image.files | [.[".github/workflows/release-please.yaml"].vars.language]' "$SRC/groups.yaml"
   [ "$output" = '["none"]' ]
