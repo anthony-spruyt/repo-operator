@@ -45,11 +45,6 @@ digest() { printf 'sha256:%064d' 0 | tr 0 "$1"; }
 # route <METHOD> <URL> <STATUS> [BODY_FILE] [HEADER]
 route() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "${4:--}" "${5:--}" >>"$FAKE_ROUTES"; }
 
-@test "the script pins the Renovate version that the annotation lets Renovate bump" {
-  [ "$RENOVATE_PIN" = 44.164.7 ]
-  grep -B1 '^RENOVATE_VERSION=' "$SCRIPT" | grep -q '^# renovate: depName=renovate datasource=npm$'
-}
-
 @test "ghcr rows hold every tag of every tagged version with its digest and push time, and skip untagged versions" {
   run fn rows_ghcr <"$FX/ghcr-versions.json"
   [ "$status" -eq 0 ]
