@@ -151,18 +151,15 @@ A package whose repository is missing on the first page is skipped with a warnin
 
 ### `harden-runner`
 
-Runs [`step-security/harden-runner`](https://github.com/step-security/harden-runner), pinned by SHA, as the first step of every job except `lychee` and XFG Apply (below).
+Runs [`step-security/harden-runner`](https://github.com/step-security/harden-runner), pinned by SHA, as the first step of every job except `lychee` (below).
 Its one step sets `egress-policy`, so that line in `.github/actions/harden-runner/action.yaml` is the switch for the egress mode of every job that calls it, in this repo and in the repos that call the shared workflows.
 `audit` records each job's outbound calls; `block` refuses calls to hosts off the job's allowlist. Those are the only two values.
 
 The action passes `allowed-endpoints` (default empty) and `disable-sudo-and-containers` (default `"false"`) to harden-runner unchanged. A caller never sets `egress-policy` itself.
 Repo-operator's own workflows call it as `$/.github/actions/harden-runner`; workflows in other repos, and the synced `pr-title.yaml` template, call `anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha> # main`. Renovate bumps that pin with the `repo-operator shared CI` group. Keep every job's allowlist current in either mode, so a flip to `block` needs no other edit.
-`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs, except `lychee` and XFG Apply. It reads a synced workflow at its `src/templates/` source and wants the pin to be a full SHA of `anthony-spruyt/repo-operator` with a `# main` comment.
+`test/ci/harden-runner.bats` keeps every job's first step on the action, passing an allowlist and only its inputs, except `lychee`. It reads a synced workflow at its `src/templates/` source and wants the pin to be a full SHA of `anthony-spruyt/repo-operator` with a `# main` comment.
 
-Two jobs call harden-runner directly:
-
-- `lychee` in `_lint.yaml` runs in `audit`, whatever the switch says, because link checks reach arbitrary hosts.
-- XFG Apply (`xfg-apply` in `ci.yaml`) keeps its own step in `block` with telemetry off, because audit mode always sends telemetry. The action has no `disable-telemetry` input, and `test/ci/harden-runner.bats` fails if a job sets `disable-telemetry: true` on any step but a direct `block` one.
+Only `lychee` in `_lint.yaml` calls harden-runner directly. It runs in `audit`, whatever the switch says, because link checks reach arbitrary hosts.
 
 To flip the mode, edit the `egress-policy` line. The file is under `.github/`, so the owner approves the PR. After it merges:
 
