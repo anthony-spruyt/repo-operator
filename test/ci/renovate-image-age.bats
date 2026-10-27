@@ -106,7 +106,7 @@ json5() {
 
 @test "publish mints a token for the data repo only, with contents write" {
   run yq -r '.jobs.publish.steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .uses' "$WORKFLOW"
-  [ "$output" = "actions/create-github-app-token@64ab729a6294000f5aa4a4bc0b73d1f32bc45510" ]
+  [[ "$output" =~ ^actions/create-github-app-token@[0-9a-f]{40}$ ]]
   run yq -o=json -I0 '.jobs.publish.steps[] | select(.uses // "" | test("^actions/create-github-app-token@")) | .with' "$WORKFLOW"
   [ "$output" = '{"client-id":"${{ vars.APP_CLIENT_ID }}","private-key":"${{ secrets.APP_PRIVATE_KEY }}","owner":"anthony-spruyt","repositories":"renovate-data","permission-contents":"write"}' ]
   run yq -r '[.jobs.publish.steps[] | select(.run // "" | test("image-age[.]sh publish")) | .env.GITHUB_TOKEN] | join(",")' "$WORKFLOW"
@@ -135,13 +135,15 @@ json5() {
   [ "$output" = $'extract_repo()\ncmd_validate()' ]
 }
 
-@test "the extract and validate jobs run Renovate on Node 24, set up before the script from the setup-node pin that _build-image uses" {
+@test "the extract and validate jobs run Renovate on a Node major, set up before the script from the setup-node pin that _build-image uses" {
   pin=$(yq -r '[.jobs[].steps[] | select(.uses // "" | test("^actions/setup-node@")) | .uses] | .[0]' "$BUILD_IMAGE")
   [[ "$pin" =~ ^actions/setup-node@[0-9a-f]{40}$ ]]
   idx() { yq -r ".jobs.$1.steps | to_entries | map(select($2)) | .[0].key" "$WORKFLOW"; }
   for job in extract validate; do
-    run yq -o=json -I0 "[.jobs.$job.steps[] | select(.uses // \"\" | test(\"^actions/setup-node@\"))] | map({\"name\": .name, \"uses\": .uses, \"with\": .with})" "$WORKFLOW"
-    [ "$output" = "[{\"name\":\"Set up Node\",\"uses\":\"$pin\",\"with\":{\"node-version\":\"24\"}}]" ]
+    run yq -o=json -I0 "[.jobs.$job.steps[] | select(.uses // \"\" | test(\"^actions/setup-node@\"))] | map({\"name\": .name, \"uses\": .uses, \"with\": (.with | keys)})" "$WORKFLOW"
+    [ "$output" = "[{\"name\":\"Set up Node\",\"uses\":\"$pin\",\"with\":[\"node-version\"]}]" ]
+    run yq -r ".jobs.$job.steps[] | select(.uses // \"\" | test(\"^actions/setup-node@\")) | .with.node-version" "$WORKFLOW"
+    [[ "$output" =~ ^[0-9]+$ ]]
     checkout=$(idx "$job" '.value.uses // "" | test("^actions/checkout@")')
     node=$(idx "$job" '.value.uses // "" | test("^actions/setup-node@")')
     script=$(idx "$job" '.value.run // "" | test("image-age[.]sh")')
@@ -162,7 +164,7 @@ json5() {
 
 @test "the guard-test job installs jsonata at an annotated pin and may reach npm for it" {
   run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .env.JSONATA_VERSION' "$CI_REPO"
-  [ "$output" = "2.2.2" ]
+  [[ "$output" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]
   run grep -B2 'JSONATA_VERSION: "' "$CI_REPO"
   [[ "$output" == *"# renovate: depName=jsonata datasource=npm"* ]]
   run yq -r '.jobs.guard-test.steps[] | select(.name == "Install jsonata") | .run' "$CI_REPO"

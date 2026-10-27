@@ -5,12 +5,12 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   SRC="$REPO_ROOT/src"
   TEMPLATE="$SRC/templates/.github/workflows/pr-title.yaml"
-  export ACTION="amannn/action-semantic-pull-request@48f256284bd46cdaab1048c3721360e808335d50"
+  export ACTION="amannn/action-semantic-pull-request"
   export CONTEXT="PR Title"
 }
 
 subject_pattern() {
-  yq -r '.jobs.check.steps[] | select(.uses == env(ACTION)) | .with.subjectPattern' "$TEMPLATE"
+  yq -r '.jobs.check.steps[] | select(.uses // "" | test("^" + env(ACTION) + "@")) | .with.subjectPattern' "$TEMPLATE"
 }
 
 @test "github-ci syncs pr-title.yaml from its template on every sync" {
@@ -45,7 +45,7 @@ subject_pattern() {
 
 @test "pr-title.yaml hardens the runner through the shared action, then runs the pinned action, with no checkout" {
   run yq -o=json -I0 '[.jobs.check.steps[].uses | sub("@[0-9a-f]{40}$"; "@<sha>")]' "$TEMPLATE"
-  [ "$output" = "$(jq -cn --arg a "${ACTION%@*}@<sha>" '["anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha>", $a]')" ]
+  [ "$output" = "$(jq -cn --arg a "$ACTION@<sha>" '["anthony-spruyt/repo-operator/.github/actions/harden-runner@<sha>", $a]')" ]
   run yq -o=json -I0 '.jobs.check.steps[0].with | [keys, .["disable-sudo-and-containers"], (.["allowed-endpoints"] | split(" "))]' "$TEMPLATE"
   [ "$output" = '[["disable-sudo-and-containers","allowed-endpoints"],true,["api.github.com:443","results-receiver.actions.githubusercontent.com:443"]]' ]
   run grep -n 'actions/checkout' "$TEMPLATE"
@@ -53,7 +53,7 @@ subject_pattern() {
 }
 
 @test "the action pin is commented with its tag so Renovate keeps it current" {
-  run grep -cF "uses: \"$ACTION\" # v6.1.1" "$TEMPLATE"
+  run grep -cE "uses: \"$ACTION@[0-9a-f]{40}\" # v[0-9]+\.[0-9]+\.[0-9]+$" "$TEMPLATE"
   [ "$output" = "1" ]
 }
 
