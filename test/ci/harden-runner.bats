@@ -9,8 +9,6 @@ setup() {
   DIRECT_ALLOWED=(
     # Link checks reach arbitrary hosts
     .github/workflows/_lint.yaml:lychee:audit
-    # Audit mode sends telemetry whatever disable-telemetry says, so a job with telemetry off stays on block
-    .github/workflows/ci.yaml:xfg-apply:block
   )
 }
 
@@ -311,11 +309,6 @@ YAML
   [ -z "$output" ]
   run awk -F'\t' '$4 == 0 { print $1 ": no allowlist" }' <<<"$calls"
   [ -z "$output" ]
-}
-
-@test "xfg-apply keeps its direct block step with telemetry off" {
-  run yq -o=json -I0 '[.jobs["xfg-apply"].steps[] | select((.uses // "") | test("^step-security/harden-runner@")) | .with | [.["egress-policy"], .["disable-telemetry"]]]' "$REPO_ROOT/.github/workflows/ci.yaml"
-  [ "$output" = '[["block",true]]' ]
 }
 
 @test "lychee always runs in audit and keeps its link checks open" {

@@ -83,8 +83,8 @@ The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
    ruleset `bypass_actors` show as changes because the Plan App can't read them.
 3. **xfg-plan** - Full dry-run on `main` push and dispatch, with the write App's key from the `plan-main` environment; fails rather than plan partially if that key is missing. harden-runner runs in the [switch's](docs/ci.md#harden-runner) mode with an allowlist of GitHub and npm, and the config guard runs first (as in xfg-preview and xfg-apply). This is the plan to read before approving Apply. Skips when `src/` is unchanged since `LAST_XFG_DEPLOY_SHA` (a repo
    variable).
-4. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, always gated by the `production` environment and its required reviewer; no workflow input skips it. The Apply-side secrets live in that environment (`GHCR_READ_TOKEN` is also a repo secret, because the `github-trivy` sync writes it back for the Trivy scan). Records `LAST_XFG_DEPLOY_SHA` after applying. Egress is blocked to GitHub,
-   npm, OpenRouter and the LiteLLM host, whatever the [switch](docs/ci.md#harden-runner) says. AI commit messages use LiteLLM, with OpenRouter as the fallback.
+4. **xfg-apply** - Real sync. **Push/dispatch only (never PRs)**, always gated by the `production` environment and its required reviewer; no workflow input skips it. The Apply-side secrets live in that environment (`GHCR_READ_TOKEN` is also a repo secret, because the `github-trivy` sync writes it back for the Trivy scan). Records `LAST_XFG_DEPLOY_SHA` after applying. harden-runner runs in the
+   [switch's](docs/ci.md#harden-runner) mode with an allowlist of GitHub, npm, OpenRouter and the LiteLLM host. AI commit messages use LiteLLM, with OpenRouter as the fallback.
 5. **summary** - Aggregates results for branch protection
 
 The xfg-apply job pushes the updated configuration directly to target repos (`prOptions.merge: direct`). Commits by `repo-operator[bot]` are skipped to prevent sync→commit→sync loops.
