@@ -246,6 +246,15 @@ repos:
       # Repo-owned for good: it hosts XFG Plan and Apply, which the standard ci.yaml lacks
       .github/workflows/ci.yaml:
         createOnly: true
+      .devcontainer/devcontainer.json:
+        content:
+          containerEnv:
+            NODE_PATH: /usr/local/share/nvm/current/lib/node_modules
+          features:
+            "ghcr.io/devcontainers-extra/features/npm-package":
+              package: "jsonata"
+              # renovate: datasource=npm depName=jsonata
+              version: "2.2.2"
       .mergify.yml:
         vars:
           gateFilesExtra: 'src/|test/ci/|lint\.sh$|'
@@ -315,13 +324,6 @@ repos:
             "ghcr.io/devcontainers-extra/features/sops":
               # renovate: datasource=github-releases depName=getsops/sops
               version: "3.13.3"
-            "ghcr.io/eitsupi/devcontainer-features/jq-likes":
-              # renovate: datasource=github-releases depName=jqlang/jq
-              jqVersion: "1.8.1"
-              # renovate: datasource=github-releases depName=mikefarah/yq
-              yqVersion: "4.54.1"
-              # renovate: datasource=github-releases depName=itchyny/gojq
-              gojqVersion: "0.12.19"
           mounts:
             $arrayMerge: append
             $values:
