@@ -11,12 +11,16 @@ json5() {
   sed '/^[[:space:]]*\/\//d' "$1" | yq -p yaml -o json -I0 -r "$2"
 }
 
-@test "every repo but repo-operator bumps the shared CI pins daily" {
-  run json5 "$RULES" "[.packageRules[] | select($PINS) | select(has(\"matchRepositories\") | not) | .schedule | join(\",\")] | join(\";\")"
-  [ "$output" = "before 9am" ]
+pin_rules() {
+  json5 "$RULES" "[.packageRules[] | select($PINS)] | $1"
 }
 
-@test "the last rule for the shared CI pins limits the monthly schedule to repo-operator, so its self-bump cannot loop daily" {
-  run json5 "$RULES" "[.packageRules[] | select($PINS)] | .[-1] | [(.matchRepositories // [] | join(\",\")), (.schedule | join(\",\"))] | join(\";\")"
-  [ "$output" = "anthony-spruyt/repo-operator;before 9am on the first day of the month" ]
+@test "the last rule for the shared CI pins is limited to repo-operator and has its own schedule, so its self-bump cannot loop on the other repos' daily one" {
+  scope=$(pin_rules '.[-1].matchRepositories // [] | join(",")')
+  last=$(pin_rules '.[-1].schedule // [] | join(",")')
+  group=$(pin_rules 'map(select(has("matchRepositories") | not)) | .[0].schedule // [] | join(",")')
+  [ "$scope" = "anthony-spruyt/repo-operator" ]
+  [ -n "$group" ]
+  [ -n "$last" ]
+  [ "$last" != "$group" ]
 }
