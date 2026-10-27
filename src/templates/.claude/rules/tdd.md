@@ -6,9 +6,9 @@ When writing tests and implementing features, follow the red-green-refactor cycl
 2. **Green** - Write just enough code to make it pass; add no untested features.
 3. **Refactor** - Clean up duplication, naming, and structure, re-running the tests after each change.
 
-This applies to code that has a test runner. Declarative config with no test harness (manifests, plain Terraform) is exempt; its linters and validators cover it. Values with no behavior of their own need no test even where a runner exists: a version, a name, a description, a setting a linter or schema already checks.
+This applies to code that has a test runner. Declarative config with no test harness (manifests, plain Terraform) is exempt; its linters and validators cover it. Values with no behavior of their own need no test even where a runner exists: a version, a name, a description. Don't repeat a check a linter or schema already runs.
 
-Never write production code without a failing test. If tests pass and you haven't written test code, you skipped the red phase.
+Outside these exemptions, never write production code without a failing test. If tests pass and you haven't written test code, you skipped the red phase.
 
 ## What a test checks
 
