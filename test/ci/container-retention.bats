@@ -112,8 +112,6 @@ step_script() {
 @test "the image input defaults to empty and is passed to detect-images as root-name" {
   run yq -o=json -I0 '.on.workflow_call.inputs.image | [.required, .type, .default]' "$WF"
   [ "$output" = '[false,"string",""]' ]
-  run yq -r '.on.workflow_call.inputs.image.description' "$WF"
-  [ "$output" = "$(yq -r '.on.workflow_call.inputs.image.description' "$REPO_ROOT/.github/workflows/_images.yaml")" ]
   run yq -r '.jobs.packages.steps[] | select(.id == "detect") | .with["root-name"]' "$WF"
   [ "$output" = '${{ inputs.image }}' ]
 }

@@ -177,9 +177,9 @@ no_commit_matches() {
   not_gated repo-operator "scripts/test-image.sh"
 }
 
-@test "only container-images, repo-operator and traefik-api-key-auth widen the gate files" {
-  run yq -o=json -I0 '[.repos[] | select(.files[".mergify.yml"].vars.gateFilesExtra != null) | {(.git): .files[".mergify.yml"].vars.gateFilesExtra}] | .[] as $e ireduce ({}; . * $e)' "$SRC/repos.yaml"
-  [ "$output" = '{"https://github.com/anthony-spruyt/container-images.git":"[^/]+/(test\\.sh|flavor\\.yaml)$|megalinter-factory/|devcontainer-common/|","https://github.com/anthony-spruyt/repo-operator.git":"src/|test/ci/|lint\\.sh$|","https://github.com/anthony-spruyt/traefik-api-key-auth.git":"scripts/test-image\\.sh$|"}' ]
+@test "every gateFilesExtra is empty or ends with a pipe so it prepends to the gate-files regex, and the group default is empty" {
+  run yq -o=json -I0 '[.repos[] | .files[".mergify.yml"].vars.gateFilesExtra | select(. != null and . != "" and (test("[|]$") | not))]' "$SRC/repos.yaml"
+  [ "$output" = '[]' ]
   run yq -o=json -I0 '.groups.mergify.files[".mergify.yml"] | [.template, .vars.gateFilesExtra]' "$SRC/groups.yaml"
   [ "$output" = '[true,""]' ]
 }

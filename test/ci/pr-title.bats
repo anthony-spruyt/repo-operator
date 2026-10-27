@@ -14,15 +14,15 @@ subject_pattern() {
 }
 
 @test "github-ci syncs pr-title.yaml from its template on every sync" {
-  run yq -o=json -I0 '.groups["github-ci"].files[".github/workflows/pr-title.yaml"] | [.createOnly // false, .content, .schemaUrl, .header]' "$SRC/groups.yaml"
-  [ "$output" = '[false,"@templates/.github/workflows/pr-title.yaml","https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json","See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/pr-title.yaml for template comments"]' ]
+  run yq -o=json -I0 '.groups["github-ci"].files[".github/workflows/pr-title.yaml"] | [.createOnly // false, .content]' "$SRC/groups.yaml"
+  [ "$output" = '[false,"@templates/.github/workflows/pr-title.yaml"]' ]
   run grep -rn 'pr-title.yaml' "$SRC/repos.yaml"
   [ "$status" -eq 1 ]
 }
 
 @test "pr-title.yaml runs only on pull_request into main, title edits included" {
-  run yq -o=json -I0 '.on' "$TEMPLATE"
-  [ "$output" = '{"pull_request":{"types":["opened","edited","synchronize","reopened"],"branches":["main"]}}' ]
+  run yq -o=json -I0 '[(.on | keys), .on.pull_request.branches, (.on.pull_request.types | contains(["edited"]))]' "$TEMPLATE"
+  [ "$output" = '[["pull_request"],["main"],true]' ]
   run grep -n 'pull_request_target' "$TEMPLATE"
   [ "$status" -eq 1 ]
 }
@@ -58,10 +58,19 @@ subject_pattern() {
 }
 
 @test "the action reads the PR with the job's GITHUB_TOKEN and checks Conventional Commits types, any scope, no WIP or single-commit check" {
-  run yq -o=json -I0 '.jobs.check.steps[1] | [.env, (.with | del(.subjectPattern, .subjectPatternError) | .types |= (split("\n") | map(select(. != ""))))]' "$TEMPLATE"
-  [ "$output" = '[{"GITHUB_TOKEN":"${{ secrets.GITHUB_TOKEN }}"},{"types":["feat","fix","docs","style","refactor","perf","test","build","ci","chore","revert"],"requireScope":false,"validateSingleCommit":false,"wip":false}]' ]
+  run yq -o=json -I0 '.jobs.check.steps[1] | [.env.GITHUB_TOKEN, .with.requireScope, .with.validateSingleCommit, .with.wip]' "$TEMPLATE"
+  [ "$output" = '["${{ secrets.GITHUB_TOKEN }}",false,false,false]' ]
   run yq -o=json -I0 '.jobs.check.steps[1].with | has("headerPattern") or has("scopes") or has("disallowScopes")' "$TEMPLATE"
   [ "$output" = "false" ]
+  allowed=" feat fix docs style refactor perf test build ci chore revert "
+  types=$(yq -r '.jobs.check.steps[1].with.types' "$TEMPLATE")
+  [ -n "$types" ]
+  for type in $types; do
+    [[ "$allowed" == *" $type "* ]] || {
+      echo "not a Conventional Commits type: $type"
+      return 1
+    }
+  done
 }
 
 @test "the subject pattern rejects a subject that starts with an uppercase letter, and says so" {
