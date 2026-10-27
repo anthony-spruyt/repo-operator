@@ -32,7 +32,7 @@
     },
     "ghcr.io/eitsupi/devcontainer-features/jq-likes": {
       // renovate: datasource=github-releases depName=jqlang/jq
-      "jqVersion": "1.8.1",
+      "jqVersion": "1.8.2",
       // renovate: datasource=github-releases depName=mikefarah/yq
       "yqVersion": "4.54.1",
       // renovate: datasource=github-releases depName=itchyny/gojq
