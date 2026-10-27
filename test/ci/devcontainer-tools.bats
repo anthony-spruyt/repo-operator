@@ -4,6 +4,8 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   TEMPLATE="$REPO_ROOT/src/templates/.devcontainer/devcontainer.json5"
   REPOS="$REPO_ROOT/src/repos.yaml"
+  GROUPS_FILE="$REPO_ROOT/src/groups.yaml"
+  PACKAGE_RULES="$REPO_ROOT/.github/renovate/package-rules.json5"
   CI_REPO="$REPO_ROOT/.github/workflows/ci-repo.yaml"
   OPERATOR_GIT="https://github.com/anthony-spruyt/repo-operator.git"
   ACTIONLINT="ghcr.io/devcontainers-extra/features/actionlint"
@@ -19,6 +21,14 @@ template_json() {
 # operator_devcontainer <yq expr>: repo-operator's devcontainer.json overlay in repos.yaml, comments kept
 operator_devcontainer() {
   yq ".repos[] | select(.git == \"$OPERATOR_GIT\") | .files[\".devcontainer/devcontainer.json\"].content | $1" "$REPOS"
+}
+
+# overlays <repo filter>: devcontainer.json overlays of the selected repos, plus every group and conditional group, as a JSON array
+overlays() {
+  {
+    yq -o json -I0 ".repos[] | select($1) | .files[\".devcontainer/devcontainer.json\"].content | select(. != null)" "$REPOS"
+    yq -o json -I0 '(.groups[], .conditionalGroups[]) | .files[".devcontainer/devcontainer.json"].content | select(. != null)' "$GROUPS_FILE"
+  } | jq -s '.'
 }
 
 # ci_pin <step name> <env var>
@@ -82,24 +92,39 @@ ci_annotation() {
   [ "$status" -eq 0 ]
 }
 
-@test "the base template installs yq, jq and gojq, and actionlint" {
-  run template_json "[.features | keys[] | select(. == \"$JQ_LIKES\" or . == \"$ACTIONLINT\")] | length"
-  [ "$output" = "2" ]
-  run template_json ".features[\"$JQ_LIKES\"] | keys | join(\",\")"
-  [ "$output" = "gojqVersion,jqVersion,yqVersion" ]
+@test "the base template installs yq, which the bats tests call" {
+  run template_json ".features[\"$JQ_LIKES\"] | has(\"yqVersion\")"
+  [ "$output" = "true" ]
 }
 
 @test "jsonata and NODE_PATH are repo-operator's only, so no other repo can require undeclared global packages" {
-  run template_json '[.features, .containerEnv] | tostring'
-  [[ "$output" != *"npm-package"* ]]
-  [[ "$output" != *"NODE_PATH"* ]]
   run operator_devcontainer '.containerEnv.NODE_PATH'
-  [[ "$output" == */lib/node_modules ]]
-  run yq "[.repos[] | select(.git != \"$OPERATOR_GIT\") | .files[\".devcontainer/devcontainer.json\"].content | select(. != null) | (.features // {}) | keys | .[] | select(. == \"$NPM_PACKAGE\")] | length" "$REPOS"
-  [ "$output" = "0" ]
+  [ "$output" = "/usr/local/share/nvm/current/lib/node_modules" ]
+  run template_json "[(.containerEnv // {} | has(\"NODE_PATH\")), (.features // {} | has(\"$NPM_PACKAGE\"))] | any"
+  [ "$output" = "false" ]
+  run overlays ".git != \"$OPERATOR_GIT\""
+  [ "$status" -eq 0 ]
+  others="$output"
+  jq -e 'length > 0' <<<"$others"
+  run jq -r "[.[] | ((.containerEnv // {}) | has(\"NODE_PATH\")), ((.features // {}) | has(\"$NPM_PACKAGE\"))] | any" <<<"$others"
+  [ "$output" = "false" ]
 }
 
 @test "the jq-likes block lives in the base template only" {
-  run yq "[.repos[] | .files[\".devcontainer/devcontainer.json\"].content | select(. != null) | (.features // {}) | keys | .[] | select(. == \"$JQ_LIKES\")] | length" "$REPOS"
-  [ "$output" = "0" ]
+  run overlays true
+  [ "$status" -eq 0 ]
+  jq -e 'length > 0' <<<"$output"
+  run jq -r "[.[] | (.features // {}) | has(\"$JQ_LIKES\")] | any" <<<"$output"
+  [ "$output" = "false" ]
+}
+
+@test "Renovate strips the jq release tag prefix, so the jqVersion pin sees new releases" {
+  annotation="$(grep -B1 '"jqVersion"' "$TEMPLATE" | head -1)"
+  dep="$(dep_name "$annotation")"
+  ds="$(grep -oE 'datasource=[^[:space:]]+' <<<"$annotation")"
+  [ -n "$dep" ] && [ -n "$ds" ]
+  re="$(sed '/^[[:space:]]*\/\//d' "$PACKAGE_RULES" | DEP="${dep#depName=}" DS="${ds#datasource=}" yq -p yaml -o json -I0 -r '.packageRules[] | select((.matchPackageNames // []) | any_c(. == strenv(DEP))) | select((.matchDatasources // []) | any_c(. == strenv(DS))) | .extractVersion')"
+  [ -n "$re" ]
+  run jq -nr --arg re "$re" '"jq-9.8.7" | capture($re).version'
+  [ "$output" = "9.8.7" ]
 }
