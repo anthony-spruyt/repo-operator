@@ -117,12 +117,20 @@
     // ============ repo-operator shared CI pins ============
     {
       // Every merge moves main: without updateNotScheduled, open PRs re-push (and lose approvals) on each merge.
-      description: "repo-operator workflows and actions: callers pin a main commit with a '# main' comment; bump them monthly in one PR",
+      description: "repo-operator workflows and actions: callers pin a main commit with a '# main' comment; bump them daily in one PR",
       matchPackageNames: ["anthony-spruyt/repo-operator"],
       matchManagers: ["github-actions"],
       groupName: "repo-operator shared CI",
-      schedule: ["before 9am on the first day of the month"],
+      schedule: ["before 9am"],
       updateNotScheduled: false
+    },
+    {
+      // Merging repo-operator's own bump moves main, so a daily schedule here would open the next bump (and an XFG Apply) every day.
+      description: "repo-operator's own shared CI pins: bump them monthly",
+      matchRepositories: ["anthony-spruyt/repo-operator"],
+      matchPackageNames: ["anthony-spruyt/repo-operator"],
+      matchManagers: ["github-actions"],
+      schedule: ["before 9am on the first day of the month"]
     },
 
     // ============ Docker/OCI ============
