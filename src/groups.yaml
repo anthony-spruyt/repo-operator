@@ -564,7 +564,7 @@ groups:
           features:
             "ghcr.io/devcontainers/features/terraform":
               # renovate: datasource=github-releases depName=hashicorp/terraform
-              version: "1.16.6"
+              version: "1.17.0"
           mounts:
             $arrayMerge: append
             $values:
