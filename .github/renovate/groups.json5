@@ -73,7 +73,7 @@
       },
     },
     {
-      // flux2 (2.x) and the operator charts (0.x) never share a version, and a new flux2 needs the matching operator.
+      // flux2 (2.x) and the operator charts (0.x) never share a version, so a versioned branchTopic splits them.
       description: "Flux components",
       groupName: "Flux",
       matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*", "ghcr.io/controlplaneio-fluxcd/**"],

@@ -80,6 +80,15 @@
       minimumReleaseAge: "0 days"
     },
 
+    // ============ Flux ============
+    {
+      // image-age hides new operator charts for 7 days; waiting longer keeps the Flux PR pending until they join it.
+      description: "flux2 waits for the flux-operator release that supports it",
+      matchPackageNames: ["fluxcd/flux2"],
+      matchDatasources: ["github-releases"],
+      minimumReleaseAge: "9 days"
+    },
+
     // ============ High-frequency packages ============
     {
       description: "Limit renovate CLI updates to weekly (releases multiple times daily)",
