@@ -82,7 +82,7 @@
 
     // ============ Flux ============
     {
-      // image-age hides new operator charts for 7 days; waiting longer keeps the Flux PR pending until they join it.
+      // image-age hides new operator charts for 7 days; flux2 waits longer so they reach the Flux PR first.
       description: "flux2 waits for the flux-operator release that supports it",
       matchPackageNames: ["fluxcd/flux2"],
       matchDatasources: ["github-releases"],

@@ -67,7 +67,7 @@ json5() {
 }
 
 @test "flux2 waits longer than the 7-day image-age hold on the operator charts, so its Flux PR never goes green first" {
-  run json5 "$RULES" '[.packageRules[] | select((.matchPackageNames // []) | any_c(. == "fluxcd/flux2")) | select(has("minimumReleaseAge"))] | map((.matchDatasources | any_c(. == "github-releases")) and ((.minimumReleaseAge | split(" ") | .[0] | to_number) > 7)) | (length == 1 and all)'
+  run json5 "$RULES" '[.packageRules[] | select((.matchPackageNames // []) | any_c(. == "fluxcd/flux2")) | select(has("minimumReleaseAge"))] | map((.matchDatasources | any_c(. == "github-releases")) and ((.minimumReleaseAge | split(" ") | .[1]) == "days") and ((.minimumReleaseAge | split(" ") | .[0] | to_number) > 7)) | (length == 1 and all)'
   [ "$output" = "true" ]
 }
 
