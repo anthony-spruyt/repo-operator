@@ -59,6 +59,13 @@ json5() {
   [ "$output" = '{{{groupName}}}' ]
 }
 
+@test "the Flux group puts flux2 and the operator charts on one rolling branch" {
+  run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "Flux") | .matchPackageNames | (any_c(. == "fluxcd/*") and any_c(. == "ghcr.io/controlplaneio-fluxcd/**"))'
+  [ "$output" = "true" ]
+  run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "Flux") | .group.branchTopic'
+  [ "$output" = '{{{groupName}}}' ]
+}
+
 @test "the App Template group matches the docker datasource its chart is read from" {
   run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "App Template") | .matchDatasources | any_c(. == "docker")'
   [ "$output" = "true" ]

@@ -73,13 +73,14 @@
       },
     },
     {
+      // flux2 (2.x) and the operator charts (0.x) never share a version, and a new flux2 needs the matching operator.
       description: "Flux components",
       groupName: "Flux",
       matchPackageNames: ["fluxcd/*", "ghcr.io/fluxcd/*", "ghcr.io/controlplaneio-fluxcd/**"],
       matchDatasources: ["docker", "helm", "github-releases", "oci"],
       group: {
         commitMessageTopic: "{{{groupName}}} group",
-        branchTopic: "{{{groupName}}}-{{{newVersion}}}"
+        branchTopic: "{{{groupName}}}"
       },
     },
     {
