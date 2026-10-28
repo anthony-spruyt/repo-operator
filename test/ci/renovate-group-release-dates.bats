@@ -59,6 +59,18 @@ json5() {
   [ "$output" = '{{{groupName}}}' ]
 }
 
+@test "the Flux group puts flux2 and the operator charts on one rolling branch" {
+  run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "Flux") | ((.matchPackageNames | (any_c(. == "fluxcd/*") and any_c(. == "ghcr.io/controlplaneio-fluxcd/**"))) and (.matchDatasources | any_c(. == "github-releases")))'
+  [ "$output" = "true" ]
+  run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "Flux") | .group.branchTopic'
+  [ "$output" = '{{{groupName}}}' ]
+}
+
+@test "flux2 waits longer than the 7-day image-age hold on the operator charts, so its Flux PR never goes green first" {
+  run json5 "$RULES" '[.packageRules[] | select((.matchPackageNames // []) | any_c(. == "fluxcd/flux2")) | select(has("minimumReleaseAge"))] | map((.matchDatasources | any_c(. == "github-releases")) and ((.minimumReleaseAge | split(" ") | .[1]) == "days") and ((.minimumReleaseAge | split(" ") | .[0] | to_number) > 7)) | (length == 1 and all)'
+  [ "$output" = "true" ]
+}
+
 @test "the App Template group matches the docker datasource its chart is read from" {
   run json5 "$GROUPS_FILE" '.packageRules[] | select(.groupName == "App Template") | .matchDatasources | any_c(. == "docker")'
   [ "$output" = "true" ]
