@@ -130,8 +130,8 @@
       matchPackageNames: ["anthony-spruyt/repo-operator"],
       matchManagers: ["github-actions"],
       groupName: "repo-operator shared CI",
-      // UTC, 1-5am in Melbourne: main rarely moves then, and a wider window opens a new bump after each merge.
-      schedule: ["* 14-17 * * *"],
+      // UTC, 2-6am in Melbourne (1-5am in winter): main rarely moves then, and a wider window opens a new bump after each merge.
+      schedule: ["* 15-18 * * *"],
       updateNotScheduled: false
     },
     {
