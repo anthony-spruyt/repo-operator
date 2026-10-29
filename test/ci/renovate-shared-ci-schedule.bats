@@ -24,3 +24,10 @@ pin_rules() {
   [ -n "$last" ]
   [ "$last" != "$group" ]
 }
+
+@test "the other repos' shared CI pins run in one daily 4-hour cron window, so a day gets one bump and the Mend app still runs in it" {
+  group=$(pin_rules 'map(select(has("matchRepositories") | not)) | .[0].schedule // [] | join(",")')
+  [[ "$group" =~ ^\*\ ([0-9]+)-([0-9]+)\ \*\ \*\ \*$ ]]
+  hours=$((10#${BASH_REMATCH[2]} - 10#${BASH_REMATCH[1]} + 1))
+  [ "$hours" -eq 4 ]
+}
