@@ -21,7 +21,7 @@ jobs:
     if: "github.ref_type == 'branch'"
     permissions:
       contents: "read"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@63e147542d26b618b5512843b3474c15e5d6bee9" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-please.yaml@0a89fc7ada868772a05e47ea83cb51399e02948a" # main
     secrets:
       RELEASE_PLEASE_APP_CLIENT_ID: "${{ secrets.RELEASE_PLEASE_APP_CLIENT_ID }}"
       RELEASE_PLEASE_APP_PRIVATE_KEY: "${{ secrets.RELEASE_PLEASE_APP_PRIVATE_KEY }}"
@@ -31,7 +31,7 @@ jobs:
     permissions:
       contents: "read"
       actions: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-recover.yaml@63e147542d26b618b5512843b3474c15e5d6bee9" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-recover.yaml@0a89fc7ada868772a05e47ea83cb51399e02948a" # main
     with:
       releases: "${{ needs.release.outputs.releases }}"
     secrets:
@@ -45,7 +45,7 @@ jobs:
       packages: "write"
       id-token: "write"
       attestations: "write"
-    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@63e147542d26b618b5512843b3474c15e5d6bee9" # main
+    uses: "anthony-spruyt/repo-operator/.github/workflows/_release-images.yaml@0a89fc7ada868772a05e47ea83cb51399e02948a" # main
     with:
       releases: "${{ needs.recover.outputs.releases || needs.release.outputs.releases }}"
       language: "${xfg:language}"
