@@ -64,6 +64,10 @@ else
 
   LINT_EXIT_CODE=0
   apply_fixes="$${APPLY_FIXES:-all}"
+  fixes_applied=0
+  if [[ "$apply_fixes" == all || "$apply_fixes" == *_* ]]; then
+    fixes_applied=1
+  fi
 
   # Devcontainer podman is rootful; linters still run as the invoking user via -u.
   if [[ "$(id -u)" != "0" ]] && command -v sudo >/dev/null 2>&1 && sudo -n true 2>/dev/null; then
@@ -92,9 +96,9 @@ else
     "$MEGALINTER_IMAGE" >/dev/null 2>&1 ||
     LINT_EXIT_CODE=$?
 
-  # Restores files a linter rewrote outside the mount. Skipped with no fixes: the
-  # snapshots in updated_sources are then stale and would undo concurrent edits.
-  if [[ "$${apply_fixes,,}" != "none" ]] && compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
+  # Copy back only when MegaLinter applies fixes (APPLY_FIXES is all or a linter
+  # list): updated_sources also lists unfixed files, and stale ones undo edits.
+  if [[ "$fixes_applied" -eq 1 ]] && compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
     cp -r "$REPO_ROOT/.output/updated_sources"/* "$REPO_ROOT/"
   fi
 
@@ -104,7 +108,7 @@ else
     echo "MegaLinter failed (exit code $LINT_EXIT_CODE). Check .output/ for details:"
     echo "  .output/megalinter.log        - Full run log"
     echo "  .output/linters_logs/          - Per-linter logs"
-    if [[ "$${apply_fixes,,}" != "none" ]]; then
+    if [[ "$fixes_applied" -eq 1 ]]; then
       echo "  .output/updated_sources/       - Auto-fixed files (already copied back)"
     fi
   fi

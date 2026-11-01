@@ -93,6 +93,20 @@ STUBEOF
   [ "$(cat "$WORK/tracked.txt")" = "original" ]
 }
 
+@test "local mode leaves files alone when APPLY_FIXES=false, which MegaLinter treats as no fixes" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt APPLY_FIXES=false run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "original" ]
+}
+
+@test "local mode leaves files alone when APPLY_FIXES=All, which MegaLinter matches case-sensitively" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt APPLY_FIXES=All run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "original" ]
+}
+
 @test "local mode copies back a file MegaLinter rewrote when APPLY_FIXES is unset" {
   echo original >"$WORK/tracked.txt"
   STUB_REWRITE=tracked.txt run "$WORK/lint.sh"
@@ -109,6 +123,9 @@ STUBEOF
 
 @test "local mode failure output mentions copied-back files only when fixes were applied" {
   STUB_EXIT=1 APPLY_FIXES=none run "$WORK/lint.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"already copied back"* ]]
+  STUB_EXIT=1 APPLY_FIXES=false run "$WORK/lint.sh"
   [ "$status" -eq 1 ]
   [[ "$output" != *"already copied back"* ]]
   STUB_EXIT=1 run "$WORK/lint.sh"
