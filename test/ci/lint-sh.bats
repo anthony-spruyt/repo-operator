@@ -86,6 +86,13 @@ STUBEOF
   [ "$(cat "$WORK/tracked.txt")" = "original" ]
 }
 
+@test "local mode leaves files alone when APPLY_FIXES=None, which MegaLinter treats as no fixes" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt APPLY_FIXES=None run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "original" ]
+}
+
 @test "local mode copies back a file MegaLinter rewrote when APPLY_FIXES is unset" {
   echo original >"$WORK/tracked.txt"
   STUB_REWRITE=tracked.txt run "$WORK/lint.sh"

@@ -92,10 +92,9 @@ else
     "$MEGALINTER_IMAGE" >/dev/null 2>&1 ||
     LINT_EXIT_CODE=$?
 
-  # Linters fix in place in the mounted workspace; this only restores files a
-  # linter rewrote outside it (e.g. via a temp copy). Skipped with no fixes:
-  # updated_sources then holds stale snapshots that would undo concurrent edits.
-  if [[ "$apply_fixes" != "none" ]] && compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
+  # Restores files a linter rewrote outside the mount. Skipped with no fixes: the
+  # snapshots in updated_sources are then stale and would undo concurrent edits.
+  if [[ "$${apply_fixes,,}" != "none" ]] && compgen -G "$REPO_ROOT/.output/updated_sources/*" >/dev/null; then
     cp -r "$REPO_ROOT/.output/updated_sources"/* "$REPO_ROOT/"
   fi
 
@@ -105,7 +104,7 @@ else
     echo "MegaLinter failed (exit code $LINT_EXIT_CODE). Check .output/ for details:"
     echo "  .output/megalinter.log        - Full run log"
     echo "  .output/linters_logs/          - Per-linter logs"
-    if [[ "$apply_fixes" != "none" ]]; then
+    if [[ "$${apply_fixes,,}" != "none" ]]; then
       echo "  .output/updated_sources/       - Auto-fixed files (already copied back)"
     fi
   fi
