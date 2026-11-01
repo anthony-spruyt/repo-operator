@@ -37,7 +37,7 @@ New work, or a change to an approach the owner picked, starts with the `intervie
 - A CI-wait brief says "run `ci-status.sh --wait`" with `--repo <owner/repo>`, the PR or sha, and any `--no-sonar`/`--no-codeql`; never `gh pr checks` or `gh run watch`
 - A review brief says whether the target is pushed (give the PR head sha) or local and unpushed
 - A PR's work goes in one push: each push re-runs approval-gated jobs and emails the owner per job; fix commit wording at squash-merge time, not with follow-up commits
-- Spot-check key helper claims (PR state, run status) when cheap
+- Act on a helper's result only once it has finished (`ListAgents` doesn't show it running), and check its key claims first (the sha exists, PR and run state)
 
 ## Review and readiness
 
