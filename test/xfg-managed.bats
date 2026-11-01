@@ -196,57 +196,81 @@ bash_hook() { hook Bash command "$1"; }
   done
 }
 
-@test "hook allows Bash writes after a cd out of the repo" {
-  mkdir -p "$T/out"
-  run bash_hook "cd $T/out && cat > lint.sh"
-  [ "$status" -eq 0 ]
-  run bash_hook "cd $T/out; echo x >> lint.sh"
-  [ "$status" -eq 0 ]
-  run bash_hook "cd $T/out 2>/dev/null && cat > lint.sh"
-  [ "$status" -eq 0 ]
-}
-
-@test "hook blocks Bash writes that resolve back into the repo" {
-  mkdir -p "$T/out" "$REPO/sub"
-  for cmd in "cd $T/out && cd $REPO && echo x > lint.sh" "cd sub && echo x > ../lint.sh" \
-    "echo x > cluster/../lint.sh" "cd $REPO/sub && rm ../lint.sh" "cd sub >/dev/null 2>&1 && echo x > ../lint.sh"; do
-    run bash_hook "$cmd"
-    [ "$status" -eq 2 ] || {
-      echo "not blocked: $cmd"
+each_exits() {
+  local want=$1 cmd got
+  shift
+  for cmd in "$@"; do
+    got=0
+    bash_hook "$cmd" >/dev/null 2>&1 || got=$?
+    [ "$got" -eq "$want" ] || {
+      echo "exit $got, want $want: $cmd"
       return 1
     }
   done
 }
 
-@test "hook follows cd - and a plain cd back into the repo" {
-  mkdir -p "$T/out" "$REPO/sub"
-  run hook Bash command "cd $T/out && cd - && echo x > ../lint.sh" "$REPO/sub"
-  [ "$status" -eq 2 ]
-  HOME="$REPO" run hook Bash command "cd && echo x > lint.sh" "$T/out"
-  [ "$status" -eq 2 ]
+@test "hook allows a write after a leading cd to a plain directory outside the repo" {
+  mkdir -p "$T/out"
+  each_exits 0 "cd $T/out && cat > lint.sh" "  cd $T/out&&cat >lint.sh" "cd $T/out && cat > lint.sh 2>&1" \
+    "cd $T/out && echo x &> lint.sh" "cd '$T/out' && cat > lint.sh" "cd \"$T/out\" && tee lint.sh" \
+    "cd $T/out && cat > lint.sh && echo abcd"
 }
 
-@test "hook judges a write by the repo it resolves into" {
+@test "hook allows a write after a leading cd that spans backslash-newlines" {
   mkdir -p "$T/out"
-  new_repo "$T/other" git@github.com:anthony-spruyt/other.git
+  each_exits 0 "cd $T/out && \\
+cat > lint.sh" "cd $T/out \\
+&& cat > lint.sh"
+}
+
+@test "hook allows a write after a leading cd to another repo that does not manage the file" {
+  new_repo "$T/o" git@github.com:anthony-spruyt/o.git
+  each_exits 0 "cd $T/o && echo x > lint.sh"
+}
+
+@test "hook blocks a write after a leading cd to another repo that manages the file" {
+  new_repo "$T/om" git@github.com:anthony-spruyt/om.git
+  jq '. + {"anthony-spruyt/om": ["lint.sh"]}' "$T/list.json" >"$T/list.new" && mv "$T/list.new" "$T/list.json"
+  each_exits 2 "cd $T/om && echo x > lint.sh"
+}
+
+@test "hook blocks a leading cd back to the repo, from inside or outside it" {
+  mkdir -p "$T/out" "$REPO/sub" "$REPO/nested"
+  git init -q "$REPO/nested"
+  each_exits 2 "cd $REPO && echo x > lint.sh" "cd $REPO/nested && echo x > lint.sh" "cd $REPO/sub && echo x > lint.sh"
   run hook Bash command "cd $REPO && echo x > lint.sh" "$T/out"
   [ "$status" -eq 2 ]
-  run hook Bash command "echo x > $REPO/lint.sh" "$T/out"
-  [ "$status" -eq 2 ]
-  run hook Bash command "cd $T/other && echo x > lint.sh" "$REPO"
-  [ "$status" -eq 0 ]
 }
 
-@test "hook blocks a managed name after a cd it cannot resolve" {
+@test "hook blocks a leading cd into a subdirectory of another repo or into a relative or flagged dir" {
+  mkdir -p "$T/o/sub" "$T/out"
+  new_repo "$T/o" git@github.com:anthony-spruyt/o.git
+  each_exits 2 "cd $T/o/sub && echo x > lint.sh" "cd out && echo x > lint.sh" "cd -P $T/out && echo x > lint.sh" \
+    "cd $T/out || echo x > lint.sh"
+}
+
+@test "hook blocks a write when the part after the cd can run another command" {
   mkdir -p "$T/out"
-  for cmd in "cd $T/out && cd \"\$(mktemp -d)\" && echo x > lint.sh" "cd $T/out && cd \"\$OUT\" && echo x > lint.sh" \
-    "(cd $T/out && true); echo x > lint.sh" "cd $T/out && popd && echo x > lint.sh"; do
-    run bash_hook "$cmd"
-    [ "$status" -eq 2 ] || {
-      echo "not blocked: $cmd"
-      return 1
-    }
-  done
+  each_exits 2 "cd $T/out && echo x; echo y > lint.sh" "cd $T/out && false || echo y > lint.sh" \
+    "cd $T/out && sleep 1 & echo y > lint.sh" "cd $T/out && echo x
+echo y > lint.sh"
+}
+
+@test "hook blocks a write when the part after the cd can leave the directory" {
+  mkdir -p "$T/out"
+  each_exits 2 "cd $T/out && cd - && echo x > lint.sh" "cd $T/out && pushd - && echo x > lint.sh" \
+    "cd $T/out && popd && echo x > lint.sh" "cd $T/out && mv lint.sh ../a"
+}
+
+@test "hook blocks a write when the part after the cd uses an expansion or names the repo" {
+  mkdir -p "$T/out"
+  each_exits 2 "cd $T/out && mv lint.sh \"\$OLDPWD\"" "cd $T/out && mv lint.sh \`cat dest\`" \
+    "cd $T/out && mv lint.sh ~/x" "cd $T/out && echo x > $REPO/lint.sh"
+}
+
+@test "hook keeps blocking a cd that is not the leading command" {
+  mkdir -p "$T/out"
+  each_exits 2 "if cd $T/out; then echo x > lint.sh; fi" "(cd $T/out && true); echo x > lint.sh"
 }
 
 @test "staged fails on a staged change to a managed file" {

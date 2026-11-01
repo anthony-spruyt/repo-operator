@@ -6,7 +6,6 @@ set -eu
 list_url=$(printenv XFG_MANAGED_URL || echo https://raw.githubusercontent.com/anthony-spruyt/repo-operator/main/.github/xfg-managed.json)
 ttl=$(printenv XFG_MANAGED_TTL || echo 900)
 self_repo=anthony-spruyt/repo-operator
-in_place="[[:space:]](-[a-zA-Z]*i|--in-place)"
 
 repo_name() {
   local dir=$1
@@ -65,116 +64,76 @@ explain() {
   fi
 }
 
-any_managed() {
-  local list
-  list=$(cached_list "$1") || return 1
-  jq -r '.[][]' "$list" | grep -qxF -- "$2"
-}
-
-# Prints ? for a target it cannot resolve: relative writes then match every repo's managed names.
-cd_dir() {
-  local cur=$1 prev=$2 args dir
-  args=$(sed -E 's/[0-9&]*>+&?[[:space:]]*[^[:space:]]*//g; s/^[[:space:]]+//; s/[[:space:]]+$//; s/^(-[LPe@]+[[:space:]]+)*(--[[:space:]]+)?//' <<<"$3" | tr -d "\"')}")
-  case "$args" in
-  *[[:space:]]* | *'$'* | *'`'* | *[*?[]* | '~'[!/]*) echo '?' ;;
-  '' | '~') printenv HOME || echo '?' ;;
-  [~]/*) dir=$(printenv HOME) && realpath -m -- "$dir/$(cut -c3- <<<"$args")" || echo '?' ;;
-  -) echo "$prev" ;;
-  /*) realpath -m -- "$args" ;;
-  *)
-    if [[ "$cur" == '?' ]]; then echo '?'; else realpath -m -- "$cur/$args"; fi
-    ;;
-  esac
-}
-
-write_targets() {
-  local seg=$1 first=$2 second=$3 words
-  words=$(tr -s '[:space:]=' '\n' <<<"$seg" | tr -d "\"'()")
-  if [[ $seg == *'>'* || $seg == *of=* ]]; then
-    { grep -oE "(>|&>|of=)[[:space:]]*[\"']?[^[:space:]\"';)<>|&]+" <<<"$seg" || true; } |
-      sed -E "s/^(>|&>|of=)[[:space:]]*[\"']?//"
-  fi
-  case "$first" in
-  sed | perl) [[ $seg =~ $in_place ]] && echo "$words" ;;
-  tee | rm | truncate | unlink | shred | mv) echo "$words" ;;
-  cp | install | ln | rsync) echo "$words" | tail -n 1 ;;
-  git) [[ "$second" == rm || "$second" == mv ]] && echo "$words" ;;
-  *) ;;
-  esac
-  return 0
-}
-
-check_target() {
-  local sroot=$1 cur=$2 word=$3 abs root rel
-  case "$word" in
-  -*) return 0 ;;
-  /*) abs=$word ;;
-  [~]/*) abs=$(printenv HOME)/$(cut -c3- <<<"$word") ;;
-  *)
-    if [[ "$cur" == '?' ]]; then
-      rel=$(realpath -m --relative-to=/ -- "/$word")
-      [[ -n "$sroot" ]] && any_managed "$sroot" "$rel" && {
-        explain "$sroot" "$rel" >&2
-        exit 2
-      }
-      return 0
-    fi
-    abs=$cur/$word
-    ;;
-  esac
-  IFS=$'\t' read -r root rel < <(locate "$abs") || return 0
-  if is_managed "$root" "$rel"; then
-    explain "$root" "$rel" >&2
-    exit 2
-  fi
-}
-
-check_segment() {
-  local sroot=$1 cur=$2 seg=$3 first=$4 second=$5 t
-  case "$first" in
-  sed | perl | tee | rm | truncate | unlink | shred | mv | cp | install | ln | rsync | git) ;;
-  *) [[ $seg == *'>'* || $seg == *of=* ]] || return 0 ;;
-  esac
-  while IFS= read -r t; do
-    [[ -z "$t" ]] || check_target "$sroot" "$cur" "$t"
-  done < <(write_targets "$seg" "$first" "$second")
+# shellcheck disable=SC2001,SC2016
+ere_escape() {
+  local text=$1
+  sed 's#[]\.[*^$()+?{}|]#\\&#g' <<<"$text"
 }
 
 block_managed_writes() {
-  local sroot=$1 cur=$2 cmd=$3 prev='?' stack='' segments seg first second rest pushes pops i t
-  segments=$(sed -E "s/&&|\|\|/\n/g; s/>\|/>/g; s/[|;]/\n/g" <<<"$cmd" |
-    awk '{
-      o = gsub(/\(/, "("); c = gsub(/\)/, ")"); l = 0
-      if (match($0, /^[ \t]*\(+/)) { s = substr($0, RSTART, RLENGTH); l = gsub(/\(/, "", s) }
-      u = o - l
-      print $0 "\037" (l + (u > c ? u - c : 0)) "\037" (c > u ? c - u : 0)
-    }' |
-    sed -E 's/^[[:space:](){]*//; s/^(then|do|else|!)[[:space:]]+//; s/^sudo[[:space:]]+//; s/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//')
-  while IFS=$'\037' read -r seg pushes pops; do
-    for ((i = 0; i < pushes; i++)); do stack=$cur$'\t'$stack; done
-    read -r first rest <<<"$seg" || true
-    read -r second _ <<<"$rest" || true
-    case "$first" in
-    cd | pushd)
-      t=$(cd_dir "$cur" "$prev" "$rest")
-      prev=$cur
-      cur=$t
-      ;;
-    popd)
-      prev=$cur
-      cur='?'
-      ;;
-    *) ;;
-    esac
-    check_segment "$sroot" "$cur" "$seg" "$first" "$second"
-    for ((i = 0; i < pops; i++)); do
-      [[ -z "$stack" ]] || IFS=$'\t' read -r cur stack <<<"$stack"
-    done
+  local root=$1 cmd=$2 files pairs segments seg first second last p re before after redirect in_place
+  files=$(managed_files "$root")
+  [[ -n "$files" ]] || return 0
+  pairs=$(paste <(echo "$files") <(ere_escape "$files"))
+  cmd=$(awk -v r="$root/" '{ while ((i = index($0, r)) > 0) $0 = substr($0, 1, i - 1) substr($0, i + length(r)); print }' <<<"$cmd")
+  segments=$(sed -E "s#(^|[[:space:]\"'=])\./#\1#g; s/&&|\|\|/\n/g; s/>\|/>/g; s/[|;]/\n/g" <<<"$cmd")
+  before="(^|[[:space:]\"'=])"
+  after="(\$|[[:space:]\"';)<>|&])"
+  redirect="(>|&>|of=)[[:space:]]*[\"']?"
+  in_place="[[:space:]](-[a-zA-Z]*i|--in-place)"
+  while IFS= read -r seg; do
+    seg=$(sed -E 's/^[[:space:](){]*//; s/^sudo[[:space:]]+//; s/^([A-Za-z_][A-Za-z0-9_]*=[^[:space:]]*[[:space:]]+)*//' <<<"$seg")
+    read -r first second _ <<<"$seg" || true
+    last=$(awk '{ print $NF }' <<<"$seg" | tr -d "\"'")
+    while IFS=$'\t' read -r p re; do
+      if [[ $seg =~ $redirect$re$after ]]; then
+        explain "$root" "$p" >&2
+        exit 2
+      fi
+      [[ $seg =~ $before$re$after ]] || continue
+      case "$first" in
+      sed | perl) [[ $seg =~ $in_place ]] || continue ;;
+      tee | rm | truncate | unlink | shred | mv) ;;
+      cp | install | ln | rsync) [[ "$last" == "$p" ]] || continue ;;
+      git) [[ "$second" == rm || "$second" == mv ]] || continue ;;
+      *) continue ;;
+      esac
+      explain "$root" "$p" >&2
+      exit 2
+    done <<<"$pairs"
   done <<<"$segments"
 }
 
+plain_rest() {
+  local rest=$1 sroot=$2 word='(^|[^A-Za-z0-9_-])(cd|pushd|popd)([^A-Za-z0-9_-]|$)'
+  case "$rest" in
+  *$'\n'* | *';'* | *'||'* | *'$'* | *'`'* | *'~'* | *..*) return 1 ;;
+  esac
+  [[ $(sed 's/&&//g; s/>&//g; s/&>//g' <<<"$rest") != *'&'* ]] || return 1
+  [[ ! $rest =~ $word ]] || return 1
+  [[ -z "$sroot" || "$rest" != *"$sroot"* ]]
+}
+
+leading_cd_escape() {
+  local sroot=$1 cmd=$2 lead dir rest rsroot droot
+  lead="^[[:blank:]]*cd[[:blank:]]+([\"']?)(/[A-Za-z0-9_./@+-]*)\\1[[:blank:]]*&&"
+  dir=$(printf '%s' "$cmd" | sed -nzE "s#$lead.*#\\2#p")
+  [[ -n "$dir" ]] || return 0
+  rest=$(printf '%s' "$cmd" | sed -nzE "s#$lead##p")
+  dir=$(realpath -m -- "$dir")
+  if [[ -n "$sroot" ]]; then
+    rsroot=$(realpath -m -- "$sroot")
+    if [[ "$dir" == "$rsroot" || "$dir" == "$rsroot"/* ]]; then return 0; fi
+  fi
+  droot=$(git -C "$(existing_dir "$dir")" rev-parse --show-toplevel 2>/dev/null) || droot=
+  [[ -z "$droot" || "$droot" == "$dir" ]] || return 0
+  plain_rest "$rest" "$sroot" || return 0
+  if [[ -n "$droot" ]]; then block_managed_writes "$droot" "$rest"; fi
+  exit 0
+}
+
 run_hook() {
-  local input tool cwd path root rel
+  local input tool cwd path root rel cmd sroot
   input=$(cat)
   tool=$(jq -r '.tool_name // empty' <<<"$input")
   cwd=$(jq -r '.cwd // empty' <<<"$input")
@@ -191,8 +150,11 @@ run_hook() {
     fi
     ;;
   Bash)
-    root=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || root=
-    block_managed_writes "$root" "$cwd" "$(jq -r '.tool_input.command // empty' <<<"$input")"
+    cmd=$(jq -r '.tool_input.command // empty' <<<"$input" | sed -z 's/\\\n//g')
+    sroot=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || sroot=
+    leading_cd_escape "$sroot" "$cmd"
+    [[ -n "$sroot" ]] || exit 0
+    block_managed_writes "$sroot" "$cmd"
     ;;
   *) ;;
   esac
