@@ -268,6 +268,24 @@ echo y > lint.sh"
     "cd $T/out && mv lint.sh ~/x" "cd $T/out && echo x > $REPO/lint.sh"
 }
 
+@test "hook blocks a command that a trailing backslash in a comment or after an escaped backslash would hide" {
+  each_exits 2 "# C:\\
+rm lint.sh" "echo x \\\\
+rm lint.sh"
+}
+
+@test "hook blocks a write after a leading cd when a comment or an escaped backslash ends the line" {
+  each_exits 2 "cd /nonexistent && echo a # c:\\
+rm lint.sh" "cd /nonexistent && echo a \\\\
+rm lint.sh"
+}
+
+@test "hook blocks a leading cd whose directory goes up through a symlink back into the repo" {
+  mkdir -p "$T/out/deep/sub"
+  ln -s "$T/out/deep/sub" "$REPO/linkout"
+  each_exits 2 "cd $REPO/linkout/.. && echo x > lint.sh"
+}
+
 @test "hook keeps blocking a cd that is not the leading command" {
   mkdir -p "$T/out"
   each_exits 2 "if cd $T/out; then echo x > lint.sh; fi" "(cd $T/out && true); echo x > lint.sh"

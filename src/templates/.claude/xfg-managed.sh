@@ -107,7 +107,7 @@ block_managed_writes() {
 plain_rest() {
   local rest=$1 sroot=$2 word='(^|[^A-Za-z0-9_-])(cd|pushd|popd)([^A-Za-z0-9_-]|$)'
   case "$rest" in
-  *$'\n'* | *';'* | *'||'* | *'$'* | *'`'* | *'~'* | *..*) return 1 ;;
+  *$'\n'* | *';'* | *'||'* | *'$'* | *'`'* | *'~'* | *'#'* | *\\* | *..*) return 1 ;;
   esac
   [[ $(sed 's/&&//g; s/>&//g; s/&>//g' <<<"$rest") != *'&'* ]] || return 1
   [[ ! $rest =~ $word ]] || return 1
@@ -118,7 +118,7 @@ leading_cd_escape() {
   local sroot=$1 cmd=$2 lead dir rest rsroot droot
   lead="^[[:blank:]]*cd[[:blank:]]+([\"']?)(/[A-Za-z0-9_./@+-]*)\\1[[:blank:]]*&&"
   dir=$(printf '%s' "$cmd" | sed -nzE "s#$lead.*#\\2#p")
-  [[ -n "$dir" ]] || return 0
+  [[ -n "$dir" && "$dir" != *..* ]] || return 0
   rest=$(printf '%s' "$cmd" | sed -nzE "s#$lead##p")
   dir=$(realpath -m -- "$dir")
   if [[ -n "$sroot" ]]; then
@@ -133,7 +133,7 @@ leading_cd_escape() {
 }
 
 run_hook() {
-  local input tool cwd path root rel cmd sroot
+  local input tool cwd path root rel raw cmd sroot
   input=$(cat)
   tool=$(jq -r '.tool_name // empty' <<<"$input")
   cwd=$(jq -r '.cwd // empty' <<<"$input")
@@ -150,11 +150,12 @@ run_hook() {
     fi
     ;;
   Bash)
-    cmd=$(jq -r '.tool_input.command // empty' <<<"$input" | sed -z 's/\\\n//g')
+    raw=$(jq -r '.tool_input.command // empty' <<<"$input")
+    cmd=$(sed -z 's/\\\n//g' <<<"$raw")
     sroot=$(git -C "$cwd" rev-parse --show-toplevel 2>/dev/null) || sroot=
     leading_cd_escape "$sroot" "$cmd"
     [[ -n "$sroot" ]] || exit 0
-    block_managed_writes "$sroot" "$cmd"
+    block_managed_writes "$sroot" "$cmd"$'\n'"$raw"
     ;;
   *) ;;
   esac
