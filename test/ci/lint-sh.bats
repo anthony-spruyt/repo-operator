@@ -10,7 +10,15 @@ setup() {
   chmod +x "$WORK/lint.sh"
   STUB="${BATS_TEST_TMPDIR}/bin"
   mkdir -p "$STUB"
-  printf '#!/usr/bin/env bash\nprintf "%%s\\n" "$@" >"%s/docker-args"\n' "$BATS_TEST_TMPDIR" >"$STUB/docker"
+  cat >"$STUB/docker" <<STUBEOF
+#!/usr/bin/env bash
+printf '%s\n' "\$@" >"$BATS_TEST_TMPDIR/docker-args"
+if [ -n "\${STUB_REWRITE:-}" ]; then
+  mkdir -p "$WORK/.output/updated_sources"
+  echo rewritten >"$WORK/.output/updated_sources/\$STUB_REWRITE"
+fi
+exit "\${STUB_EXIT:-0}"
+STUBEOF
   printf '#!/usr/bin/env bash\nexit 1\n' >"$STUB/sudo"
   chmod +x "$STUB/docker" "$STUB/sudo"
   export PATH="$STUB:$PATH"
@@ -69,4 +77,34 @@ setup() {
   grep -qx -- '-u' "$ARGS"
   grep -qx "$(id -u):$(id -g)" "$ARGS"
   grep -qx 'HOME=/tmp' "$ARGS"
+}
+
+@test "local mode leaves files alone when MegaLinter lists one and APPLY_FIXES=none" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt APPLY_FIXES=none run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "original" ]
+}
+
+@test "local mode copies back a file MegaLinter rewrote when APPLY_FIXES is unset" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "rewritten" ]
+}
+
+@test "local mode copies back a file MegaLinter rewrote when APPLY_FIXES names linters" {
+  echo original >"$WORK/tracked.txt"
+  STUB_REWRITE=tracked.txt APPLY_FIXES=YAML_PRETTIER run "$WORK/lint.sh"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$WORK/tracked.txt")" = "rewritten" ]
+}
+
+@test "local mode failure output mentions copied-back files only when fixes were applied" {
+  STUB_EXIT=1 APPLY_FIXES=none run "$WORK/lint.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" != *"already copied back"* ]]
+  STUB_EXIT=1 run "$WORK/lint.sh"
+  [ "$status" -eq 1 ]
+  [[ "$output" == *"already copied back"* ]]
 }
