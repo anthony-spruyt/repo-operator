@@ -27,7 +27,7 @@ jobs:
       pull-requests: "read"
     steps:
       - name: "Harden Runner"
-        uses: "anthony-spruyt/repo-operator/.github/actions/harden-runner@9b41eff6c6d319272e96063e8e1028db9bf1b192" # main
+        uses: "anthony-spruyt/repo-operator/.github/actions/harden-runner@7b5384f1aaa261e3c79070fd72233edce747764e" # main
         with:
           disable-sudo-and-containers: true
           allowed-endpoints: >-
