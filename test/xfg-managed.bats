@@ -196,6 +196,59 @@ bash_hook() { hook Bash command "$1"; }
   done
 }
 
+@test "hook allows Bash writes after a cd out of the repo" {
+  mkdir -p "$T/out"
+  run bash_hook "cd $T/out && cat > lint.sh"
+  [ "$status" -eq 0 ]
+  run bash_hook "cd $T/out; echo x >> lint.sh"
+  [ "$status" -eq 0 ]
+  run bash_hook "cd $T/out 2>/dev/null && cat > lint.sh"
+  [ "$status" -eq 0 ]
+}
+
+@test "hook blocks Bash writes that resolve back into the repo" {
+  mkdir -p "$T/out" "$REPO/sub"
+  for cmd in "cd $T/out && cd $REPO && echo x > lint.sh" "cd sub && echo x > ../lint.sh" \
+    "echo x > cluster/../lint.sh" "cd $REPO/sub && rm ../lint.sh" "cd sub >/dev/null 2>&1 && echo x > ../lint.sh"; do
+    run bash_hook "$cmd"
+    [ "$status" -eq 2 ] || {
+      echo "not blocked: $cmd"
+      return 1
+    }
+  done
+}
+
+@test "hook follows cd - and a plain cd back into the repo" {
+  mkdir -p "$T/out" "$REPO/sub"
+  run hook Bash command "cd $T/out && cd - && echo x > ../lint.sh" "$REPO/sub"
+  [ "$status" -eq 2 ]
+  HOME="$REPO" run hook Bash command "cd && echo x > lint.sh" "$T/out"
+  [ "$status" -eq 2 ]
+}
+
+@test "hook judges a write by the repo it resolves into" {
+  mkdir -p "$T/out"
+  new_repo "$T/other" git@github.com:anthony-spruyt/other.git
+  run hook Bash command "cd $REPO && echo x > lint.sh" "$T/out"
+  [ "$status" -eq 2 ]
+  run hook Bash command "echo x > $REPO/lint.sh" "$T/out"
+  [ "$status" -eq 2 ]
+  run hook Bash command "cd $T/other && echo x > lint.sh" "$REPO"
+  [ "$status" -eq 0 ]
+}
+
+@test "hook blocks a managed name after a cd it cannot resolve" {
+  mkdir -p "$T/out"
+  for cmd in "cd $T/out && cd \"\$(mktemp -d)\" && echo x > lint.sh" "cd $T/out && cd \"\$OUT\" && echo x > lint.sh" \
+    "(cd $T/out && true); echo x > lint.sh" "cd $T/out && popd && echo x > lint.sh"; do
+    run bash_hook "$cmd"
+    [ "$status" -eq 2 ] || {
+      echo "not blocked: $cmd"
+      return 1
+    }
+  done
+}
+
 @test "staged fails on a staged change to a managed file" {
   cd "$REPO"
   echo x >lint.sh
