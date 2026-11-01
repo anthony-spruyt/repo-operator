@@ -16,7 +16,7 @@ The main session plans, decides and talks to the owner. If the brief would be lo
 | Edits, commits, fix rounds, rework                     | `builder` (sonnet)                    |
 | Waiting or polling, noisy logs, batch sweeps           | `chore-runner` (haiku), in background |
 | Reviews, fix-checks, attacker-minded reviews           | `reviewer` (opus)                     |
-| Root-causing and judgement calls                       | `general-purpose` (opus)              |
+| Root-causing and other deep investigation              | `general-purpose` (opus)              |
 | Finding, listing or gathering facts, even across repos | `Explore` (haiku)                     |
 
 Push reviewed commits yourself from the `workspace.sh` clone that holds them, never the shared checkout, with `push-reviewed.sh <base> <sha> <branch>`, only once fresh reviews cover that exact range and the last round is READY (every full-review lens, then each fix-check; a verbatim fix you checked under step 3 counts as reviewed and READY); if it stops, tell the owner. Give the pushed sha to the CI wait, and the range it prints to any post-push validator the repo's rules name.
