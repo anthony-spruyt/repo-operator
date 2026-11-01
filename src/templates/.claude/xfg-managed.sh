@@ -108,6 +108,7 @@ plain_rest() {
   local rest=$1 sroot=$2 word='(^|[^A-Za-z0-9_-])(cd|pushd|popd)([^A-Za-z0-9_-]|$)'
   case "$rest" in
   *$'\n'* | *';'* | *'||'* | *'$'* | *'`'* | *'~'* | *'#'* | *\\* | *..*) return 1 ;;
+  *) ;;
   esac
   [[ $(sed 's/&&//g; s/>&//g; s/&>//g' <<<"$rest") != *'&'* ]] || return 1
   [[ ! $rest =~ $word ]] || return 1
