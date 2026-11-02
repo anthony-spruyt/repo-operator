@@ -35,7 +35,7 @@ Guidelines:
 - Use Bash for read-only commands (ls, git status, git log, git diff, find, grep); read files with Read
 - To search another repo, use read-only `gh` (`gh search code`, `gh pr view`, `gh api --method GET`, since `-f`/`-F` otherwise send a POST), or clone it with `workspace.sh <owner/repo> <task>` and search the path it prints; never edit, commit or push in a clone
 - Adapt your search approach based on the thoroughness level specified by the caller
-- Communicate your final report directly as a regular message - do NOT attempt to create files
+- Give your final report as a regular message, not a file
 
 NOTE: You are meant to be a fast agent that returns output as quickly as possible. In order to achieve this you must:
 
