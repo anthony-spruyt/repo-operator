@@ -10,8 +10,8 @@ permissions:
 
 env:
   LINT_FILES: >-
-    [".golangci.yml", ".mega-linter-base.yml", ".mega-linter.yml", ".pylintrc",
-    "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
+    [".devcontainer/Dockerfile", ".golangci.yml", ".mega-linter-base.yml", ".mega-linter.yml",
+    ".pre-commit-config.yaml", ".pylintrc", "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
 
 jobs:
   render:
@@ -20,6 +20,7 @@ jobs:
     timeout-minutes: 15
     outputs:
       repos: ${{ steps.affected.outputs.repos || '[]' }}
+      devcontainer-image: ${{ steps.image.outputs.image }}
     steps:
       - name: Harden Runner
         uses: $/.github/actions/harden-runner
@@ -76,6 +77,13 @@ jobs:
           # Artifacts drop file modes, so ship the render as a tarball
           tar -C "$RENDER" -czf "$RUNNER_TEMP/render.tgz" .
 
+      - name: Name the devcontainer image
+        if: steps.needed.outputs.run == 'true'
+        id: image
+        run: |
+          image=$(.github/scripts/devcontainer-image.sh src/templates/.devcontainer/Dockerfile)
+          echo "image=$image" >> "$GITHUB_OUTPUT"
+
       - name: Upload render
         if: steps.needed.outputs.run == 'true'
         uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
@@ -98,16 +106,25 @@ jobs:
       - name: Harden Runner
         uses: $/.github/actions/harden-runner
         with:
-          # The MegaLinter job's allowlist in _lint.yaml, which lychee is kept out of for the same reason
+          # The MegaLinter job's allowlist in _lint.yaml, which lychee is kept out of for the same reason, plus Docker Hub and the hook installs of pre-commit
           allowed-endpoints: >-
             api.github.com:443
+            auth.docker.io:443
             check.trivy.dev:443
+            dl.google.com:443
+            files.pythonhosted.org:443
             ghcr.io:443
             github.com:443
+            go.dev:443
             mirror.gcr.io:443
             pkg-containers.githubusercontent.com:443
+            production.cloudfront.docker.com:443
             proxy.golang.org:443
+            pypi.org:443
+            registry-1.docker.io:443
             registry.coder.com:443
+            registry.npmjs.org:443
+            release-assets.githubusercontent.com:443
             results-receiver.actions.githubusercontent.com:443
             storage.googleapis.com:443
             sum.golang.org:443
@@ -153,6 +170,12 @@ jobs:
             done
           git -C target status --short
 
+      - name: Cache pre-commit hooks
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/pre-commit
+          key: pre-commit-${{ hashFiles('target/.pre-commit-config.yaml') }}-${{ needs.render.outputs.devcontainer-image }}
+
       - name: Run MegaLinter
         working-directory: target
         env:
@@ -160,3 +183,16 @@ jobs:
           DISABLE_LINTERS: SPELL_LYCHEE
           ENABLE_DISABLE_LINTERS_PRIORITY: DISABLE
         run: ./lint.sh --ci
+
+      - name: Run pre-commit
+        if: ${{ !cancelled() }}
+        working-directory: target
+        env:
+          DEVCONTAINER_IMAGE: ${{ needs.render.outputs.devcontainer-image }}
+        run: |
+          mkdir -p "$HOME/.cache/pre-commit"
+          docker run --rm -u "$(id -u):$(id -g)" \
+            -e HOME=/tmp -e PRE_COMMIT_HOME=/cache \
+            -e SKIP=gitleaks,xfg-managed,terraform_fmt,terraform_tflint \
+            -v "$HOME/.cache/pre-commit:/cache" -v "$PWD:/w" -w /w \
+            "$DEVCONTAINER_IMAGE" pre-commit run --all-files --show-diff-on-failure

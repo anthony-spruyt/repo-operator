@@ -514,10 +514,13 @@ affected repo. Don't fix it in the downstream repo: the next sync overwrites man
 
 ### Lint canary
 
-`.github/workflows/lint-canary.yaml` catches a bad bump before it merges. `ci.yaml` calls it on every PR, and `.github/scripts/lint-canary-needed.sh` skips it unless the PR touches a lint pin or lint template (`src/groups.yaml`, `src/repos.yaml`, and the lint files under `src/templates/`). It never runs on merge queue PRs:
+`.github/workflows/lint-canary.yaml` catches a bad bump before it merges. `ci.yaml` calls it on every PR, and `.github/scripts/lint-canary-needed.sh` skips it unless the PR touches a lint pin or lint template (`src/files.yaml`, `src/groups.yaml`, `src/repos.yaml`, the lint files and the devcontainer `Dockerfile` under `src/templates/`, and the canary's own scripts). It never runs on merge queue PRs:
 
-1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
-2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase, behind the `megalinter` job's allowlist and without lychee, as in `_lint.yaml`.
+1. **Render**: `xfg sync --dry-run --render-dir` writes every file the sync would change, per repo. A repo is affected when one of its lint files (`lint.sh`, `.mega-linter-base.yml`, `.mega-linter.yml`, `.pre-commit-config.yaml`, `.devcontainer/Dockerfile`, `.golangci.yml`, `ruff-base.toml`, `trivy-mega-linter.yaml`, `.pylintrc`) would be written or deleted. The job summary lists them.
+   The job also reads the devcontainer image from the `FROM` line of `src/templates/.devcontainer/Dockerfile` (`.github/scripts/devcontainer-image.sh`).
+2. **Lint**: one job per affected repo checks out its `main`, copies the rendered files over it, deletes the files the sync would delete, and runs `./lint.sh --ci` on the whole codebase, behind the `megalinter` job's allowlist plus the hosts pre-commit needs and without lychee, as in `_lint.yaml`.
+   It then runs `pre-commit run --all-files` in the devcontainer image, so a repo's commit gate runs on the new config as well as CI's linter. The step runs even when MegaLinter fails, so one run reports both.
+   It skips the hooks MegaLinter or the commit itself already covers: `gitleaks` (BetterLeaks and secretlint), `xfg-managed` (it reads the staged changes) and `terraform_fmt` and `terraform_tflint` (MegaLinter's terraform linters). The hook cache in `~/.cache/pre-commit` is keyed on the rendered `.pre-commit-config.yaml` and the image.
 
 A pin to an image that lacks one of a repo's enabled linters fails, because MegaLinter cannot run the missing linter. So do new findings from a changed rule. `summary` judges the canary, so a failure blocks the merge and a skip passes. A repo whose `main` is already red fails it too; fix that repo first.
 
@@ -525,7 +528,9 @@ The canary renders against each repo's current `main`, so it also lints changes 
 
 ### Lint config
 
+- **Formatter errors**: `.mega-linter-base.yml` sets `FORMATTERS_DISABLE_ERRORS: false`, so a formatter finding (prettier, shfmt, `terraform fmt`) fails the run. MegaLinter's default downgrades it to a warning that exits 0.
 - **Docker and Terraform**: the `image` group adds `DOCKERFILE_HADOLINT` and the `terraform` group adds `TERRAFORM_TFLINT` to `.mega-linter-base.yml`. The repo's flavor must ship the linter. hadolint comes from `.hadolint.yaml` (`createOnly`); tflint uses the repo's own `.tflint.hcl`.
+  The `terraform` group also sets `TERRAFORM_TERRAFORM_FMT_FILE_EXTENSIONS` to `.tf` and `.tfvars`, the files its `terraform_fmt` hook checks; MegaLinter's default is `.tf` only.
 - **Go**: `.golangci.yml` (v2) is synced whole. `goimports` `local-prefixes` comes from the repo name. Add linters per repo with a content overlay in `repos.yaml` (`linters.enable` with `$arrayMerge: append`, plus `linters.settings`).
 - **Python**: ruff config stays in `pyproject.toml`. The group syncs `ruff-base.toml` and points MegaLinter's `PYTHON_RUFF` and `PYTHON_RUFF_FORMAT` at `pyproject.toml`, which extends the base and adds repo-specific settings:
 
