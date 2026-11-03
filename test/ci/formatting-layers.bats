@@ -152,7 +152,7 @@ tf_hook() {
     "[go]@when:megalinter-flavor+go"
     # CPP_CLANG_FORMAT: cpptools formats with clang-format and .clang-format, which Chromance's .mega-linter.yml enables
     "[cpp]@repo:https://github.com/anthony-spruyt/Chromance.git"
-    # dotnet format in repo CI (ci-repo.yaml): the C# extension formats with the same Roslyn engine and .editorconfig
+    # dotnet format in repo CI (ci-repo.yaml): the C# extension formats with the same Roslyn engine but ignores .editorconfig until dotnet/vscode-csharp#8875 ships
     "[csharp]@group:dotnet"
   )
   allowed_json="$(printf '%s\n' "${allowed[@]}" | jq -R . | jq -s .)"
