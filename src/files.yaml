@@ -35,19 +35,11 @@ files:
   .gitleaks.toml:
     createOnly: true
     content: "@templates/.gitleaks.toml"
-  .prettierignore:
-    content: "@templates/.prettierignore"
-  .prettierrc.yaml:
-    schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
-    header: This file is automatically updated - do not modify directly
-    content: "@templates/.prettierrc.yaml"
   .markdownlint.json:
     content: "@templates/.markdownlint.json"
   .markdownlintignore:
     createOnly: true
     content: "@templates/.markdownlintignore"
-  .mdformat.toml:
-    content: "@templates/.mdformat.toml"
   .editorconfig:
     content: "@templates/.editorconfig"
   .gitignore:
