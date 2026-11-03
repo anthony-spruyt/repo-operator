@@ -67,6 +67,10 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.chromance"
+      .vscode/settings.json:
+        content:
+          "[cpp]":
+            "editor.formatOnSave": true
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:
@@ -349,16 +353,6 @@ repos:
               command: "cclsp"
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/spruyt-labs/.claude/cclsp.json"
-      .mdformat.toml:
-        content: |
-          wrap = 400
-          number = true
-          end_of_line = "lf"
-
-          # Python 3.13+ only
-          exclude = [
-              "cluster/apps/n8n-system/n8n/app/prompts/**",
-          ]
       .pre-commit-config.yaml:
         content:
           repos:

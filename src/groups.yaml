@@ -112,6 +112,10 @@ groups:
                 $arrayMerge: append
                 $values:
                   - "ms-dotnettools.csdevkit"
+      .vscode/settings.json:
+        content:
+          "[csharp]":
+            "editor.formatOnSave": true
   dismiss-stale-approvals:
     settings:
       rulesets:
@@ -580,20 +584,44 @@ groups:
           repos:
             $arrayMerge: append
             $values:
-              # NOTE: files pattern assumes infra/terraform/ directory structure - override per-repo if needed
               - repo: https://github.com/antonbabenko/pre-commit-terraform
                 # renovate: depName=antonbabenko/pre-commit-terraform datasource=github-tags
                 rev: v1.109.3
                 hooks:
                   - id: terraform_fmt
-                    files: "^(infra/terraform|coder)/"
+                    files: '\.(tf|tfvars)$'
                   - id: terraform_tflint
-                    files: "^(infra/terraform|coder)/"
+                    files: '\.tf$'
+                    args: ["--args=--config=__GIT_WORKING_DIR__/.tflint.hcl"]
       .vscode/settings.json:
         content:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
-  typescript: {}
+            "editor.formatOnSave": true
+  typescript:
+    files:
+      .devcontainer/devcontainer.json:
+        content:
+          customizations:
+            vscode:
+              extensions:
+                $arrayMerge: append
+                $values:
+                  - "esbenp.prettier-vscode"
+      .prettierignore:
+        content: "@templates/.prettierignore"
+      .prettierrc.yaml:
+        schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/prettierrc.json
+        header: This file is automatically updated - do not modify directly
+        content: "@templates/.prettierrc.yaml"
+      .vscode/settings.json:
+        content:
+          "[typescript]":
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+            "editor.formatOnSave": true
+          "[javascript]":
+            "editor.defaultFormatter": "esbenp.prettier-vscode"
+            "editor.formatOnSave": true
 
 conditionalGroups:
   - when:
@@ -671,6 +699,10 @@ conditionalGroups:
             $arrayMerge: append
             $values:
               - "GO_GOLANGCI_LINT"
+      .vscode/settings.json:
+        content:
+          "[go]":
+            "editor.formatOnSave": true
   - when:
       allOf: [megalinter-flavor, python]
     files:
@@ -703,6 +735,19 @@ conditionalGroups:
             $arrayMerge: append
             $values:
               - "TERRAFORM_TFLINT"
+              - "TERRAFORM_TERRAFORM_FMT"
+  - when:
+      allOf: [megalinter, typescript]
+    files:
+      .mega-linter-base.yml:
+        content:
+          ENABLE_LINTERS:
+            $arrayMerge: append
+            $values:
+              - "TYPESCRIPT_PRETTIER"
+              - "JAVASCRIPT_PRETTIER"
+          TYPESCRIPT_DEFAULT_STYLE: "prettier"
+          JAVASCRIPT_DEFAULT_STYLE: "prettier"
   - when:
       allOf: [claude, agent-kit]
     files:
