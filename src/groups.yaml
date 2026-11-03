@@ -736,6 +736,7 @@ conditionalGroups:
             $values:
               - "TERRAFORM_TFLINT"
               - "TERRAFORM_TERRAFORM_FMT"
+          TERRAFORM_TERRAFORM_FMT_FILE_EXTENSIONS: [".tf", ".tfvars"]
   - when:
       allOf: [megalinter, typescript]
     files:

@@ -5,6 +5,11 @@ setup() {
   BASE="$REPO_ROOT/src/templates/.mega-linter-base.yml"
 }
 
+@test "a formatter that finds a problem fails the run, instead of being downgraded to a warning" {
+  run yq -o=json -I0 '.FORMATTERS_DISABLE_ERRORS' "$BASE"
+  [ "$output" = "false" ]
+}
+
 @test "shellcheck and shfmt lint .bats files on top of MegaLinter's default bash extensions" {
   local linter
   for linter in BASH_SHELLCHECK BASH_SHFMT; do
