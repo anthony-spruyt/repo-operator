@@ -64,15 +64,21 @@ tf_hook() {
     jq -r "select(.id == \"$1\") | $2"
 }
 
-# markdown_decisions: "<path> <MegaLinter> <pre-commit>" per sample path, each "excluded" or "checked",
-# from the MegaLinter base config's excludes and the exclude of the markdownlint hook in the pre-commit template
+# markdown_decisions [jq edit]: "<path> <MegaLinter> <pre-commit>" per sample path, each "excluded" or "checked",
+# from the MegaLinter base config's excludes and the exclude of the markdownlint hook in the pre-commit template;
+# the optional jq edit changes that parsed config first, to model drift
 markdown_decisions() {
   local config
   config="$(jq -n \
-    --argjson base "$(yq -o=json -I0 '{"dirs": .ADDITIONAL_EXCLUDED_DIRECTORIES, "regexes": [.FILTER_REGEX_EXCLUDE, .MARKDOWN_FILTER_REGEX_EXCLUDE]}' "$TEMPLATES/.mega-linter-base.yml")" \
+    --argjson base "$(yq -o=json -I0 '{"dirs": .ADDITIONAL_EXCLUDED_DIRECTORIES, "regexes": {"FILTER_REGEX_EXCLUDE": .FILTER_REGEX_EXCLUDE, "MARKDOWN_FILTER_REGEX_EXCLUDE": .MARKDOWN_FILTER_REGEX_EXCLUDE}}' "$TEMPLATES/.mega-linter-base.yml")" \
     --argjson hook "$(yq -o=json -I0 '[.repos[].hooks[] | select(.id == "markdownlint")] | .[0]' "$TEMPLATES/.pre-commit-config.yaml")" \
-    '$base + {exclude: $hook.exclude}')"
+    '$base + {exclude: $hook.exclude} | '"${1:-.}")"
   python3 -I "$REPO_ROOT/test/fixtures/formatting-layers/markdown-exclusions.py" <<<"$config"
+}
+
+# markdown_disagreements: the sample paths of markdown_decisions' output (stdin) that MegaLinter and the hook treat differently
+markdown_disagreements() {
+  awk -F'\t' '$2 != $3 {print $1 ": MegaLinter " $2 ", pre-commit " $3}'
 }
 
 @test "a conditional group that sets ENABLE_LINTERS on the MegaLinter base appends, so the base allowlist survives" {
@@ -125,9 +131,10 @@ markdown_decisions() {
 
 @test "the markdownlint hook checks exactly the markdown files MegaLinter lints" {
   run markdown_decisions
+  echo "$output"
   [ "$status" -eq 0 ]
   decisions="$output"
-  disagreements="$(awk -F'\t' '$2 != $3 {print $1 ": MegaLinter " $2 ", pre-commit " $3}' <<<"$decisions")"
+  disagreements="$(markdown_disagreements <<<"$decisions")"
   echo "$disagreements"
   [ "$disagreements" = "" ]
   for column in 2 3; do
@@ -137,12 +144,38 @@ markdown_decisions() {
   done
 }
 
+@test "the markdown exclusion check catches drift in either direction" {
+  for edit in \
+    '.dirs -= ["site"]' \
+    '.exclude |= sub("\\|plans\\|"; "|build|plans|")' \
+    '.regexes.MARKDOWN_FILTER_REGEX_EXCLUDE += "|^docs/api/"' \
+    '.regexes.FILTER_REGEX_EXCLUDE |= sub("\\)$"; "|\\.generated\\.md$)")'; do
+    run markdown_decisions "$edit"
+    [ "$status" -eq 0 ]
+    disagreements="$(markdown_disagreements <<<"$output")"
+    echo "$edit: $disagreements"
+    [ -n "$disagreements" ]
+  done
+}
+
+@test "the markdown exclusion check fails on a regex alternative it cannot build a sample path from" {
+  for edit in \
+    '.regexes.MARKDOWN_FILTER_REGEX_EXCLUDE += "|^(?!docs/)"' \
+    '.exclude += "|^(?!docs/)"'; do
+    run markdown_decisions "$edit"
+    echo "$output"
+    [ "$status" -ne 0 ]
+    [[ "$output" == *"add a sample for "* ]]
+    [[ "$output" == *"^(?!docs/)"* ]]
+  done
+}
+
 @test "agent-platform's pre-commit config keeps every hook off its captured Renovate triage fixtures, whose bytes the tests compare" {
   exclude="$(yq -r '.repos[] | select(.git | test("agent-platform")) | .files[".pre-commit-config.yaml"].content.exclude' "$REPOS_FILE")"
   [ -n "$exclude" ]
   [ "$exclude" != "null" ]
   grep -Eq "$exclude" <<<"tests/AgentPlatform.Tests/RenovateTriage/Fixtures/diffshape-spruyt-labs-3405.json"
-  run grep -Eq "$exclude" <<<"tests/AgentPlatform.Tests/RenovateTriage/RenovateTriageTests.cs"
+  run grep -Eq "$exclude" <<<"tests/AgentPlatform.Tests/RenovateTriage/BumpAnalyzerTests.cs"
   [ "$status" -eq 1 ]
 }
 

@@ -131,15 +131,17 @@ no_commit_matches() {
   done
 }
 
-@test "src/ and test/ci/ are gate paths only in repo-operator, and the rest of test/ is not" {
+@test "src/, test/ci/ and test/fixtures/formatting-layers/ are gate paths only in repo-operator, and the rest of test/ is not" {
   gated repo-operator "src/groups.yaml"
   gated repo-operator "test/ci/merge-gate.bats"
+  gated repo-operator "test/fixtures/formatting-layers/markdown-exclusions.py"
   not_gated repo-operator "test/detect-images.bats"
   not_gated repo-operator "test/fixtures/ci/x"
   not_gated repo-operator "docs/test/ci/x"
   for repo in Chromance SunGather litellm-middleware spruyt-labs traefik-api-key-auth; do
     not_gated "$repo" "src/main.py"
     not_gated "$repo" "test/ci/x"
+    not_gated "$repo" "test/fixtures/formatting-layers/x"
   done
 }
 
