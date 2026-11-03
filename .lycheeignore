@@ -27,6 +27,9 @@ https://127\.0\.0\.1.*
 # Schema store times out intermittently in CI
 https://json\.schemastore\.org/.*
 
+# Trivy docs site fails the TLS handshake (unrecognized name) intermittently
+https://trivy\.dev/.*
+
 # Renovate customDatasources registry URLs carry a {{packageName}} placeholder
 # that only resolves at lookup time, so the literal is never a fetchable URL
 .*(%7B%7B|\{\{).*
