@@ -67,6 +67,10 @@ repos:
             $values:
               - "--env-file"
               - "$${localEnv:HOME}/.secrets/.env.chromance"
+      .vscode/settings.json:
+        content:
+          "[cpp]":
+            "editor.formatOnSave": true
 
   - git: https://github.com/anthony-spruyt/claude-plugins.git
     groups:

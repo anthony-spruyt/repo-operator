@@ -1,4 +1,3 @@
-# Claude Code generated files
 .claude/
 
 # MegaLinter's base filter skips it too, so pre-commit and CI see the same markdown

@@ -5,12 +5,52 @@ setup() {
   REPO_ROOT="$(cd "${BATS_TEST_DIRNAME}/../.." && pwd)"
   SRC="$REPO_ROOT/src"
   TEMPLATES="$SRC/templates"
+  FILES_FILE="$SRC/files.yaml"
   GROUPS_FILE="$SRC/groups.yaml"
+  REPOS_FILE="$SRC/repos.yaml"
 }
 
-# group_json <group> <file> <jq expr>: the group's content for a synced file, as JSON
-group_json() {
-  yq -o=json -I0 ".groups[\"$1\"].files[\"$2\"].content" "$GROUPS_FILE" | jq -r "$3"
+# parsed <file>: a JSON, JSON5 or YAML file as JSON; full-line // comments go first, yq reads the rest as YAML
+parsed() {
+  sed '/^[[:space:]]*\/\//d' "$1" | yq -p yaml -o json -I0
+}
+
+# overlays <synced file>: JSON array of {owner, content}, one per place that sets the file
+# (files.yaml, every group, every conditional group, every repo), "@templates/" contents read from disk
+overlays() {
+  local entry template
+  {
+    yq -o=json -I0 ".files[\"$1\"] | select(kind == \"map\") | {\"owner\": \"base\", \"content\": .content}" "$FILES_FILE"
+    yq -o=json -I0 ".groups | to_entries[] | .key as \$k | (.value.files[\"$1\"] | select(kind == \"map\")) | {\"owner\": \"group:\" + \$k, \"content\": .content}" "$GROUPS_FILE"
+    yq -o=json -I0 ".conditionalGroups[] | ((.when.allOf // []) | join(\"+\")) as \$w | (.files[\"$1\"] | select(kind == \"map\")) | {\"owner\": \"when:\" + \$w, \"content\": .content}" "$GROUPS_FILE"
+    yq -o=json -I0 ".repos[] | .git as \$g | (.files[\"$1\"] | select(kind == \"map\")) | {\"owner\": \"repo:\" + \$g, \"content\": .content}" "$REPOS_FILE"
+  } | while IFS= read -r entry; do
+    template="$(jq -r '.content | strings | select(startswith("@templates/")) | ltrimstr("@templates/")' <<<"$entry")"
+    if [ -n "$template" ]; then
+      jq -c --argjson content "$(parsed "$TEMPLATES/$template")" '.content = $content' <<<"$entry"
+    else
+      echo "$entry"
+    fi
+  done | jq -s 'map(select(.content != null))'
+}
+
+# synced_files <regex>: "<owner> <file>" for every synced file name matching the regex, from the same places as overlays
+synced_files() {
+  {
+    yq -r ".files | keys | .[] | select(test(\"$1\")) | \"base \" + ." "$FILES_FILE"
+    yq -r ".groups | to_entries[] | .key as \$k | ((.value.files // {}) | keys | .[] | select(test(\"$1\"))) | \"group:\" + \$k + \" \" + ." "$GROUPS_FILE"
+    yq -r ".conditionalGroups[] | ((.when.allOf // []) | join(\"+\")) as \$w | ((.files // {}) | keys | .[] | select(test(\"$1\"))) | \"when:\" + \$w + \" \" + ." "$GROUPS_FILE"
+    yq -r ".repos[] | .git as \$g | ((.files // {}) | keys | .[] | select(test(\"$1\"))) | \"repo:\" + \$g + \" \" + ." "$REPOS_FILE"
+  }
+}
+
+# vscode_settings: JSON array of {owner, settings}, one per source of VS Code settings:
+# every .vscode/settings.json overlay and every devcontainer's customizations.vscode.settings
+vscode_settings() {
+  {
+    overlays .vscode/settings.json | jq -c '.[] | {owner, settings: .content}'
+    overlays .devcontainer/devcontainer.json | jq -c '.[] | {owner, settings: .content.customizations.vscode.settings} | select(.settings != null)'
+  } | jq -s '.'
 }
 
 # conditional_json <group> <file>: the content a conditional group requiring <group> gives a synced file, as JSON
@@ -46,13 +86,14 @@ tf_hook() {
   [ "$output" = "true" ]
 }
 
-@test "the terraform hooks cover every .tf file, including the coder templates under cluster/" {
+@test "terraform_fmt covers every .tf and .tfvars file and terraform_tflint every .tf file, including the coder templates under cluster/" {
   for id in terraform_fmt terraform_tflint; do
     pattern="$(tf_hook "$id" .files)"
     [ -n "$pattern" ]
     grep -Eq "$pattern" <<<"infra/terraform/main.tf"
     grep -Eq "$pattern" <<<"cluster/apps/coder-system/coder-template-sync/app/templates/xfg/main.tf"
   done
+  grep -Eq "$(tf_hook terraform_fmt .files)" <<<"infra/terraform/workspace-factory/variables.auto.tfvars"
 }
 
 @test "terraform_tflint reads the repo's .tflint.hcl, the config MegaLinter's tflint reads" {
@@ -60,47 +101,65 @@ tf_hook() {
   [ "$output" = "true" ]
 }
 
-@test "markdown has one formatter, markdownlint fixing in pre-commit, and mdformat is not synced anywhere" {
-  run grep -rli mdformat "$SRC"
-  [ "$status" -eq 1 ]
-  run yq -o=json -I0 '.repos[] | select(.repo | test("markdownlint-cli")) | .hooks[] | select(.id == "markdownlint")' "$TEMPLATES/.pre-commit-config.yaml"
-  [ "$(jq -r '.args | index("--fix") != null' <<<"$output")" = "true" ]
-  [ "$(jq -r 'has("exclude")' <<<"$output")" = "false" ]
+@test "markdownlint is the only markdown formatter any pre-commit overlay or synced file brings, and it fixes in place" {
+  hooks="$(overlays .pre-commit-config.yaml | jq -c '[.[].content.repos | (if type == "object" then .["$values"] else . end)[]]')"
+  run jq -r '.[] | (.repo, .hooks[].id) | select(test("^md|mdformat|markdown|remark|prettier")) | select(. != "https://github.com/igorshubovych/markdownlint-cli" and . != "markdownlint")' <<<"$hooks"
+  echo "$output"
+  [ "$output" = "" ]
+  run synced_files mdformat
+  [ "$output" = "" ]
+  run jq -r '.[].hooks[] | select(.id == "markdownlint") | [(.args | index("--fix") != null), has("exclude")] | @tsv' <<<"$hooks"
+  [ "$output" = $'true\tfalse' ]
 }
 
-@test "the markdownlint ignore template skips every markdown file MegaLinter's base filter skips" {
+@test "the markdownlint ignore template skips every file name MegaLinter's base filter excludes" {
   filter="$(yq -r '.FILTER_REGEX_EXCLUDE' "$TEMPLATES/.mega-linter-base.yml")"
-  for name in CLAUDE.md CHANGELOG.md; do
-    grep -Eq "$filter" <<<"$name"
+  names="$(sed -E 's/^\(//; s/\)$//; s/\$\|/\n/g; s/\$$//; s/\\\././g' <<<"$filter")"
+  [ -n "$names" ]
+  while IFS= read -r name; do
+    [[ "$name" =~ ^[A-Za-z0-9_.-]+$ ]]
     grep -qxF "$name" "$TEMPLATES/.markdownlintignore"
-  done
+  done <<<"$names"
 }
 
-@test "no hook of the claude settings template runs a formatter after an edit" {
-  run jq -r '[.hooks.PostToolUse[]?.hooks[]?.command | select(test("mdformat|prettier"))] | length' "$TEMPLATES/.claude/settings.json"
+@test "no overlay of the Claude settings adds a PostToolUse hook, where the edit-time formatter used to run" {
+  run jq -r '[.[].content.hooks.PostToolUse | select(. != null)] | length' <<<"$(overlays .claude/settings.json)"
   [ "$output" = "0" ]
 }
 
-@test "the prettier extension, its config and its ignore file sync only to the typescript group" {
-  run grep -c 'esbenp.prettier-vscode' "$TEMPLATES/.devcontainer/devcontainer.json5"
-  [ "$output" = "0" ]
-  run yq -o=json -I0 '.files | keys' "$SRC/files.yaml"
-  [ "$(jq -r 'any(. == ".prettierrc.yaml" or . == ".prettierignore")' <<<"$output")" = "false" ]
-  run group_json typescript .devcontainer/devcontainer.json '.customizations.vscode.extensions["$values"] | index("esbenp.prettier-vscode") != null'
-  [ "$output" = "true" ]
-  for file in .prettierrc.yaml .prettierignore; do
-    run yq -r ".groups.typescript.files | has(\"$file\")" "$GROUPS_FILE"
-    [ "$output" = "true" ]
-  done
+@test "prettier reaches a repo only through the typescript group: its extension, config files and default formatter" {
+  extension_owners="$(overlays .devcontainer/devcontainer.json | jq -r '.[] | .owner as $o | (.content.customizations.vscode.extensions // [] | if type == "object" then .["$values"] else . end)[] | select(. == "esbenp.prettier-vscode") | $o' | sort -u)"
+  formatter_owners="$(vscode_settings | jq -r '.[] | .owner as $o | .settings | .. | objects | select(.["editor.defaultFormatter"] == "esbenp.prettier-vscode") | $o' | sort -u)"
+  [ "$extension_owners" = "group:typescript" ]
+  [ "$formatter_owners" = "group:typescript" ]
+  [ "$(synced_files prettier | sort)" = $'group:typescript .prettierignore\ngroup:typescript .prettierrc.yaml' ]
 }
 
-@test "VS Code formats on save only in languages whose formatter MegaLinter runs, and not in yaml" {
-  run jq -r '."editor.formatOnSave", ."yaml.format.enable"' "$TEMPLATES/.vscode/settings.json"
-  [ "$output" = $'false\nfalse' ]
-  for lang in typescript javascript; do
-    run group_json typescript .vscode/settings.json ".[\"[$lang]\"] | [.\"editor.defaultFormatter\", .\"editor.formatOnSave\"] | join(\" \")"
-    [ "$output" = "esbenp.prettier-vscode true" ]
-  done
-  run group_json terraform .vscode/settings.json '.["[terraform]"]["editor.formatOnSave"]'
+@test "VS Code formats on save only for a language whose editor formatter is a tool MegaLinter runs, never as a global default" {
+  allowed=(
+    # TYPESCRIPT_PRETTIER: the prettier extension reads .prettierrc.yaml, as MegaLinter's prettier does
+    "[typescript]@group:typescript"
+    # JAVASCRIPT_PRETTIER: same
+    "[javascript]@group:typescript"
+    # TERRAFORM_TERRAFORM_FMT: hashicorp.terraform formats with terraform fmt
+    "[terraform]@group:terraform"
+    # GO_GOLANGCI_LINT: golang.go formats with gofmt, which the synced .golangci.yml enables as a golangci-lint formatter
+    "[go]@when:megalinter-flavor+go"
+    # CPP_CLANG_FORMAT: cpptools formats with clang-format and .clang-format, which Chromance's .mega-linter.yml enables
+    "[cpp]@repo:https://github.com/anthony-spruyt/Chromance.git"
+  )
+  allowed_json="$(printf '%s\n' "${allowed[@]}" | jq -R . | jq -s .)"
+  run jq -r --argjson allowed "$allowed_json" '
+    [.[] | .owner as $o | .settings | to_entries[]
+      | if .key == "editor.formatOnSave" then (select(.value != false) | "global@" + $o)
+        elif (.key | startswith("[")) and (.value | type == "object") then (select(.value["editor.formatOnSave"] != null and .value["editor.formatOnSave"] != false) | .key + "@" + $o)
+        else empty end] as $found
+    | ($found - $allowed | map("unexpected " + .)), ($allowed - $found | map("missing " + .)) | .[]' <<<"$(vscode_settings)"
+  echo "$output"
+  [ "$output" = "" ]
+}
+
+@test "the synced golangci config enables gofmt, the formatter golang.go runs on save" {
+  run yq -r '.formatters.enable | contains(["gofmt"])' "$TEMPLATES/.golangci.yml"
   [ "$output" = "true" ]
 }
