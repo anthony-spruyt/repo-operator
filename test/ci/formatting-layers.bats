@@ -103,6 +103,20 @@ markdown_disagreements() {
   [ "$output" = "true" ]
 }
 
+@test "MegaLinter's terraform fmt checks the file extensions the terraform_fmt hook checks, and no others" {
+  mapfile -t megalinter < <(conditional_json terraform .mega-linter-base.yml | jq -r '.TERRAFORM_TERRAFORM_FMT_FILE_EXTENSIONS[]')
+  pattern="$(tf_hook terraform_fmt .files)"
+  mapfile -t hook < <(grep -oE '\(([a-z]+\|?)+\)' <<<"$pattern" | tr -d '()' | tr '|' '\n' | sed 's/^/./')
+  [ "${#megalinter[@]}" -gt 0 ]
+  [ "${#hook[@]}" -gt 0 ]
+  for ext in "${megalinter[@]}"; do
+    grep -Eq "$pattern" <<<"x$ext"
+  done
+  for ext in "${hook[@]}"; do
+    printf '%s\n' "${megalinter[@]}" | grep -qxF "$ext"
+  done
+}
+
 @test "terraform_fmt covers every .tf and .tfvars file and terraform_tflint every .tf file, including the coder templates under cluster/" {
   for id in terraform_fmt terraform_tflint; do
     pattern="$(tf_hook "$id" .files)"

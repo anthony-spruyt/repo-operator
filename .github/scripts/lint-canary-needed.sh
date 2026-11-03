@@ -4,7 +4,7 @@
 set -euo pipefail
 
 : "${EVENT_NAME:?}"
-readonly LINT_PATHS='^(\.github/workflows/lint-canary\.yaml|\.github/scripts/lint-canary-needed\.sh|src/(groups|repos)\.yaml|src/templates/(\.golangci\.yml|\.mega-linter-base\.yml|\.mega-linter\.yml|lint\.sh\.tmpl|ruff-base\.toml|trivy-mega-linter\.yaml))$'
+readonly LINT_PATHS='^(\.github/workflows/lint-canary\.yaml|\.github/scripts/(devcontainer-image|lint-canary-needed)\.sh|src/(files|groups|repos)\.yaml|src/templates/(\.devcontainer/Dockerfile|\.editorconfig|\.golangci\.yml|\.markdownlint\.json|\.mega-linter-base\.yml|\.mega-linter\.yml|\.pre-commit-config\.yaml|\.yamllint\.yml|lint\.sh\.tmpl|ruff-base\.toml|trivy-mega-linter\.yaml))$'
 
 changed=$(cat)
 
