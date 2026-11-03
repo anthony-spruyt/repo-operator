@@ -112,6 +112,10 @@ groups:
                 $arrayMerge: append
                 $values:
                   - "ms-dotnettools.csdevkit"
+      .vscode/settings.json:
+        content:
+          "[csharp]":
+            "editor.formatOnSave": true
   dismiss-stale-approvals:
     settings:
       rulesets:

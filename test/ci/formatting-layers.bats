@@ -103,7 +103,7 @@ tf_hook() {
 
 @test "markdownlint is the only markdown formatter any pre-commit overlay or synced file brings, and it fixes in place" {
   hooks="$(overlays .pre-commit-config.yaml | jq -c '[.[].content.repos | (if type == "object" then .["$values"] else . end)[]]')"
-  run jq -r '.[] | (.repo, .hooks[].id) | select(test("^md|mdformat|markdown|remark|prettier")) | select(. != "https://github.com/igorshubovych/markdownlint-cli" and . != "markdownlint")' <<<"$hooks"
+  run jq -r '.[] | (.repo, .hooks[].id, (.hooks[].entry // empty)) | select(test("^md|mdformat|markdown|remark|prettier")) | select(. != "https://github.com/igorshubovych/markdownlint-cli" and . != "markdownlint")' <<<"$hooks"
   echo "$output"
   [ "$output" = "" ]
   run synced_files mdformat
@@ -135,7 +135,12 @@ tf_hook() {
   [ "$(synced_files prettier | sort)" = $'group:typescript .prettierignore\ngroup:typescript .prettierrc.yaml' ]
 }
 
-@test "VS Code formats on save only for a language whose editor formatter is a tool MegaLinter runs, never as a global default" {
+@test "the base VS Code settings turn off format on save and the YAML formatter" {
+  run jq -r '.[] | select(.owner == "base") | .content | ."editor.formatOnSave", ."yaml.format.enable"' <<<"$(overlays .vscode/settings.json)"
+  [ "$output" = $'false\nfalse' ]
+}
+
+@test "VS Code formats on save only for a language whose editor formatter is a tool MegaLinter or repo CI runs, never as a global default" {
   allowed=(
     # TYPESCRIPT_PRETTIER: the prettier extension reads .prettierrc.yaml, as MegaLinter's prettier does
     "[typescript]@group:typescript"
@@ -147,6 +152,8 @@ tf_hook() {
     "[go]@when:megalinter-flavor+go"
     # CPP_CLANG_FORMAT: cpptools formats with clang-format and .clang-format, which Chromance's .mega-linter.yml enables
     "[cpp]@repo:https://github.com/anthony-spruyt/Chromance.git"
+    # dotnet format in repo CI (ci-repo.yaml): the C# extension formats with the same Roslyn engine and .editorconfig
+    "[csharp]@group:dotnet"
   )
   allowed_json="$(printf '%s\n' "${allowed[@]}" | jq -R . | jq -s .)"
   run jq -r --argjson allowed "$allowed_json" '
