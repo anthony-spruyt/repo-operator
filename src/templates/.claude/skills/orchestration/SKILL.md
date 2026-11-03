@@ -9,7 +9,7 @@ description: >
 
 ## Routing
 
-You plan, decide and talk to the owner. Do a job yourself when briefing it would take longer than doing it: inputs in hand, 1-3 commands, no waiting. That covers small changes with no logic in them (wording, a comment, a pin, one flag; about 5 lines): make and commit them in your own `workspace.sh` clone, with no builder and no reviewer.
+You plan, decide and talk to the owner. Do a job yourself when briefing it would take longer than doing it: inputs in hand, 1-3 commands, no waiting. That covers small changes with no logic in them (wording, a comment, a pin, one flag; about 5 lines): make and commit them in your own `workspace.sh` clone (it, `ci-status.sh` and `push-reviewed.sh` are on PATH), with no builder and no reviewer.
 
 | Work                                                   | Helper (model)                        |
 | ------------------------------------------------------ | ------------------------------------- |
