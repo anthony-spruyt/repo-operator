@@ -624,7 +624,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-base
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-base:1.0.5@sha256:fea07b96acdf16103e8656bf112777d59030bbdfe8eee76a3b799fc467567640"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-base:1.0.6@sha256:cf10245908e75be3c79d67ca1d5c73e700429464812259224978c357fc721121"
   - when:
       allOf: [megalinter-flavor, cpp]
       noneOf: [go, typescript]
@@ -632,7 +632,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-cpp
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-cpp:1.1.5@sha256:9ec02b9243f60c0bb3bfb42463fc97f3d05dbd4b67b6a54d3520221bb8c8aaca"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-cpp:1.1.6@sha256:3b4406bdf1c3ad5886ae793a39ac9923ff2de8b983030b30160f2a7982c41bd8"
   - when:
       allOf: [megalinter-flavor, go]
       noneOf: [cpp, python, typescript]
@@ -640,7 +640,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-go
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.6@sha256:5ce2638b88d609bed7b4c2834f34d5bc50cc3e8234b0186f2eb33ee0b7267ea5"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-go:2.1.7@sha256:32b6244d93bfa02ed5b6d2927ddfb7264981175a823123238222190e95d363a1"
   - when:
       allOf: [megalinter-flavor, python]
       noneOf: [cpp, go, typescript]
@@ -648,7 +648,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-python
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.1.5@sha256:4d22d346eec64e0b97b3f93959c39e2ecc0590c0eb8875913fc93d489d23873d"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-python:1.1.6@sha256:5f18209201551c77c48792d9078b40b9ffc4c2aef48ef44f97eb507a7d682386"
   - when:
       allOf: [megalinter-flavor, typescript]
       noneOf: [cpp, go, python]
@@ -656,7 +656,7 @@ conditionalGroups:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-typescript
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-typescript:1.0.5@sha256:1471f75bd71db9e596971257ae3d8fe0aa32d70a5f3e0fcb4bf564694dcc302f"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-typescript:1.0.6@sha256:80ba0c04aa91e998dd14cde229f5bce74c98eb53d5060f475d1f798fc5b285c1"
   - when:
       allOf: [megalinter-flavor, go]
     files:
