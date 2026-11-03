@@ -7,7 +7,7 @@ stdin, JSON:
 stdout: "<path>\t<MegaLinter>\t<pre-commit>" per sample path, each "excluded" or "checked"
 
 Sample paths come from both sides, one set per top-level alternative of each regex, so drift in
-either direction is a disagreement. An alternative with no sample path exits 1 ("add a sample for").
+either direction is a disagreement. An alternative with no sample path exits 1 ("no sample path for").
 """
 
 import json
@@ -187,7 +187,10 @@ def alternative_paths(label, regex, problems):
             if not any(re.search(alternative, path) for path in derived):
                 raise Unsupported("no generated path matches it")
         except (Unsupported, re.error) as error:
-            problems.append(f"add a sample for {label} alternative {alternative!r}: {error}")
+            problems.append(
+                f"no sample path for {label} alternative {alternative!r}: {error}; "
+                "teach expand() this element or simplify the regex"
+            )
             continue
         paths += derived
     return paths

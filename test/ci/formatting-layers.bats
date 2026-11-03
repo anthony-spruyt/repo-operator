@@ -165,7 +165,7 @@ markdown_disagreements() {
     run markdown_decisions "$edit"
     echo "$output"
     [ "$status" -ne 0 ]
-    [[ "$output" == *"add a sample for "* ]]
+    [[ "$output" == *"no sample path for "*"teach expand() this element or simplify the regex"* ]]
     [[ "$output" == *"^(?!docs/)"* ]]
   done
 }
