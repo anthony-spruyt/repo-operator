@@ -16,6 +16,10 @@ repos:
       - mergify
       - renovate
       - sonar
+    files:
+      .pre-commit-config.yaml:
+        content:
+          exclude: '^tests/AgentPlatform\.Tests/RenovateTriage/Fixtures/'
     settings:
       repo:
         description: "Temporal workers and webhook intake for homelab agents, in .NET."

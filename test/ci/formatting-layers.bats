@@ -64,6 +64,17 @@ tf_hook() {
     jq -r "select(.id == \"$1\") | $2"
 }
 
+# markdown_decisions: "<path> <MegaLinter> <pre-commit>" per sample path, each "excluded" or "checked",
+# from the MegaLinter base config's excludes and the exclude of the markdownlint hook in the pre-commit template
+markdown_decisions() {
+  local config
+  config="$(jq -n \
+    --argjson base "$(yq -o=json -I0 '{"dirs": .ADDITIONAL_EXCLUDED_DIRECTORIES, "regexes": [.FILTER_REGEX_EXCLUDE, .MARKDOWN_FILTER_REGEX_EXCLUDE]}' "$TEMPLATES/.mega-linter-base.yml")" \
+    --argjson hook "$(yq -o=json -I0 '[.repos[].hooks[] | select(.id == "markdownlint")] | .[0]' "$TEMPLATES/.pre-commit-config.yaml")" \
+    '$base + {exclude: $hook.exclude}')"
+  python3 -I "$REPO_ROOT/test/fixtures/formatting-layers/markdown-exclusions.py" <<<"$config"
+}
+
 @test "a conditional group that sets ENABLE_LINTERS on the MegaLinter base appends, so the base allowlist survives" {
   run yq -o=json -I0 '[.conditionalGroups[] | .files[".mega-linter-base.yml"].content.ENABLE_LINTERS | select(. != null) | select((kind == "map" and .["$arrayMerge"] == "append") | not)] | length' "$GROUPS_FILE"
   [ "$output" = "0" ]
@@ -102,14 +113,37 @@ tf_hook() {
 }
 
 @test "markdownlint is the only markdown formatter any pre-commit overlay or synced file brings, and it fixes in place" {
-  hooks="$(overlays .pre-commit-config.yaml | jq -c '[.[].content.repos | (if type == "object" then .["$values"] else . end)[]]')"
+  hooks="$(overlays .pre-commit-config.yaml | jq -c '[.[].content.repos | select(. != null) | (if type == "object" then .["$values"] else . end)[]]')"
   run jq -r '.[] | (.repo, .hooks[].id, (.hooks[].entry // empty)) | select(test("^md|mdformat|markdown|remark|prettier")) | select(. != "https://github.com/igorshubovych/markdownlint-cli" and . != "markdownlint")' <<<"$hooks"
   echo "$output"
   [ "$output" = "" ]
   run synced_files mdformat
   [ "$output" = "" ]
-  run jq -r '.[].hooks[] | select(.id == "markdownlint") | [(.args | index("--fix") != null), has("exclude")] | @tsv' <<<"$hooks"
-  [ "$output" = $'true\tfalse' ]
+  run jq -r '.[].hooks[] | select(.id == "markdownlint") | .args | index("--fix") != null' <<<"$hooks"
+  [ "$output" = "true" ]
+}
+
+@test "the markdownlint hook checks exactly the markdown files MegaLinter lints" {
+  run markdown_decisions
+  [ "$status" -eq 0 ]
+  decisions="$output"
+  disagreements="$(awk -F'\t' '$2 != $3 {print $1 ": MegaLinter " $2 ", pre-commit " $3}' <<<"$decisions")"
+  echo "$disagreements"
+  [ "$disagreements" = "" ]
+  for column in 2 3; do
+    for decision in excluded checked; do
+      awk -F'\t' -v c="$column" -v d="$decision" '$c == d {found = 1} END {exit !found}' <<<"$decisions"
+    done
+  done
+}
+
+@test "agent-platform's pre-commit config keeps every hook off its captured Renovate triage fixtures, whose bytes the tests compare" {
+  exclude="$(yq -r '.repos[] | select(.git | test("agent-platform")) | .files[".pre-commit-config.yaml"].content.exclude' "$REPOS_FILE")"
+  [ -n "$exclude" ]
+  [ "$exclude" != "null" ]
+  grep -Eq "$exclude" <<<"tests/AgentPlatform.Tests/RenovateTriage/Fixtures/diffshape-spruyt-labs-3405.json"
+  run grep -Eq "$exclude" <<<"tests/AgentPlatform.Tests/RenovateTriage/RenovateTriageTests.cs"
+  [ "$status" -eq 1 ]
 }
 
 @test "the markdownlint ignore template skips every file name MegaLinter's base filter excludes" {
