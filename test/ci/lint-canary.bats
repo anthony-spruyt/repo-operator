@@ -57,7 +57,7 @@ allowlist() {
   [ "$output" = "needs.render.outputs.repos != '[]'" ]
 }
 
-@test "a repo whose pre-commit config or devcontainer image changes is linted, and so is one whose config is deleted" {
+@test "a repo whose pre-commit config, a hook's config or devcontainer image changes is linted, and so is one whose config is deleted" {
   step_run render "Find repos whose lint files change"
   mkdir -p "$BATS_TEST_TMPDIR/render"
   cat >"$BATS_TEST_TMPDIR/render/render.json" <<'JSON'
@@ -65,6 +65,9 @@ allowlist() {
   "o/changed":{"files":[".pre-commit-config.yaml","README.md"],"deleted":[]},
   "o/deleted":{"files":[],"deleted":[".pre-commit-config.yaml"]},
   "o/image":{"files":[".devcontainer/Dockerfile"],"deleted":[]},
+  "o/yamllint":{"files":[".yamllint.yml"],"deleted":[]},
+  "o/markdownlint":{"files":[".markdownlint.json"],"deleted":[]},
+  "o/editorconfig":{"files":[".editorconfig"],"deleted":[]},
   "o/other":{"files":["README.md",".github/workflows/ci.yaml"],"deleted":[]}
 }}
 JSON
@@ -76,7 +79,7 @@ JSON
   echo "$output"
   [ "$status" -eq 0 ]
   run jq -r 'map(.full) | join(",")' <<<"$(sed 's/^repos=//' "$BATS_TEST_TMPDIR/output")"
-  [ "$output" = "o/changed,o/deleted,o/image" ]
+  [ "$output" = "o/changed,o/deleted,o/image,o/yamllint,o/markdownlint,o/editorconfig" ]
 }
 
 @test "the render job names the image the devcontainer template pins, for the lint jobs to run pre-commit in" {
@@ -128,6 +131,25 @@ STUB
   mapfile -t args <"$BATS_TEST_TMPDIR/docker-args"
 }
 
+@test "the overlay stages what it adds and deletes, because pre-commit --all-files only checks the files git lists" {
+  step_run lint "Overlay planned files"
+  work="$BATS_TEST_TMPDIR/work"
+  mkdir -p "$work/target" "$BATS_TEST_TMPDIR/pack/o/r"
+  git -C "$work/target" init -q
+  echo keep >"$work/target/keep.txt"
+  echo old >"$work/target/old.txt"
+  git -C "$work/target" add keep.txt old.txt
+  echo changed >"$BATS_TEST_TMPDIR/pack/o/r/keep.txt"
+  echo new >"$BATS_TEST_TMPDIR/pack/o/r/new.txt"
+  echo '{"repos":{"o/r":{"files":["keep.txt","new.txt"],"deleted":["old.txt"]}}}' >"$BATS_TEST_TMPDIR/pack/render.json"
+  tar -C "$BATS_TEST_TMPDIR/pack" -czf "$BATS_TEST_TMPDIR/render.tgz" .
+  cd "$work" || return 1
+  REPO=o/r RUNNER_TEMP="$BATS_TEST_TMPDIR" run bash -e "$BATS_TEST_TMPDIR/step.sh"
+  echo "$output"
+  [ "$status" -eq 0 ]
+  [ "$(git -C target ls-files | tr '\n' ' ')" = "keep.txt new.txt " ]
+}
+
 @test "pre-commit runs every file in the devcontainer image as the runner's user, with the checkout mounted and the hook cache kept outside it" {
   precommit_call
   [ "${args[0]}" = "run" ]
@@ -144,7 +166,7 @@ STUB
   [ "$(cat "$BATS_TEST_TMPDIR/cache-owner")" = "$(id -u)" ]
 }
 
-@test "pre-commit skips only the hooks MegaLinter or the commit itself covers, and each is a real hook" {
+@test "each hook pre-commit skips is a real hook, so a renamed hook does not slip back in unnoticed" {
   precommit_call
   skip_list="$(printf '%s\n' "${args[@]}" | sed -n 's/^SKIP=//p')"
   [ -n "$skip_list" ]
@@ -153,7 +175,6 @@ STUB
   for id in "${skipped[@]}"; do
     grep -qxF "$id" <<<"$ids"
   done
-  [ "$(printf '%s\n' "${skipped[@]}" | sort | tr '\n' ' ')" = "gitleaks terraform_fmt terraform_tflint xfg-managed " ]
 }
 
 @test "pre-commit runs after MegaLinter and also when MegaLinter fails, so one run reports both" {

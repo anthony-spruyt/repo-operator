@@ -33,22 +33,31 @@ if [[ -z "$image" ]]; then
   exit 1
 fi
 
-var_re='^([^$]*)\$\{?([A-Za-z_][A-Za-z0-9_]*)\}?(.*)$'
+var_re='^([^$]*)[$](\{?)([A-Za-z_][A-Za-z0-9_]*)(.*)$'
 resolved=""
 rest="$image"
 while [[ "$rest" =~ $var_re ]]; do
-  name="${BASH_REMATCH[2]}"
+  prefix="${BASH_REMATCH[1]}"
+  opened="${BASH_REMATCH[2]}"
+  name="${BASH_REMATCH[3]}"
+  rest="${BASH_REMATCH[4]}"
+  if [[ -n "$opened" ]]; then
+    if [[ "$rest" != "}"* ]]; then
+      echo "FROM line of $dockerfile uses \${$name without a closing brace; only \$NAME and \${NAME} are supported" >&2
+      exit 1
+    fi
+    rest="${rest#\}}"
+  fi
   if [[ ! -v "args[$name]" ]]; then
     echo "FROM line of $dockerfile uses $name, which no ARG before it sets" >&2
     exit 1
   fi
-  resolved+="${BASH_REMATCH[1]}${args[$name]}"
-  rest="${BASH_REMATCH[3]}"
+  resolved+="$prefix${args[$name]}"
 done
 image="$resolved$rest"
 
-if [[ "$image" == *'$'* ]]; then
-  echo "FROM line of $dockerfile still has a variable after resolving: $image" >&2
+if [[ "$image" == *[\$\{\}]* ]]; then
+  echo "FROM line of $dockerfile still has a variable or brace after resolving: $image" >&2
   exit 1
 fi
 

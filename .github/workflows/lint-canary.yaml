@@ -10,8 +10,9 @@ permissions:
 
 env:
   LINT_FILES: >-
-    [".devcontainer/Dockerfile", ".golangci.yml", ".mega-linter-base.yml", ".mega-linter.yml",
-    ".pre-commit-config.yaml", ".pylintrc", "lint.sh", "ruff-base.toml", "trivy-mega-linter.yaml"]
+    [".devcontainer/Dockerfile", ".editorconfig", ".golangci.yml", ".markdownlint.json", ".mega-linter-base.yml",
+    ".mega-linter.yml", ".pre-commit-config.yaml", ".pylintrc", ".yamllint.yml", "lint.sh", "ruff-base.toml",
+    "trivy-mega-linter.yaml"]
 
 jobs:
   render:
@@ -168,6 +169,7 @@ jobs:
             while IFS= read -r file; do
               rm -f -- "target/$file"
             done
+          git -C target add -A
           git -C target status --short
 
       - name: Cache pre-commit hooks

@@ -52,6 +52,22 @@ dockerfile() {
   [[ "$stderr" == *"BASE_REGISTRY"* ]]
 }
 
+@test "fails on a variable with a default or no closing brace, rather than printing a mangled image" {
+  for from in "FROM \${BASE_REGISTRY:-docker.io}/org/img:1" "FROM \${BASE_REGISTRY/org/img:1"; do
+    run --separate-stderr "$SCRIPT" "$(dockerfile 'ARG BASE_REGISTRY=docker.io' "$from")"
+    [ "$status" -ne 0 ]
+    [ -z "$output" ]
+    [[ "$stderr" == *"\${BASE_REGISTRY"* ]]
+  done
+}
+
+@test "fails on a brace left over after resolving" {
+  run --separate-stderr "$SCRIPT" "$(dockerfile 'ARG BASE_REGISTRY=docker.io' "FROM \$BASE_REGISTRY}/org/img:1")"
+  [ "$status" -ne 0 ]
+  [ -z "$output" ]
+  [[ "$stderr" == *"docker.io}/org/img:1"* ]]
+}
+
 @test "fails when there is no FROM line" {
   run --separate-stderr "$SCRIPT" "$(dockerfile 'ARG BASE_REGISTRY=docker.io' 'USER 1001')"
   [ "$status" -ne 0 ]

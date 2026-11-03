@@ -14,8 +14,9 @@ needed() {
 
 @test "runs a PR that changes a lint pin or lint template" {
   for f in src/files.yaml src/groups.yaml src/repos.yaml src/templates/.devcontainer/Dockerfile \
-    src/templates/.golangci.yml src/templates/.mega-linter-base.yml src/templates/.mega-linter.yml \
-    src/templates/.pre-commit-config.yaml src/templates/lint.sh.tmpl src/templates/ruff-base.toml \
+    src/templates/.editorconfig src/templates/.golangci.yml src/templates/.markdownlint.json \
+    src/templates/.mega-linter-base.yml src/templates/.mega-linter.yml src/templates/.pre-commit-config.yaml \
+    src/templates/.yamllint.yml src/templates/lint.sh.tmpl src/templates/ruff-base.toml \
     src/templates/trivy-mega-linter.yaml; do
     needed "$(printf 'README.md\n%s' "$f")"
     [ "$output" = "true" ]
