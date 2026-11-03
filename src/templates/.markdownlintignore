@@ -1,6 +1,6 @@
 .claude/
 
-# MegaLinter's base filter skips it too, so pre-commit and CI see the same markdown
+# A direct markdownlint run reads this file and skips it, as MegaLinter's base filter does
 CLAUDE.md
 
 # Changelogs use duplicate headings (Fix/Feat) and start with H2 by design

@@ -1,7 +1,8 @@
 # Shared CI
 
 Reusable workflows and composite actions that other repos call from this repo. Callers pin a commit on `main` by its full SHA, with a `# main` comment: `uses: anthony-spruyt/repo-operator/.github/workflows/_lint.yaml@<sha> # main`. Renovate reads the comment, looks up the branch's current commit through its `github-digest` datasource, and bumps every pin in a repo in one daily
-`repo-operator shared CI` PR, opened between 15:00 and 18:59 UTC (2-6am in Melbourne, 1-5am in winter). Every merge here moves `main`, so that PR comes after any day with a merge, whether or not a shared workflow changed. The window sits where `main` rarely moves: in a wider one, each bump that merges is followed by the next. repo-operator, which bumps the synced callers in `src/templates/` and `src/groups.yaml`, gets it monthly instead: merging it moves `main`, so a daily schedule would open the next PR, and an XFG Apply, every day. A pin with no comment is never bumped,
+`repo-operator shared CI` PR, opened between 15:00 and 18:59 UTC (2-6am in Melbourne, 1-5am in winter). Every merge here moves `main`, so that PR comes after any day with a merge, whether or not a shared workflow changed. The window sits where `main` rarely moves: in a wider one, each bump that merges is followed by the next.
+repo-operator, which bumps the synced callers in `src/templates/` and `src/groups.yaml`, gets it monthly instead: merging it moves `main`, so a daily schedule would open the next PR, and an XFG Apply, every day. A pin with no comment is never bumped,
 and an unpinned `@main` gets a pin PR.
 
 The synced callers (`src/templates/.github/workflows/`) carry the comment here, so Renovate bumps them in this repo and the next sync carries the new SHA out. xfg drops YAML comments when it writes a file, so the synced copies hold a bare SHA that Renovate skips: downstream repos get no pin PRs for managed files. Callers a repo owns (a hand-edited `ci.yaml`, or an unmanaged workflow) keep the
@@ -96,7 +97,8 @@ The docker tag prefix is `v` only when `include-v-in-tag` is set to `true` on th
 
 ### `release-drafts`
 
-Publishes the release-please drafts that never got their image. [`_release-recover.yaml`](#release-recovery) runs it in two modes. It reads the repo through the API and checks out nothing, so the job needs only `api.github.com`. The scripts are `drafts.sh` and the action's `action.yaml`; `test/release-drafts.bats` covers them with a fake `gh`. `drafts.sh` and `detect-images` read the package list from the same `detect-images/packages.jq`.
+Publishes the release-please drafts that never got their image. [`_release-recover.yaml`](#release-recovery) runs it in two modes. It reads the repo through the API and checks out nothing, so the job needs only `api.github.com`. The scripts are `drafts.sh` and the action's `action.yaml`; `test/release-drafts.bats` covers them with a fake `gh`.
+`drafts.sh` and `detect-images` read the package list from the same `detect-images/packages.jq`.
 
 - `mode`: `recover` on a branch ref, `synthesize` on a tag ref
 - `github-token` (default `github.token`): reads contents and workflow runs; `recover` dispatches with it, which needs `actions: write`
@@ -177,11 +179,13 @@ The mode is `block`. It needs harden-runner v2.22.3 or later: earlier versions d
 - `_python-uv-test.yaml`: `uv run --frozen pytest`, once per `test-paths` line, then `extra-commands`. `groups` adds PEP 735 dependency groups (`--group`) on top of uv's default `dev`; `extras` adds optional extras. Needs `contents: read`.
 - `_sonar-new-issues.yaml`: the [`sonar-new-issues`](#sonar-new-issues) check as a job (`New Issues`), skipped outside `pull_request` events and on Mergify merge-queue PRs, which hold only PRs that already passed it and would not see their Accepted issues. It takes the action's inputs, needs no permissions, and runs harden-runner with an allowlist of SonarQube Cloud and GitHub.
 - `_images.yaml`: the `image` job of the standard `ci.yaml`. See [Images](#images). Needs `contents: read`.
-- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`. `go` runs `_go-test.yaml` with the image's Dockerfile and passes `<workdir>/go.mod` to the build (only whether it is set matters), which sets `VERSION` and `COMMIT` and leaves `GO_VERSION` to the Dockerfile; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js
+- `_build-image.yaml`: one image. Runs `prepare-command` and frees disk when asked, the tests for `language` (`go`, `python`, `node` or `none`) from `workdir`, then `build-image`.
+  `go` runs `_go-test.yaml` with the image's Dockerfile and passes `<workdir>/go.mod` to the build (only whether it is set matters), which sets `VERSION` and `COMMIT` and leaves `GO_VERSION` to the Dockerfile; `python` runs `_python-uv-test.yaml`; `node` sets up Node.js
   `node-version` (default `24`), runs `npm ci --ignore-scripts` and `tsc --noEmit`, then `npm test` when `package.json` has a `test` script. The build waits for the tests. A `contents: read` job prepares, builds and tests. With `push: true`, a separate job then builds from the prepared context, pushes and runs `publish-release` in the `publish` environment; only that job needs the publishing
   permissions.
 - `_release-please.yaml`: release-please alone. It acts with the app token, minted with only contents and pull requests write, so its caller job needs only `contents: read`. Outputs `release-created` and `releases`, release-please's outputs as JSON.
-- `_release-recover.yaml`: publishes the release-please drafts that never got their image. See [Release recovery](#release-recovery). The synced image release caller calls it. Takes `releases`, the output of `_release-please.yaml`, and the same two App secrets. Its `dispatch` job runs on a branch ref in the `release` environment and dispatches the caller on the tag of each stuck draft. Its `synthesize` job runs on a tag ref with no environment and no App token, and outputs `release-created` and `releases` for that tag in the form `_release-images.yaml` reads. Its caller job grants `contents: read` and `actions: write`, because a called job cannot hold more than its caller.
+- `_release-recover.yaml`: publishes the release-please drafts that never got their image. See [Release recovery](#release-recovery). The synced image release caller calls it. Takes `releases`, the output of `_release-please.yaml`, and the same two App secrets. Its `dispatch` job runs on a branch ref in the `release` environment and dispatches the caller on the tag of each stuck draft.
+  Its `synthesize` job runs on a tag ref with no environment and no App token, and outputs `release-created` and `releases` for that tag in the form `_release-images.yaml` reads. Its caller job grants `contents: read` and `actions: write`, because a called job cannot hold more than its caller.
 - `_release-images.yaml`: takes `releases` from `_release-please.yaml`, then a matrix that publishes each released image with `push: true` on its own tag. Its caller job grants the publishing permissions. Only this workflow undrafts a release, so a released package without a `Dockerfile` or `flavor.yaml` stays a draft.
 - `_container-retention.yaml`: delete old GHCR package versions, and old Docker Hub tags when given a namespace. See [Container retention](#container-retention).
 
@@ -197,13 +201,16 @@ Publishing permissions are `contents`, `packages`, `id-token` and `attestations:
 - `dockerhub-namespace`, `dockerhub-username`
 - `python-version`, `python-groups`, `python-extras`, `python-test-paths`, `python-extra-commands`
 
-`_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags` and `egress`, and for publishing `push`, `version`, `tag-name`, `tag-prefix` and `latest`. `_go-test.yaml` and `_python-uv-test.yaml` take `egress` too; `_go-test.yaml` also takes `dockerfile`.
+`_build-image.yaml` takes the same inputs and `node-version`, plus the per-image ones that `detect-images` fills in: `language` (the image's, else the caller's), `workdir`, `context`, `dockerfile`, `prepare-command`, `free-disk`, `extra-tags` and `egress`, and for publishing `push`, `version`, `tag-name`, `tag-prefix` and `latest`.
+`_go-test.yaml` and `_python-uv-test.yaml` take `egress` too; `_go-test.yaml` also takes `dockerfile`.
 
 Pass `secrets: DOCKERHUB_TOKEN` for Docker Hub. `_release-please.yaml` and `_release-recover.yaml` need `RELEASE_PLEASE_APP_CLIENT_ID` and `RELEASE_PLEASE_APP_PRIVATE_KEY`, and no other secret.
 
-The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN` to it. Release keys stay in the main-only `release` environment: the `Release please` job, the `dispatch` job of [`_release-recover.yaml`](#release-recovery) and `Docker Hub Cleanup` run there, so a run from any other ref is refused before it reads them.
+The `release-please` group creates a `release` environment whose deployment branch policy allows only `main`, and syncs both release App secrets into it; the `dockerhub` group adds `DOCKERHUB_TOKEN` to it.
+Release keys stay in the main-only `release` environment: the `Release please` job, the `dispatch` job of [`_release-recover.yaml`](#release-recovery) and `Docker Hub Cleanup` run there, so a run from any other ref is refused before it reads them.
 
-The `dockerhub` group also creates a `publish` environment that holds `DOCKERHUB_TOKEN` and no other secret, and whose deployment policy allows `main` and version tags (`*.*.*`, and `*/*.*.*` for a tag that contains a slash). `_build-image.yaml`'s publish job runs in `publish`, so the image build of a run on a release tag can push and publish its draft; a ref outside those patterns is refused. XFG Apply creates `publish` before any consumer pin points at a `_build-image.yaml` that uses it.
+The `dockerhub` group also creates a `publish` environment that holds `DOCKERHUB_TOKEN` and no other secret, and whose deployment policy allows `main` and version tags (`*.*.*`, and `*/*.*.*` for a tag that contains a slash). `_build-image.yaml`'s publish job runs in `publish`, so the image build of a run on a release tag can push and publish its draft; a ref outside those patterns is refused.
+XFG Apply creates `publish` before any consumer pin points at a `_build-image.yaml` that uses it.
 
 The three secrets live only in these environments, never at repo level. Neither `_images.yaml` nor `_build-image.yaml`'s `build` job uses an environment. A called workflow still gets only the secrets its caller passes, so callers pass each one by name even though the environment holds it; in a job that sets `environment:`, the environment's value wins over a repo secret of the same name.
 
@@ -240,7 +247,8 @@ Every job that runs steps sets `timeout-minutes`: in each reusable workflow, eac
 A job's limit is the larger of twice its slowest successful job in the last 30 days across every repo that calls it, whatever the run's conclusion, and its own built-in wait plus 5 minutes (`_sonar-new-issues.yaml` polls SonarQube Cloud for up to 900 s, so 20), rounded up to a multiple of 5, with a minimum of 5.
 Aim for 40 or less; where the runs need more (the image `build` job is 50: the slowest healthy build takes 1369 s, and 2x rounds up to 50), use what they need. A job that has no recent runs keeps its limit. Re-size a limit when its job gets slower: a healthy job that hits it needs more minutes, not a retry.
 
-Why: a GitHub-hosted runner can hit a network error early in a step, then hang at "Cleaning up orphan processes" until "The hosted runner lost communication with the server" after 48 to 50 minutes. Runners in one region did this under harden-runner's `block` policy before v2.22.3, when GitHub's egress-proxy DNS experiment ([actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925)) clashed with it
+Why: a GitHub-hosted runner can hit a network error early in a step, then hang at "Cleaning up orphan processes" until "The hosted runner lost communication with the server" after 48 to 50 minutes.
+Runners in one region did this under harden-runner's `block` policy before v2.22.3, when GitHub's egress-proxy DNS experiment ([actions/runner-images#14925](https://github.com/actions/runner-images/issues/14925)) clashed with it
 ([step-security/harden-runner#708](https://github.com/step-security/harden-runner/issues/708)). With a limit of T minutes, GitHub cancels the hung job about T+5 minutes after it starts, so a limit over about 43 gains nothing over that kill; `build` is 50 because healthy builds need it, not to catch a hang.
 
 A job cancelled this way, and its run, end `cancelled` with "The job has exceeded the maximum execution time". Nothing re-runs it: use "Re-run failed jobs" by hand.
@@ -387,7 +395,8 @@ jobs:
 - `recover` grants `contents: read` and `actions: write`. `releases` is optional. Both App secrets are passed by name.
 - `images` reads `releases` from `recover` first, because only a tag-ref run has them there, and runs on `!cancelled()` so a failed recovery never blocks the images of the run's own release.
 
-`dispatch` runs in the main-only `release` environment, with `contents: read` and `actions: write` for `GITHUB_TOKEN` (it reads the repo and runs and dispatches the caller) and an App token minted with `contents: write` only (it lists the drafts). `synthesize` has `contents: read`, no environment and no App token. The `images` job of a tag-ref run publishes in the `publish` environment, which allows release tags.
+`dispatch` runs in the main-only `release` environment, with `contents: read` and `actions: write` for `GITHUB_TOKEN` (it reads the repo and runs and dispatches the caller) and an App token minted with `contents: write` only (it lists the drafts). `synthesize` has `contents: read`, no environment and no App token.
+The `images` job of a tag-ref run publishes in the `publish` environment, which allows release tags.
 
 To test it end to end, create the tag and a draft release for an image package's manifest version in a repo whose caller at that tag wires `_release-recover.yaml`, then run `gh workflow run release-please.yaml --ref <tag>`; the `images` job builds the tag and publishes the draft. A push to `main` or the next schedule makes the same dispatch without the manual step.
 
@@ -455,7 +464,8 @@ Repos squash-merge with the PR title and a blank body, so the title becomes the 
 | Breaking | `!` after the type or scope: `feat(api)!: ...`                                                 |
 | Subject  | Must not start with an uppercase letter: `fix: Add x` fails, `fix: add x` passes               |
 
-It runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request), pinned by SHA, on `pull_request` into `main` (`opened`, `edited`, `synchronize`, `reopened`). The job has only `pull-requests: read`, checks out nothing, and runs behind the [`harden-runner`](#harden-runner) action with an allowlist of the GitHub API and the Actions results service. The action reads the PR's current title through the API, so it works
+It runs [`amannn/action-semantic-pull-request`](https://github.com/amannn/action-semantic-pull-request), pinned by SHA, on `pull_request` into `main` (`opened`, `edited`, `synchronize`, `reopened`). The job has only `pull-requests: read`, checks out nothing, and runs behind the [`harden-runner`](#harden-runner) action with an allowlist of the GitHub API and the Actions results service.
+The action reads the PR's current title through the API, so it works
 the same on fork PRs, whose `GITHUB_TOKEN` is read-only. Renaming a PR re-runs only this workflow, not `CI`. It skips Mergify merge-queue PRs, with the same condition as `_sonar-new-issues.yaml`, and a skipped required check counts as a pass.
 
 `PR Title` is a required check in every `pr-rules` ruleset, next to `summary / Check Results`. Repos without `pr-rules` run it as advisory. repo-operator's own copy in `.github/workflows/` is written by XFG Apply from the template, and the tests check the template.

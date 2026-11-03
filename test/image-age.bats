@@ -9,6 +9,7 @@ setup() {
   FX="$REPO_ROOT/test/fixtures/image-age"
   WORK="$BATS_TEST_TMPDIR"
   NOW=1792713600
+  T=$'\t'
   RENOVATE_PIN=$(sed -n 's/^RENOVATE_VERSION="\(.*\)"$/\1/p' "$SCRIPT")
   mkdir -p "$WORK/bin" "$WORK/renovate"
   cp "$FX/fake-curl.sh" "$WORK/bin/curl"
@@ -49,40 +50,40 @@ route() { printf '%s\t%s\t%s\t%s\t%s\n' "$1" "$2" "$3" "${4:--}" "${5:--}" >>"$F
   run fn rows_ghcr <"$FX/ghcr-versions.json"
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf '%s\n' \
-    "sha-a49bd8f	$(digest a)	1792684829" \
-    "latest	$(digest a)	1792684829" \
-    "main	$(digest a)	1792684829" \
-    "2.96.1	$(digest c)	1792684450" \
-    "2.96	$(digest c)	1792684450" \
-    "2.94.2	$(digest e)	1791797697" \
-    "sha256-$(printf '%064d' 0 | tr 0 9).sig	$(digest f)	1791797698")" ]
+    "sha-a49bd8f${T}$(digest a)${T}1792684829" \
+    "latest${T}$(digest a)${T}1792684829" \
+    "main${T}$(digest a)${T}1792684829" \
+    "2.96.1${T}$(digest c)${T}1792684450" \
+    "2.96${T}$(digest c)${T}1792684450" \
+    "2.94.2${T}$(digest e)${T}1791797697" \
+    "sha256-$(printf '%064d' 0 | tr 0 9).sig${T}$(digest f)${T}1791797698")" ]
 }
 
 @test "quay rows keep the active build of a tag, not the builds it replaced" {
   run fn rows_quay <"$FX/quay-tags.json"
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf '%s\n' \
-    "latest	$(digest a)	1792557174" \
-    "v0.15.1	$(digest c)	1791000000" \
-    "v0.14.0	$(digest e)	1789000000")" ]
+    "latest${T}$(digest a)${T}1792557174" \
+    "v0.15.1${T}$(digest c)${T}1791000000" \
+    "v0.14.0${T}$(digest e)${T}1789000000")" ]
 }
 
 @test "mcr rows come out newest first from unordered input, with the fractional seconds and offset dropped" {
   run fn rows_mcr <"$FX/mcr-tags.json"
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf '%s\n' \
-    "1.8.0	$(digest a)	1792610379" \
-    "1.7.2	$(digest b)	1790848800" \
-    "1.7.0	$(digest c)	1788220801")" ]
+    "1.8.0${T}$(digest a)${T}1792610379" \
+    "1.7.2${T}$(digest b)${T}1790848800" \
+    "1.7.0${T}$(digest c)${T}1788220801")" ]
 }
 
 @test "gcr rows turn timeUploadedMs into seconds and skip untagged manifests" {
   run fn rows_gcr <"$FX/gcr-tags.json"
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf '%s\n' \
-    "v8.2.0	$(digest a)	1792600000" \
-    "latest	$(digest a)	1792600000" \
-    "v8.1.0	$(digest b)	1790000000")" ]
+    "v8.2.0${T}$(digest a)${T}1792600000" \
+    "latest${T}$(digest a)${T}1792600000" \
+    "v8.1.0${T}$(digest b)${T}1790000000")" ]
 }
 
 @test "the row adapters exit non-zero on a body of the wrong shape" {
@@ -142,7 +143,7 @@ NEXT='Link: <https://api.github.com/user/1/packages/container/widget/versions?pe
   run fn fetch_rows ghcr.io/acme/widget "$WORK/rows" "t3 fleet-tag"
   [ "$status" -eq 0 ]
   [ "$(wc -l <"$FAKE_LOG")" -eq 2 ]
-  grep -q '^fleet-tag	' "$WORK/rows"
+  grep -q $'^fleet-tag\t' "$WORK/rows"
   [[ "$output" != *"::"* ]]
 }
 
@@ -472,8 +473,8 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
   [ "$(head -1 <<<"$output")" = "$(printf 'edge\tsha256:e')" ]
   [ "$(tail -1 <<<"$output")" = "$(printf 'fleet\tsha256:f')" ]
   selected=$output
-  grep -q '^o49	' <<<"$selected"
-  run grep -q '^o50	' <<<"$selected"
+  grep -q $'^o49\t' <<<"$selected"
+  run grep -q $'^o50\t' <<<"$selected"
   [ "$status" -ne 0 ]
   run grep -Eq '^(young|almost|skipped|sha256-)' <<<"$selected"
   [ "$status" -ne 0 ]
@@ -502,7 +503,7 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 52 ]
   [ "$(head -1 <<<"$output")" = "$(printf 'young\t%s\t%s' "$(digest 1)" $((NOW - 86400)))" ]
-  grep -q '^fleet	' <<<"$output"
+  grep -q $'^fleet\t' <<<"$output"
   run grep -Eq '^(o51|sha256-)' <<<"$output"
   [ "$status" -ne 0 ]
 }

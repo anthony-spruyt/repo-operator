@@ -16,6 +16,10 @@ repos:
       - mergify
       - renovate
       - sonar
+    files:
+      .pre-commit-config.yaml:
+        content:
+          exclude: '^tests/AgentPlatform\.Tests/RenovateTriage/Fixtures/'
     settings:
       repo:
         description: "Temporal workers and webhook intake for homelab agents, in .NET."
@@ -261,7 +265,7 @@ repos:
               version: "2.2.2"
       .mergify.yml:
         vars:
-          gateFilesExtra: 'src/|test/ci/|lint\.sh$|'
+          gateFilesExtra: 'src/|test/ci/|test/fixtures/formatting-layers/|lint\.sh$|'
     settings:
       labels:
         "xfg/plan":
