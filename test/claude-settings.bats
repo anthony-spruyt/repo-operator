@@ -10,4 +10,3 @@ SETTINGS="${SRC}/templates/.claude/settings.json"
   [ "${status}" -eq 0 ]
   [ "${output}" = "true" ]
 }
-
