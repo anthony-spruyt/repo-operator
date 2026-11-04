@@ -42,6 +42,16 @@ json5() {
   [ "$output" = "1" ]
 }
 
+@test "own release attachments skip the wait" {
+  run json5 "$RULES" '[.packageRules[] | select(.minimumReleaseAge == "0 days" and (.matchPackageNames | any_c(. == "anthony-spruyt/**")) and (.matchDatasources | any_c(. == "github-release-attachments")))] | length'
+  [ "$output" = "1" ]
+}
+
+@test "third-party release attachments keep the wait: only anthony-spruyt names skip it" {
+  run json5 "$RULES" '[.packageRules[] | select(.minimumReleaseAge == "0 days" and ((.matchDatasources // []) | any_c(. == "github-release-attachments")))] | map(((.matchPackageNames // []) | length > 0) and ((.matchPackageNames // []) | all_c(test("^anthony-spruyt/")))) | (length >= 1 and all)'
+  [ "$output" = "true" ]
+}
+
 @test "the group rules set no release age checks" {
   run json5 "$GROUPS_FILE" '[.packageRules[] | select(has("matchJsonata") or has("prCreation") or has("internalChecksAsSuccess") or has("internalChecksFilter") or has("minimumReleaseAge") or has("minimumReleaseAgeBehaviour"))] | length'
   [ "$output" = "0" ]
