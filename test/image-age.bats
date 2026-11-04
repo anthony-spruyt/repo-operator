@@ -492,6 +492,128 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
   [ "$output" = "$(printf 'good\tsha256:g')" ]
 }
 
+# crowded_rows: 60 old tags of one shape (3 numbers + windowsservercore), newest first, enough to fill the overall newest 50
+crowded_rows() {
+  for i in $(seq 1 60); do printf '10.0.%s-windowsservercore\tsha256:w%s\t%s\n' "$i" "$i" $((NOW - 800000 - i)); done
+}
+
+# alpine_rows: 60 old tags of another shape (3 numbers + alpine), newest first, all older than crowded_rows
+alpine_rows() {
+  for i in $(seq 1 60); do printf '2.%s.0-alpine\tsha256:a%s\t%s\n' "$i" "$i" $((NOW - 900000 - i)); done
+}
+
+@test "select_rows keeps the newest 50 old builds of the shape of a tag in use when other shapes crowd the newest 50" {
+  {
+    printf '10.0.15-noble-chiseled\tsha256:young\t%s\n' $((NOW - 86400))
+    printf '10.0.20-noble-chiseled\tsha256:top\t%s\n' $((NOW - 700000))
+    printf '10.0.16-noble-chiseled\tsha256:skipped\t%s\n' $((NOW - 750000))
+    crowded_rows
+    printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
+    printf '10.0.13-noble-chiseled\tsha256:used\t%s\n' $((NOW - 1100000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "10.0.13-noble-chiseled" "10.0.16-noble-chiseled"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 52 ]
+  [ "$(head -1 <<<"$output")" = "$(printf '10.0.20-noble-chiseled\tsha256:top')" ]
+  [ "$(tail -2 <<<"$output" | head -1)" = "$(printf '10.0.14-noble-chiseled\tsha256:update')" ]
+  [ "$(tail -1 <<<"$output")" = "$(printf '10.0.13-noble-chiseled\tsha256:used')" ]
+  [ "$(sort -u <<<"$output" | wc -l)" -eq 52 ]
+  grep -q $'^10.0.49-windowsservercore\t' <<<"$output"
+  run grep -Eq $'^(10.0.50-windowsservercore|10.0.15-noble-chiseled|10.0.16-noble-chiseled)\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
+@test "select_rows keeps at most 50 old builds of a shape in use, and the tag in use beyond them" {
+  {
+    crowded_rows
+    alpine_rows
+    printf '2.0.0-alpine\tsha256:used\t%s\n' $((NOW - 2000000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "2.0.0-alpine" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 101 ]
+  grep -q $'^2.50.0-alpine\t' <<<"$output"
+  grep -q $'^2.0.0-alpine\t' <<<"$output"
+  run grep -q $'^2.51.0-alpine\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
+@test "select_rows does not count another shape as the shape of the tag in use" {
+  {
+    crowded_rows
+    printf '10.0-noble-chiseled\tsha256:two\t%s\n' $((NOW - 950000))
+    printf '10.0.14-noble\tsha256:suffix\t%s\n' $((NOW - 960000))
+    printf '10.0.14-noble-chiseled-extra\tsha256:longer\t%s\n' $((NOW - 970000))
+    printf '10.0.14\tsha256:bare\t%s\n' $((NOW - 980000))
+    printf '9.0.14.1-noble-chiseled\tsha256:four\t%s\n' $((NOW - 990000))
+    printf 'noble-chiseled\tsha256:word\t%s\n' $((NOW - 995000))
+    printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
+    printf '10.0.13-noble-chiseled\tsha256:used\t%s\n' $((NOW - 1100000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "10.0.13-noble-chiseled" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 52 ]
+  grep -q $'^10.0.14-noble-chiseled\t' <<<"$output"
+  run grep -Eq $'^(10.0-noble-chiseled|10.0.14-noble|10.0.14-noble-chiseled-extra|10.0.14|9.0.14.1-noble-chiseled|noble-chiseled)\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
+@test "select_rows adds no shape for a tag in use that has none, and still keeps it and the newest 50" {
+  {
+    printf 'noble-chiseled\tsha256:word\t%s\n' $((NOW - 700000))
+    crowded_rows
+    printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
+    printf 'edge\tsha256:edge\t%s\n' $((NOW - 1050000))
+    printf 'latest\tsha256:used\t%s\n' $((NOW - 1100000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "latest" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 51 ]
+  [ "$(head -1 <<<"$output")" = "$(printf 'noble-chiseled\tsha256:word')" ]
+  [ "$(tail -1 <<<"$output")" = "$(printf 'latest\tsha256:used')" ]
+  run grep -Eq $'^(10.0.14-noble-chiseled|edge)\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
+@test "select_rows reads a tag's shape as Renovate's docker versioning does: a v prefix and a prerelease are not part of it" {
+  {
+    crowded_rows
+    printf '0.16.0rc1\tsha256:pre\t%s\n' $((NOW - 950000))
+    printf 'v0.15.2\tsha256:vupdate\t%s\n' $((NOW - 960000))
+    printf '0.15.3\tsha256:update\t%s\n' $((NOW - 970000))
+    printf '0.15-rc\tsha256:other\t%s\n' $((NOW - 980000))
+    printf 'v0.15.1\tsha256:used\t%s\n' $((NOW - 1100000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "v0.15.1" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 54 ]
+  grep -q $'^0.16.0rc1\t' <<<"$output"
+  grep -q $'^v0.15.2\t' <<<"$output"
+  grep -q $'^0.15.3\t' <<<"$output"
+  run grep -q $'^0.15-rc\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
+@test "select_rows gives no shape to a tag Renovate reads as a commit hash, but one to a plain number or a hex tag outside 7 to 40 characters" {
+  {
+    crowded_rows
+    printf '1b2c3d4\tsha256:hash\t%s\n' $((NOW - 950000))
+    printf '2e8f1a3\tsha256:hashused\t%s\n' $((NOW - 960000))
+    printf '20251201\tsha256:date\t%s\n' $((NOW - 970000))
+    printf '20260101\tsha256:dateused\t%s\n' $((NOW - 980000))
+    printf '1a2b3c\tsha256:short\t%s\n' $((NOW - 990000))
+    printf '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3\tsha256:long\t%s\n' $((NOW - 1000000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "2e8f1a3 20260101" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 55 ]
+  grep -q $'^20251201\t' <<<"$output"
+  grep -q $'^1a2b3c\t' <<<"$output"
+  grep -q $'^1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3\t' <<<"$output"
+  run grep -q $'^1b2c3d4\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
 @test "trim_rows keeps the young rows, the newest 50 old ones and the tags in use, and drops cosign tags" {
   {
     printf 'young\t%s\t%s\n' "$(digest 1)" $((NOW - 86400))
@@ -506,6 +628,33 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
   grep -q $'^fleet\t' <<<"$output"
   run grep -Eq '^(o51|sha256-)' <<<"$output"
   [ "$status" -ne 0 ]
+}
+
+@test "trim_rows also stores the newest 50 old rows of the shape of a tag in use, and select_rows finds its tags among them" {
+  {
+    printf '2.70.0-alpine\tsha256:young\t%s\n' $((NOW - 86400))
+    printf 'sha256-%064d.sig\tsha256:sig\t%s\n' 7 $((NOW - 700000))
+    crowded_rows
+    alpine_rows
+    printf '2.1-alpine\tsha256:two\t%s\n' $((NOW - 1500000))
+    printf '2.0.0-alpine\tsha256:used\t%s\n' $((NOW - 2000000))
+  } >"$WORK/rows"
+  run fn trim_rows "$WORK/rows" "2.0.0-alpine"
+  [ "$status" -eq 0 ]
+  stored=$output
+  [ "$(wc -l <<<"$stored")" -eq 102 ]
+  [ "$(head -1 <<<"$stored")" = "$(printf '2.70.0-alpine\tsha256:young\t%s' $((NOW - 86400)))" ]
+  [ "$(tail -1 <<<"$stored")" = "$(printf '2.0.0-alpine\tsha256:used\t%s' $((NOW - 2000000)))" ]
+  grep -q $'^2.50.0-alpine\t' <<<"$stored"
+  run grep -Eq $'^(sha256-|10.0.51-windowsservercore|2.51.0-alpine|2.1-alpine)' <<<"$stored"
+  [ "$status" -ne 0 ]
+
+  printf '%s\n' "$stored" >"$WORK/stored"
+  run fn select_rows "$WORK/stored" "2.0.0-alpine" ""
+  [ "$status" -eq 0 ]
+  from_stored=$output
+  run fn select_rows "$WORK/rows" "2.0.0-alpine" ""
+  [ "$output" = "$from_stored" ]
 }
 
 @test "allowed_regex escapes every regex character in a tag" {
