@@ -1,3 +1,7 @@
+---
+paths: ['**/*.md', '.claude/**/*.md']
+---
+
 # Docs That Drift
 
 Documentation never holds a value someone must update by hand when a version or release changes: version numbers, build or release ids, image tags, digests, or lists of these copied from config. Point to the file or command that holds the value instead, e.g. "the supported builds are listed in `data/builds.json`".
