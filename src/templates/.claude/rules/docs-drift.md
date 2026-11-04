@@ -1,5 +1,5 @@
 ---
-paths: ['**/*.md', '.claude/**/*.md']
+paths: ['**/*.md']
 ---
 
 # Docs That Drift
