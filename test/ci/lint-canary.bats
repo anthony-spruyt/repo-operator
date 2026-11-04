@@ -199,7 +199,8 @@ STUB
   [ -n "$megalinter" ]
   [ -z "$(comm -13 <(echo "$lint") <(echo "$megalinter"))" ]
   for host in github.com release-assets.githubusercontent.com pypi.org files.pythonhosted.org registry.npmjs.org \
-    go.dev dl.google.com proxy.golang.org registry-1.docker.io auth.docker.io production.cloudfront.docker.com; do
+    go.dev dl.google.com proxy.golang.org registry-1.docker.io auth.docker.io production.cloudfront.docker.com \
+    docker-images-prod.s3.dualstack.us-east-1.amazonaws.com; do
     grep -qxF "$host:443" <<<"$lint"
   done
 }
