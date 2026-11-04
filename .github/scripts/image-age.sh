@@ -103,6 +103,20 @@ gh_http() {
 
 COSIGN_TAG='^sha256-[0-9a-f]+([.](sig|att|sbom))?$'
 
+# awk's shape(TAG): "<count of dotted numbers>:<text after the first dash>", or "" when Renovate's docker versioning cannot read the tag.
+# Mirrors its isCompatible, which offers only tags of the shape in use; keep {n,m} and \w out, mawk lacks them.
+SHAPE_AWK='
+  function shape(tag,    piece, rest, dash, parts) {
+    if (tag ~ /^[a-f0-9]+$/ && length(tag) >= 7 && length(tag) <= 40 && tag !~ /^[0-9]+$/) return ""
+    sub(/^v/, "", tag)
+    dash = index(tag, "-")
+    piece = dash ? substr(tag, 1, dash - 1) : tag
+    rest = dash ? substr(tag, dash + 1) : ""
+    if (piece !~ /^[0-9]+(\.[0-9]+)*[A-Za-z0-9_]*$/) return ""
+    return split(piece, parts, ".") ":" rest
+  }
+'
+
 # old_count ROWS: the distinct tags whose build is at least 7 days old, cosign tags aside
 old_count() {
   local rows=$1 cut=$(($(now) - MIN_AGE_SECONDS))
@@ -389,30 +403,50 @@ carry_unlisted() {
   ' >"$out"
 }
 
-# select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first. USED and SKIPS are space-separated tags.
+# select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first: the newest KEEP_NEWEST old builds, the newest KEEP_NEWEST of each shape a tag in use has, and the tags in use. USED and SKIPS are space-separated tags.
 select_rows() {
   local rows=$1 used=$2 skips=$3 cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" -v skip="$skips" '
+  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" -v skip="$skips" "$SHAPE_AWK"'
     BEGIN {
-      n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
+      n = split(used, u, " ")
+      for (i = 1; i <= n; i++) {
+        U[u[i]] = 1
+        sh = shape(u[i])
+        if (sh != "") W[sh] = 1
+      }
       n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
     }
     $3 !~ /^-?[0-9]+$/ { next }
     $3 > cut || $1 ~ cosign || ($1 in S) { next }
-    { eligible++ }
-    eligible <= keep || ($1 in U) { print $1, $2 }
+    {
+      eligible++
+      sh = shape($1)
+      if (sh in W) shaped[sh]++
+    }
+    eligible <= keep || ($1 in U) || (sh in W && shaped[sh] <= keep) { print $1, $2 }
   ' "$rows"
 }
 
-# trim_rows ROWS USED: the rows worth storing: every build younger than 7 days, the newest KEEP_NEWEST older ones and the tags in use
+# trim_rows ROWS USED: the rows worth storing: every build younger than 7 days, the newest KEEP_NEWEST older ones, the newest KEEP_NEWEST older ones of each shape a tag in use has, and the tags in use
 trim_rows() {
   local rows=$1 used=$2 cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" '
-    BEGIN { n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1 }
+  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" "$SHAPE_AWK"'
+    BEGIN {
+      n = split(used, u, " ")
+      for (i = 1; i <= n; i++) {
+        U[u[i]] = 1
+        sh = shape(u[i])
+        if (sh != "") W[sh] = 1
+      }
+    }
     $1 ~ cosign { next }
     $3 > cut { print; next }
-    { old++ }
-    old <= keep || ($1 in U) { print }
+    {
+      old++
+      sh = shape($1)
+      if (sh in W) shaped[sh]++
+    }
+    old <= keep || ($1 in U) || (sh in W && shaped[sh] <= keep) { print }
   ' "$rows"
 }
 
