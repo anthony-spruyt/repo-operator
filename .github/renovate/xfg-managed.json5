@@ -476,6 +476,7 @@
         ".github/ISSUE_TEMPLATE/docs.yml",
         ".github/ISSUE_TEMPLATE/feature_request.yml",
         ".github/pull_request_template.md",
+        ".github/workflows/release-please.yaml",
         ".markdownlint.json",
         ".pre-commit-config.yaml",
         ".vscode/settings.json",
