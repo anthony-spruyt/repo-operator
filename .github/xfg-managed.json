@@ -426,12 +426,18 @@
     ".github/ISSUE_TEMPLATE/docs.yml",
     ".github/ISSUE_TEMPLATE/feature_request.yml",
     ".github/pull_request_template.md",
+    ".github/workflows/ci.yaml",
+    ".github/workflows/pr-title.yaml",
     ".github/workflows/release-please.yaml",
     ".markdownlint.json",
+    ".mega-linter-base.yml",
     ".pre-commit-config.yaml",
     ".vscode/settings.json",
     ".yamllint.yml",
-    "renovate.json"
+    "lint.sh",
+    "renovate.json",
+    "ruff-base.toml",
+    "trivy-mega-linter.yaml"
   ],
   "anthony-spruyt/esphome": [
     ".agent-progress/.gitignore",

@@ -135,6 +135,10 @@ repos:
     groups:
       - claude
       - agent-kit
+      - github-ci
+      - megalinter-flavor
+      - cpp
+      - python
       - release-please
       - renovate
     files:
