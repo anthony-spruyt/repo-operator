@@ -134,6 +134,7 @@ repos:
     upstream: https://github.com/oggii/enshrouded-livemap.git
     groups:
       - claude
+      - agent-kit
       - renovate
     files:
       # Fork of oggii/enshrouded-livemap - keeps the upstream MIT license
