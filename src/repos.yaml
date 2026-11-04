@@ -141,6 +141,7 @@ repos:
       - python
       - release-please
       - renovate
+      - sonar
     files:
       # Fork of oggii/enshrouded-livemap - keeps the upstream MIT license
       LICENSE: false
