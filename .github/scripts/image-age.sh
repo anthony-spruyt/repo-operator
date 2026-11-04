@@ -104,7 +104,7 @@ gh_http() {
 COSIGN_TAG='^sha256-[0-9a-f]+([.](sig|att|sbom))?$'
 
 # awk's shape(TAG): "<count of dotted numbers>:<text after the first dash>", or "" when Renovate's docker versioning cannot read the tag.
-# Mirrors its isCompatible, which offers only tags of the shape in use; keep {n,m} and \w out, mawk lacks them.
+# Mirrors its isCompatible, which offers only tags of the shape in use; keep {n,m} and \w out: older mawk mishandles {n,m} and none has \w.
 SHAPE_AWK='
   function shape(tag,    piece, rest, dash, parts) {
     if (tag ~ /^[a-f0-9]+$/ && length(tag) >= 7 && length(tag) <= 40 && tag !~ /^[0-9]+$/) return ""

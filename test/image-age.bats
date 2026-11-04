@@ -594,18 +594,22 @@ alpine_rows() {
   [ "$status" -ne 0 ]
 }
 
-@test "select_rows gives no shape to a tag Renovate reads as a commit hash, but one to a plain number" {
+@test "select_rows gives no shape to a tag Renovate reads as a commit hash, but one to a plain number or a hex tag outside 7 to 40 characters" {
   {
     crowded_rows
     printf '1b2c3d4\tsha256:hash\t%s\n' $((NOW - 950000))
     printf '2e8f1a3\tsha256:hashused\t%s\n' $((NOW - 960000))
     printf '20251201\tsha256:date\t%s\n' $((NOW - 970000))
     printf '20260101\tsha256:dateused\t%s\n' $((NOW - 980000))
+    printf '1a2b3c\tsha256:short\t%s\n' $((NOW - 990000))
+    printf '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3\tsha256:long\t%s\n' $((NOW - 1000000))
   } >"$WORK/rows"
   run fn select_rows "$WORK/rows" "2e8f1a3 20260101" ""
   [ "$status" -eq 0 ]
-  [ "$(wc -l <<<"$output")" -eq 53 ]
+  [ "$(wc -l <<<"$output")" -eq 55 ]
   grep -q $'^20251201\t' <<<"$output"
+  grep -q $'^1a2b3c\t' <<<"$output"
+  grep -q $'^1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3\t' <<<"$output"
   run grep -q $'^1b2c3d4\t' <<<"$output"
   [ "$status" -ne 0 ]
 }
