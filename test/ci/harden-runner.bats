@@ -54,6 +54,15 @@ composite_calls() {
   done
 }
 
+# docker_hub_layers <root> <file>... - prints file:job and 1 or 0 (tab separated) for each step allowlist that names Docker Hub's CloudFront layer host: 1 when it also names the S3 one
+docker_hub_layers() {
+  local root="$1" file
+  shift
+  for file in "$@"; do
+    yq -o=json '.' "$root/$file" | jq -r --arg f "$file" '(.jobs // {}) | to_entries[] | select(.value.steps != null) | .key as $job | .value.steps[] | ((.with["allowed-endpoints"] // "") | gsub("\\s+"; " ") | split(" ")) as $hosts | select($hosts | index("production.cloudfront.docker.com:443")) | [$f + ":" + $job, (if ($hosts | index("docker-images-prod.s3.dualstack.us-east-1.amazonaws.com:443")) then "1" else "0" end)] | @tsv'
+  done
+}
+
 workflows() {
   (cd "$1" && find .github/workflows -maxdepth 1 -name '*.y*ml' | sort)
 }
@@ -308,6 +317,51 @@ YAML
   run awk -F'\t' -v inputs="$inputs" 'BEGIN { n = split(inputs, a, ","); for (i = 1; i <= n; i++) ok[a[i]] = 1 } { m = split($3, k, ","); for (i = 1; i <= m; i++) if (!(k[i] in ok)) print $1 ": unknown input " k[i] }' <<<"$calls"
   [ -z "$output" ]
   run awk -F'\t' '$4 == 0 { print $1 ": no allowlist" }' <<<"$calls"
+  [ -z "$output" ]
+}
+
+@test "the Docker Hub layer helper marks a CloudFront allowlist with 1 for the S3 host beside it and 0 without it, and skips a list without the CloudFront one" {
+  mkdir -p "$BATS_TEST_TMPDIR/.github/workflows"
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/d.yaml" <<'YAML'
+jobs:
+  both:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: >-
+            auth.docker.io:443
+            docker-images-prod.s3.dualstack.us-east-1.amazonaws.com:443
+            production.cloudfront.docker.com:443
+            ${{ inputs.egress }}
+  cloudfront-only:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: production.cloudfront.docker.com:443 registry-1.docker.io:443
+  s3-only:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: docker-images-prod.s3.dualstack.us-east-1.amazonaws.com:443
+  neither:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: github.com:443
+  call:
+    uses: $/.github/workflows/x.yaml
+YAML
+  run docker_hub_layers "$BATS_TEST_TMPDIR" .github/workflows/d.yaml
+  [ "$output" = $'.github/workflows/d.yaml:both\t1\n.github/workflows/d.yaml:cloudfront-only\t0' ]
+}
+
+@test "every allowlist that names Docker Hub's CloudFront layer host also names its S3 one, which Docker Hub redirects layer pulls to" {
+  mapfile -t files < <(all_workflows "$REPO_ROOT")
+  run docker_hub_layers "$REPO_ROOT" "${files[@]}"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ]
+  local lists="$output"
+  run awk -F'\t' '$2 != 1 { print $1 ": no S3 layer host" }' <<<"$lists"
   [ -z "$output" ]
 }
 
