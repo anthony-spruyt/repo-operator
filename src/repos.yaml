@@ -130,6 +130,20 @@ repos:
                       - context: "Guard Linter Removals"
                         integrationId: 15368
 
+  - git: https://github.com/anthony-spruyt/enshrouded-livemap.git
+    upstream: https://github.com/oggii/enshrouded-livemap.git
+    groups:
+      - claude
+      - agent-kit
+      - release-please
+      - renovate
+    files:
+      # Fork of oggii/enshrouded-livemap - keeps the upstream MIT license
+      LICENSE: false
+    settings:
+      repo:
+        description: "Automated fork of oggii/enshrouded-livemap that keeps up with Enshrouded server patches"
+
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
       - claude
