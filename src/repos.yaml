@@ -185,33 +185,6 @@ repos:
     settings:
       repo:
         description: "DaemonSet that fixes tap device qdiscs for Kata Containers on Cilium."
-      actions:
-        allowedActions: "selected"
-        githubOwnedAllowed: true
-        verifiedAllowed: false
-        patternsAllowed:
-          - "amannn/action-semantic-pull-request@*"
-          - "aquasecurity/setup-trivy@*"
-          - "aquasecurity/trivy-action@*"
-          - "astral-sh/setup-uv@*"
-          - "bmuschko/setup-kubeconform@*"
-          - "codecov/codecov-action@*"
-          - "dataaxiom/ghcr-cleanup-action@*"
-          - "docker/build-push-action@*"
-          - "docker/login-action@*"
-          - "docker/metadata-action@*"
-          - "docker/setup-buildx-action@*"
-          - "dorny/paths-filter@*"
-          - "googleapis/release-please-action@*"
-          - "hashicorp/setup-terraform@*"
-          - "ilammy/msvc-dev-cmd@*"
-          - "kyverno/action-install-cli@*"
-          - "sigstore/cosign-installer@*"
-          - "step-security/harden-runner@*"
-        shaPinningRequired: true
-        defaultWorkflowPermissions: "read"
-        canApprovePullRequestReviews: false
-        forkPrApprovalPolicy: "all_external_contributors"
 
   - git: https://github.com/anthony-spruyt/litellm-middleware.git
     groups:
