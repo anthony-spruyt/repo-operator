@@ -22,7 +22,7 @@
     {
       description: "Own GitHub actions and releases: no release age wait, any-time schedule",
       matchPackageNames: ["anthony-spruyt/**"],
-      matchDatasources: ["github-tags", "github-releases", "github-digest"],
+      matchDatasources: ["github-tags", "github-releases", "github-release-attachments", "github-digest"],
       minimumReleaseAge: "0 days",
       schedule: ["at any time"]
     },
