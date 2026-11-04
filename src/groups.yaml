@@ -46,6 +46,8 @@ groups:
         content: "@templates/.claude/hookify-plus/warn-raw-container-run.md"
       .claude/rules/comments.md:
         content: "@templates/.claude/rules/comments.md"
+      .claude/rules/docs-drift.md:
+        content: "@templates/.claude/rules/docs-drift.md"
       .claude/rules/github.md:
         content: "@templates/.claude/rules/github.md"
       .claude/rules/research.md:
