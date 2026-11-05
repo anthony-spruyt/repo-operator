@@ -14,7 +14,9 @@ This covers issues, PRs, comments, commit messages, READMEs, docs, code comments
 ## Instead
 
 - Track security work and findings as issues in `anthony-spruyt/security`
-- Public commits and PRs reference a neutral public issue, never the security repo
+- Public commits, PRs and issues reference a neutral public issue, never the security repo
+- The security issue links its public issue by full name (`anthony-spruyt/<repo>#123`; a bare `#123` or `<repo>#123` makes no link). GitHub shows the backlink only to people who can read the security repo
+- Close the security issue in the same step as its public issue
 - Report security findings to whoever asked: a subagent to the agent that called it, the main session to the owner
 - In public text, describe controls as the end state: "Only the API gateway can reach this service"
 - In public commit and PR titles, word security work as a neutral task: "Restrict admin paths to the LAN"
