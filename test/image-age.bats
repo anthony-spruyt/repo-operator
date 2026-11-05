@@ -457,6 +457,38 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
   [ ! -s "$FAKE_LOG" ]
 }
 
+# seen_at_push: a stdin of tag, digest and push time rows gets a firstSeen equal to the push time
+seen_at_push() { awk -F'\t' -v OFS='\t' '{ print $0, $3 }'; }
+
+@test "select_rows admits a row only when both its push time and its firstSeen are at least 7 days old" {
+  {
+    printf 'new-sighting\tsha256:n\t%s\t%s\n' $((NOW - 900000)) $((NOW - 604799))
+    printf 'both-old\tsha256:b\t%s\t%s\n' $((NOW - 800000)) $((NOW - 700000))
+    printf 'new-build\tsha256:m\t%s\t%s\n' $((NOW - 604799)) $((NOW - 900000))
+    printf 'edge\tsha256:e\t%s\t%s\n' $((NOW - 604800)) $((NOW - 604800))
+    printf 'future-sighting\tsha256:f\t%s\t%s\n' $((NOW - 900000)) $((NOW + 100))
+    printf 'no-sighting\tsha256:z\t%s\t\n' $((NOW - 900000))
+    printf 'text-sighting\tsha256:t\t%s\tyesterday\n' $((NOW - 900000))
+    printf 'last\tsha256:l\t%s\t%s\n' $((NOW - 950000)) $((NOW - 950000))
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "new-sighting new-build" ""
+  [ "$status" -eq 0 ]
+  [ "$output" = "$(printf 'both-old\tsha256:b\nedge\tsha256:e\nlast\tsha256:l')" ]
+}
+
+@test "select_rows on its own takes the newest 50 of the rows it is given that are old enough, and a row held by its firstSeen does not use up one of its places" {
+  {
+    printf 'held\tsha256:h\t%s\t%s\n' $((NOW - 800000)) $((NOW - 86400))
+    for i in $(seq 1 60); do printf 'o%s\tsha256:o%s\t%s\t%s\n' "$i" "$i" $((NOW - 810000 - i)) $((NOW - 810000 - i)); done
+  } >"$WORK/rows"
+  run fn select_rows "$WORK/rows" "" ""
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 50 ]
+  grep -q $'^o50\t' <<<"$output"
+  run grep -Eq $'^(held|o51)\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
 @test "select_rows keeps the newest 50 builds that are at least 7 days old, plus fleet tags, minus skips and cosign tags" {
   {
     printf 'young\tsha256:y\t%s\n' $((NOW - 86400))
@@ -466,7 +498,7 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
     printf 'skipped\tsha256:k\t%s\n' $((NOW - 700000))
     for i in $(seq 1 60); do printf 'o%s\tsha256:o%s\t%s\n' "$i" "$i" $((NOW - 800000 - i)); done
     printf 'fleet\tsha256:f\t%s\n' $((NOW - 900000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "fleet young" "skipped"
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 51 ]
@@ -486,7 +518,7 @@ GHCR_PULL="https://ghcr.io/token?scope=repository:acme/widget:pull&service=ghcr.
     printf 'letters\tsha256:l\t0abc\n'
     printf 'fraction\tsha256:f\t1.5\n'
     printf 'empty\tsha256:e\t\n'
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "letters fraction empty" ""
   [ "$status" -eq 0 ]
   [ "$output" = "$(printf 'good\tsha256:g')" ]
@@ -510,7 +542,7 @@ alpine_rows() {
     crowded_rows
     printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
     printf '10.0.13-noble-chiseled\tsha256:used\t%s\n' $((NOW - 1100000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "10.0.13-noble-chiseled" "10.0.16-noble-chiseled"
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 52 ]
@@ -528,7 +560,7 @@ alpine_rows() {
     crowded_rows
     alpine_rows
     printf '2.0.0-alpine\tsha256:used\t%s\n' $((NOW - 2000000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "2.0.0-alpine" ""
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 101 ]
@@ -549,7 +581,7 @@ alpine_rows() {
     printf 'noble-chiseled\tsha256:word\t%s\n' $((NOW - 995000))
     printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
     printf '10.0.13-noble-chiseled\tsha256:used\t%s\n' $((NOW - 1100000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "10.0.13-noble-chiseled" ""
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 52 ]
@@ -565,7 +597,7 @@ alpine_rows() {
     printf '10.0.14-noble-chiseled\tsha256:update\t%s\n' $((NOW - 1000000))
     printf 'edge\tsha256:edge\t%s\n' $((NOW - 1050000))
     printf 'latest\tsha256:used\t%s\n' $((NOW - 1100000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "latest" ""
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 51 ]
@@ -583,7 +615,7 @@ alpine_rows() {
     printf '0.15.3\tsha256:update\t%s\n' $((NOW - 970000))
     printf '0.15-rc\tsha256:other\t%s\n' $((NOW - 980000))
     printf 'v0.15.1\tsha256:used\t%s\n' $((NOW - 1100000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "v0.15.1" ""
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 54 ]
@@ -603,7 +635,7 @@ alpine_rows() {
     printf '20260101\tsha256:dateused\t%s\n' $((NOW - 980000))
     printf '1a2b3c\tsha256:short\t%s\n' $((NOW - 990000))
     printf '1a2b3c4d5e6f1a2b3c4d5e6f1a2b3c4d5e6f1a2b3\tsha256:long\t%s\n' $((NOW - 1000000))
-  } >"$WORK/rows"
+  } | seen_at_push >"$WORK/rows"
   run fn select_rows "$WORK/rows" "2e8f1a3 20260101" ""
   [ "$status" -eq 0 ]
   [ "$(wc -l <<<"$output")" -eq 55 ]
@@ -630,6 +662,18 @@ alpine_rows() {
   [ "$status" -ne 0 ]
 }
 
+@test "trim_rows does not count a skipped tag among the newest 50, and still stores it" {
+  for i in $(seq 1 60); do printf 'o%s\t%s\t%s\n' "$i" "$(digest 3)" $((NOW - 800000 - i)); done >"$WORK/rows"
+  run fn trim_rows "$WORK/rows" "" "o1 o2"
+  [ "$status" -eq 0 ]
+  [ "$(wc -l <<<"$output")" -eq 52 ]
+  grep -q $'^o1\t' <<<"$output"
+  grep -q $'^o2\t' <<<"$output"
+  grep -q $'^o52\t' <<<"$output"
+  run grep -q $'^o53\t' <<<"$output"
+  [ "$status" -ne 0 ]
+}
+
 @test "trim_rows also stores the newest 50 old rows of the shape of a tag in use, and select_rows finds its tags among them" {
   {
     printf '2.70.0-alpine\tsha256:young\t%s\n' $((NOW - 86400))
@@ -649,11 +693,12 @@ alpine_rows() {
   run grep -Eq $'^(sha256-|10.0.51-windowsservercore|2.51.0-alpine|2.1-alpine)' <<<"$stored"
   [ "$status" -ne 0 ]
 
-  printf '%s\n' "$stored" >"$WORK/stored"
+  printf '%s\n' "$stored" | seen_at_push >"$WORK/stored"
   run fn select_rows "$WORK/stored" "2.0.0-alpine" ""
   [ "$status" -eq 0 ]
   from_stored=$output
-  run fn select_rows "$WORK/rows" "2.0.0-alpine" ""
+  seen_at_push <"$WORK/rows" >"$WORK/rows4"
+  run fn select_rows "$WORK/rows4" "2.0.0-alpine" ""
   [ "$output" = "$from_stored" ]
 }
 
@@ -1004,7 +1049,7 @@ route_rest() {
 
 # previous_data <image> [rows json]: the image-age-data.json of an earlier run, served by the data repo
 previous_data() {
-  local rows=${2:-"[{\"tag\":\"v0.15.1\",\"digest\":\"$(digest c)\",\"pushedAt\":1791000000},{\"tag\":\"v0.14.0\",\"digest\":\"$(digest e)\",\"pushedAt\":1789000000}]"}
+  local rows=${2:-"[{\"tag\":\"v0.15.1\",\"digest\":\"$(digest c)\",\"pushedAt\":1791000000,\"firstSeen\":1791000000},{\"tag\":\"v0.14.0\",\"digest\":\"$(digest e)\",\"pushedAt\":1789000000,\"firstSeen\":1789000000}]"}
   jq -n --arg i "$1" --argjson rows "$rows" '{generatedAt: "2026-10-22T18:00:00Z",
     inventory: {failedRepos: [], images: {($i): {tags: ["v0.15.1"], pins: []}}}, rows: {($i): $rows}}' >"$WORK/previous-data.json"
   route GET "$PREV" 200 "$WORK/previous-data.json"
@@ -1012,8 +1057,213 @@ previous_data() {
 
 widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.io/acme/widget"])]' "$1"; }
 
+# quay_listing <tag> <digest> <push time>...: the quay answer for the widget image, one active build per triple
+quay_listing() {
+  jq -n '{tags: [range(0; $ARGS.positional | length; 3) as $i | $ARGS.positional[$i:$i + 3] | {name: .[0], manifest_digest: .[1], start_ts: (.[2] | tonumber), end_ts: null}], has_additional: false}' \
+    --args "$@" >"$WORK/quay-listing.json"
+  route_quay 200 "$WORK/quay-listing.json"
+}
+
+# next_run <out dir>: the data repo serves the data that run wrote, and the routes are cleared for the next one
+next_run() {
+  cp "$WORK/$1/image-age-data.json" "$WORK/previous-data.json"
+  : >"$FAKE_ROUTES"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+}
+
+# widget_allowed <out dir>: the tags the widget image's allowedVersions rule lets through, or "held" when the image is held back
+widget_allowed() {
+  jq -r '[.packageRules[] | select(.matchPackageNames == ["quay.io/acme/widget"])][0] | if has("allowedVersions") then .allowedVersions | ltrimstr("/^(") | rtrimstr(")$/") | gsub("\\\\"; "") else "held" end' "$WORK/$1/image-age.json"
+}
+
+# widget_tags <out dir>: the tags the widget image's allowedVersions rule lets through, sorted and space-separated, or "held"
+widget_tags() { widget_allowed "$1" | tr '|' '\n' | sort | paste -sd' '; }
+
+# stored_row <tag> <digest> <seconds before now it was pushed> <seconds before now it was first seen>: one stored row
+stored_row() { jq -nc --arg t "$1" --arg d "$2" --argjson p "$((NOW - $3))" --argjson f "$((NOW - $4))" '{tag: $t, digest: $d, pushedAt: $p, firstSeen: $f}'; }
+
+# first_seen <out dir> <tag>: the first-seen time the widget image's stored row for the tag carries
+first_seen() { jq -r --arg t "$2" '.rows["quay.io/acme/widget"][] | select(.tag == $t) | .firstSeen' "$WORK/$1/image-age-data.json"; }
+
+D30=2592000
+
+@test "render holds every listed row for 7 days when there is no earlier data, and admits them once they have been seen that long" {
+  widget_inventory "$(digest c)"
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"image-age: quay.io/acme/widget has no tag at least 7 days old, updates held back"* ]]
+  [[ "$output" != *"::error::"* ]]
+  [ "$(widget_allowed out)" = held ]
+  jq -e --argjson now "$NOW" '.rows["quay.io/acme/widget"] | length == 3 and all(.firstSeen == $now)' "$WORK/out/image-age-data.json"
+
+  next_run out
+  route_quay 200 "$FX/quay-tags.json"
+  IMAGE_AGE_NOW=$((NOW + 604799)) run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  [ "$(widget_allowed out2)" = held ]
+
+  IMAGE_AGE_NOW=$((NOW + 604800)) run fn main render --in "$WORK/in" --out "$WORK/out3"
+  [ "$status" -eq 0 ]
+  [[ "$(widget_allowed out3)" == *"v0.15.1|v0.14.0" ]]
+  jq -e --arg d "$(digest c)" '.packageRules[1].matchJsonata[0] | contains("\"v0.15.1\":\"" + $d + "\"")' "$WORK/out3/image-age.json"
+}
+
+@test "render holds an image the earlier data does not know for 7 days, whatever the earlier data holds" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/other
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out)" = held ]
+  [ "$(first_seen out v0.14.0)" -eq "$NOW" ]
+}
+
+@test "render holds a tag added to a build that is already old until the tag has been seen for 7 days" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.15.1 "$(digest c)" $D30 $D30)]"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.16.0 "$(digest c)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out)" = v0.15.1 ]
+  [ "$(first_seen out v0.15.1)" -eq $((NOW - D30)) ]
+  [ "$(first_seen out v0.16.0)" -eq "$NOW" ]
+
+  next_run out
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.16.0 "$(digest c)" $((NOW - D30))
+  IMAGE_AGE_NOW=$((NOW + 604799)) run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out2)" = v0.15.1 ]
+  [ "$(first_seen out2 v0.16.0)" -eq "$NOW" ]
+
+  IMAGE_AGE_NOW=$((NOW + 604800)) run fn main render --in "$WORK/in" --out "$WORK/out3"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out3)" = "v0.15.1 v0.16.0" ]
+}
+
+@test "render holds a tag that moved to another build, and one that went back to an earlier build, for 7 days" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.15.1 "$(digest c)" $D30 $D30),$(stored_row v0.14.0 "$(digest e)" $D30 $D30),$(stored_row v0.13.0 "$(digest d)" $D30 $D30)]"
+  quay_listing v0.15.1 "$(digest e)" $((NOW - D30)) v0.14.0 "$(digest f)" $((NOW - D30)) v0.13.0 "$(digest d)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out)" = v0.13.0 ]
+  [ "$(first_seen out v0.15.1)" -eq "$NOW" ]
+  [ "$(first_seen out v0.14.0)" -eq "$NOW" ]
+  [ "$(first_seen out v0.13.0)" -eq $((NOW - D30)) ]
+}
+
+@test "render holds a row stored without a first-seen time, or with a bad one, for 7 days, and reports only the bad ones" {
+  widget_inventory "$(digest c)"
+  jq -n --arg c "$(digest c)" --arg d "$(digest d)" --arg e "$(digest e)" --argjson old "$((NOW - D30))" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}},
+    rows: {"quay.io/acme/widget": [{tag: "v0.15.1", digest: $c, pushedAt: $old, firstSeen: $old},
+                                    {tag: "v0.14.0", digest: $e, pushedAt: $old},
+                                    {tag: "v0.13.0", digest: $d, pushedAt: $old, firstSeen: "long ago"}]}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.14.0 "$(digest e)" $((NOW - D30)) v0.13.0 "$(digest d)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out)" = v0.15.1 ]
+  [ "$(first_seen out v0.14.0)" -eq "$NOW" ]
+  [ "$(first_seen out v0.13.0)" -eq "$NOW" ]
+  [ "$(grep -c '::error::' <<<"$output")" -eq 1 ]
+  [[ "$output" == *"::error::dropped 1 rows of quay.io/acme/widget from the previous data"* ]]
+}
+
+@test "render keeps the first-seen time of a row from one run to the next, also when the registry fails and the stored rows are reused" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.15.1 "$(digest c)" $D30 86400),$(stored_row v0.14.0 "$(digest e)" $D30 172800)]"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.14.0 "$(digest e)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(first_seen out v0.15.1)" -eq $((NOW - 86400)) ]
+  [ "$(first_seen out v0.14.0)" -eq $((NOW - 172800)) ]
+
+  next_run out
+  route_quay 500
+  IMAGE_AGE_NOW=$((NOW + 3600)) run fn main render --in "$WORK/in" --out "$WORK/out2"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::error::quay.io/acme/widget: registry answered 500"* ]]
+  [ "$(first_seen out2 v0.15.1)" -eq $((NOW - 86400)) ]
+  [ "$(first_seen out2 v0.14.0)" -eq $((NOW - 172800)) ]
+}
+
+@test "render counts a first-seen time in the future as now" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.15.1 "$(digest c)" $D30 -86400)]"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(first_seen out v0.15.1)" -eq "$NOW" ]
+  [ "$(widget_tags out)" = held ]
+}
+
+@test "render dates a tag that was a stored unlisted entry from that entry when it is listed at the same digest, and from now at another" {
+  widget_inventory "$(digest c)"
+  jq -n --arg c "$(digest c)" --arg d "$(digest d)" --arg f "$(date -u -d "@$((NOW - D30))" +%Y-%m-%dT%H:%M:%SZ)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {},
+    unlisted: {"quay.io/acme/widget": {"v0.15.1": {digest: $c, firstSeen: $f}, "v0.14.0": {digest: $c, firstSeen: $f}}}}' >"$WORK/previous-data.json"
+  route GET "$PREV" 200 "$WORK/previous-data.json"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.14.0 "$(digest d)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(first_seen out v0.15.1)" -eq $((NOW - D30)) ]
+  [ "$(first_seen out v0.14.0)" -eq "$NOW" ]
+  [ "$(widget_tags out)" = v0.15.1 ]
+}
+
+@test "render leaves a tag in use that is still held out of the allowed tags and the digest map" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.14.0 "$(digest e)" $D30 $D30)]"
+  quay_listing v0.15.1 "$(digest c)" $((NOW - D30)) v0.14.0 "$(digest e)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(widget_tags out)" = v0.14.0 ]
+  jq -e --arg e "$(digest e)" '.packageRules[1].matchJsonata[0] | contains("\"v0.14.0\":\"" + $e + "\"") and (contains("v0.15.1") | not)' "$WORK/out/image-age.json"
+}
+
+@test "render says once per image which tags wait on the first sighting of their build: the tags in use and the newer tags of their shape, and when each is admitted" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget "[$(stored_row v0.14.0 "$(digest e)" $((D30 + 86400)) $D30)]"
+  quay_listing \
+    v0.16.0 "$(digest d)" $((NOW - D30 + 86400)) \
+    v0.15.1 "$(digest c)" $((NOW - D30)) \
+    v0.14.0 "$(digest e)" $((NOW - D30 - 86400)) \
+    v0.13.0 "$(digest f)" $((NOW - D30 - 172800)) \
+    nightly "$(digest a)" $((NOW - D30 + 172800))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(grep -c '::notice::' <<<"$output")" -eq 1 ]
+  notice=$(grep '::notice::' <<<"$output")
+  [[ "$notice" == "::notice::quay.io/acme/widget: tags held until 7 days after image-age first saw them at their build: "*"v0.15.1 until 2026-10-30T00:00:00Z"* ]]
+  [[ "$notice" == *"v0.16.0 until 2026-10-30T00:00:00Z"* ]]
+  [[ "$notice" != *"v0.14.0"* && "$notice" != *"v0.13.0"* && "$notice" != *"nightly"* ]]
+  [ "$(grep -cxF "$notice" "$WORK/out/report.txt")" -eq 1 ]
+}
+
+@test "render names no tag in its held-for-first-sighting notice that is skipped, held by its registry time, or already admitted, and says nothing when no tag waits" {
+  widget_inventory "$(digest c)"
+  printf 'quay.io/acme/widget:\n  - v0.16.0\n' >"$IMAGE_AGE_SKIPS_FILE"
+  previous_data quay.io/acme/widget "[$(stored_row v0.15.1 "$(digest c)" $D30 $D30)]"
+  quay_listing v0.17.0 "$(digest d)" $((NOW - 86400)) v0.16.0 "$(digest e)" $((NOW - D30 + 86400)) v0.15.1 "$(digest c)" $((NOW - D30))
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" != *"::notice::"* ]]
+}
+
 @test "render dates each image at its registry and writes the preset, the data and the report, but no script" {
   widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
   route_quay 200 "$FX/quay-tags.json"
   route_rest
   run fn main render --in "$WORK/in" --out "$WORK/out"
@@ -1021,9 +1271,9 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
   jq -e '.packageRules[0].allowedVersions == "/^(v0\\.15\\.1|v0\\.14\\.0)$/" and (.packageRules | length) == 4' "$WORK/out/image-age.json"
   jq -e --arg c "$(digest c)" '.generatedAt == "2026-10-23T00:00:00Z"
     and .rows["quay.io/acme/widget"] == [
-      {tag: "latest", digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", pushedAt: 1792557174},
-      {tag: "v0.15.1", digest: $c, pushedAt: 1791000000},
-      {tag: "v0.14.0", digest: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", pushedAt: 1789000000}]
+      {tag: "latest", digest: "sha256:aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa", pushedAt: 1792557174, firstSeen: 1792713600},
+      {tag: "v0.15.1", digest: $c, pushedAt: 1791000000, firstSeen: 1791000000},
+      {tag: "v0.14.0", digest: "sha256:eeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeee", pushedAt: 1789000000, firstSeen: 1789000000}]
     and .inventory.images["quay.io/acme/widget"].tags == ["v0.15.1"]' "$WORK/out/image-age-data.json"
   [ -f "$WORK/out/report.txt" ]
   [ ! -e "$WORK/out/image-age.sh" ]
@@ -1034,6 +1284,7 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
 
 @test "render leaves out tags and digests that are younger than 7 days and the skipped tags" {
   widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
   printf 'quay.io/acme/widget:\n  - v0.14.0\n' >"$IMAGE_AGE_SKIPS_FILE"
   route_quay 200 "$FX/quay-tags.json"
   route_rest
@@ -1059,8 +1310,8 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
   route_rest
   run fn main render --in "$WORK/in" --out "$WORK/out"
   [ "$status" -eq 0 ]
-  [[ "$output" != *"::"* ]]
-  [ "$(grep -c '::' "$WORK/out/report.txt")" -eq 0 ]
+  [[ "$output" != *"::warning::"* && "$output" != *"::error::"* && "$output" != *"$(digest f)"* ]]
+  [ "$(grep -c '::warning::\|::error::' "$WORK/out/report.txt")" -eq 0 ]
 }
 
 @test "render keeps the stored rows of an image when its registry fails and renders the rules from them" {
@@ -1079,7 +1330,7 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
 
 @test "render re-renders stored rows against the clock, so a row that has grown old enough becomes allowed" {
   widget_inventory "$(digest c)"
-  previous_data quay.io/acme/widget "[{\"tag\":\"v0.15.1\",\"digest\":\"$(digest c)\",\"pushedAt\":$((NOW - 3 * 86400))},{\"tag\":\"v0.14.0\",\"digest\":\"$(digest e)\",\"pushedAt\":$((NOW - 9 * 86400))}]"
+  previous_data quay.io/acme/widget "[{\"tag\":\"v0.15.1\",\"digest\":\"$(digest c)\",\"pushedAt\":$((NOW - 3 * 86400)),\"firstSeen\":$((NOW - 3 * 86400))},{\"tag\":\"v0.14.0\",\"digest\":\"$(digest e)\",\"pushedAt\":$((NOW - 9 * 86400)),\"firstSeen\":$((NOW - 9 * 86400))}]"
   route_quay 500
   route_rest
   fn main render --in "$WORK/in" --out "$WORK/out"
@@ -1134,7 +1385,7 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
 @test "render re-validates the stored data: bad image names and bad rows are dropped with an error" {
   widget_inventory "$(digest c)"
   jq -n --arg c "$(digest c)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}},
-    rows: {"quay.io/acme/widget": [{tag: "v0.15.1", digest: $c, pushedAt: 1791000000},
+    rows: {"quay.io/acme/widget": [{tag: "v0.15.1", digest: $c, pushedAt: 1791000000, firstSeen: 1791000000},
                                     {tag: "bad tag", digest: $c, pushedAt: 1791000000},
                                     {tag: "v0.13.0", digest: "sha256:short", pushedAt: 1791000000},
                                     {tag: "v0.12.0", digest: $c, pushedAt: "yesterday"}],
@@ -1167,7 +1418,7 @@ widget_rules() { jq -c '[.packageRules[] | select(.matchPackageNames == ["quay.i
 }
 
 @test "render carries over the stored rows of images it could not list only when a repo failed to extract" {
-  previous_data ghcr.io/acme/gone "[{\"tag\":\"v1\",\"digest\":\"$(digest a)\",\"pushedAt\":1791000000}]"
+  previous_data ghcr.io/acme/gone "[{\"tag\":\"v1\",\"digest\":\"$(digest a)\",\"pushedAt\":1791000000,\"firstSeen\":1791000000}]"
   route GET "$GHCR/users/acme/packages/container/gone/versions?per_page=100" 500
   route_rest
 
@@ -1192,11 +1443,17 @@ unlisted_in() {
   old_ghcr_page 60 t >"$WORK/p1.json"
   route GET "$WIDGET_VERSIONS" 200 "$WORK/p1.json"
   route_pull "$GHCR_PULL"
+  previous_unlisted '{}'
 }
 
-# previous_unlisted <unlisted json>: the data of an earlier run that stored these unlisted entries
+# t_rows [row json]...: stored rows for the 60 builds that old_ghcr_page lists (t0 to t59), first seen long ago, and then the given rows
+t_rows() {
+  jq -nc '[range(0; 60) | {tag: "t\(.)", digest: "sha256:\(("0" * 64 + tostring)[-64:])", pushedAt: 1788220800, firstSeen: 1788220800}] + [$ARGS.positional[] | fromjson]' --args "$@"
+}
+
+# previous_unlisted <unlisted json>: the data of an earlier run that stored the old_ghcr_page builds and these unlisted entries
 previous_unlisted() {
-  jq -n --argjson u "$1" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {}, unlisted: $u}' >"$WORK/previous-data.json"
+  jq -n --argjson u "$1" --argjson rows "$(t_rows)" '{generatedAt: "2026-10-22T18:00:00Z", inventory: {failedRepos: [], images: {}}, rows: {"ghcr.io/acme/widget": $rows}, unlisted: $u}' >"$WORK/previous-data.json"
   route GET "$PREV" 200 "$WORK/previous-data.json"
 }
 
@@ -1259,7 +1516,7 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
 
 @test "render admits a fleet tag at once when the previous rows hold its digest from 30 days ago and no entry is stored, and says nothing" {
   unlisted_in stable
-  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW - 2592000))}]"
+  previous_data ghcr.io/acme/widget "$(t_rows "{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW - 2592000)),\"firstSeen\":$((NOW - 2592000))}")"
   route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
   route_rest
   run fn main render --in "$WORK/in" --out "$WORK/out"
@@ -1269,9 +1526,20 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-09-23T00:00:00Z"}' "$WORK/out/image-age-data.json"
 }
 
+@test "render starts the clock of a fleet tag at the later of the push time and the first-seen time of the previous row that holds its digest" {
+  unlisted_in stable
+  previous_data ghcr.io/acme/widget "$(t_rows "$(jq -nc --arg d "$(digest 7)" --argjson p "$((NOW - 2592000))" --argjson f "$((NOW - 172800))" '{tag: "stable", digest: $d, pushedAt: $p, firstSeen: $f}')")"
+  route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
+  route_rest
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among"*"(first seen 2026-10-21T00:00:00Z)"* ]]
+  jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
+}
+
 @test "render starts the clock of a fleet tag now when the previous rows hold another build of it or a push time in the future" {
   unlisted_in stable
-  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 6)\",\"pushedAt\":$((NOW - 2592000))}]"
+  previous_data ghcr.io/acme/widget "$(t_rows "{\"tag\":\"stable\",\"digest\":\"$(digest 6)\",\"pushedAt\":$((NOW - 2592000)),\"firstSeen\":$((NOW - 2592000))}")"
   route_digest "https://ghcr.io/v2/acme/widget/manifests/stable" "$(digest 7)"
   route_rest
   run fn main render --in "$WORK/in" --out "$WORK/out"
@@ -1279,7 +1547,7 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   [[ "$output" == *"::notice::ghcr.io/acme/widget: tag stable is not among"*"(first seen 2026-10-23T00:00:00Z)"* ]]
   jq -e '.packageRules[0].allowedVersions | contains("stable") | not' "$WORK/out/image-age.json"
 
-  previous_data ghcr.io/acme/widget "[{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW + 86400))}]"
+  previous_data ghcr.io/acme/widget "$(t_rows "{\"tag\":\"stable\",\"digest\":\"$(digest 7)\",\"pushedAt\":$((NOW + 86400)),\"firstSeen\":$((NOW + 86400))}")"
   run fn main render --in "$WORK/in" --out "$WORK/out2"
   [ "$status" -eq 0 ]
   jq -e --arg d "$(digest 7)" "$WIDGET_UNLISTED"'.stable == {digest: $d, firstSeen: "2026-10-23T00:00:00Z"}' "$WORK/out2/image-age-data.json"
@@ -1453,11 +1721,30 @@ WIDGET_UNLISTED='.unlisted["ghcr.io/acme/widget"]'
   [ -e "$WORK/out2/image-age.json" ]
 }
 
+@test "render reads the clock once, so every time it writes comes from one reading" {
+  widget_inventory "$(digest c)"
+  previous_data quay.io/acme/widget
+  route_quay 200 "$FX/quay-tags.json"
+  route_rest
+  printf '%s\n' '#!/usr/bin/env bash' \
+    'if [[ "$*" != "+%s" ]]; then exec /usr/bin/date "$@"; fi' \
+    'n=$(($(cat "$DATE_COUNT" 2>/dev/null || echo 0) + 1))' \
+    'echo "$n" >"$DATE_COUNT"' \
+    'echo $((NOW_START + n))' >"$WORK/bin/date"
+  chmod +x "$WORK/bin/date"
+  unset IMAGE_AGE_NOW
+  export DATE_COUNT="$WORK/date.count" NOW_START="$NOW"
+  run fn main render --in "$WORK/in" --out "$WORK/out"
+  [ "$status" -eq 0 ]
+  [ "$(cat "$DATE_COUNT")" -eq 1 ]
+  [ "$(jq -r .generatedAt "$WORK/out/image-age-data.json")" = "2026-10-23T00:00:01Z" ]
+}
+
 @test "render reads a fleet tag's digest from the registry also when it fell back to the stored rows" {
   inventory '{"failedRepos":[],"images":{"ghcr.io/acme/widget":{"tags":["t1","stable"],"pins":[]}}}'
   jq -n --arg d "$(digest 7)" --arg e "$(digest 4)" '{generatedAt: "2026-10-22T18:00:00Z",
     inventory: {failedRepos: [], images: {"ghcr.io/acme/widget": {tags: ["t1", "stable"], pins: []}}},
-    rows: {"ghcr.io/acme/widget": [{tag: "t1", digest: $e, pushedAt: 1791000000}]},
+    rows: {"ghcr.io/acme/widget": [{tag: "t1", digest: $e, pushedAt: 1791000000, firstSeen: 1791000000}]},
     unlisted: {"ghcr.io/acme/widget": {stable: {digest: $d, firstSeen: "2026-10-01T00:00:00Z"}}}}' >"$WORK/previous-data.json"
   route GET "$PREV" 200 "$WORK/previous-data.json"
   route GET "$WIDGET_VERSIONS" 500
@@ -1692,6 +1979,35 @@ EOF
 del(.unlisted["quay.io/acme/widget"]["17"].digest)
 .unlisted["quay.io/acme/widget"]["bad tag"] = .unlisted["quay.io/acme/widget"]["17"]
 .unlisted["Bad Name"] = .unlisted["quay.io/acme/widget"]
+EOF
+}
+
+@test "validate accepts rows that each carry a whole-number firstSeen and stops on a row that does not" {
+  preset_in
+  jq --arg d "$(digest 7)" '.rows = {"quay.io/acme/widget": [{tag: "v1", digest: $d, pushedAt: 1790000000, firstSeen: 1790000000}]}' "$WORK/art/image-age-data.json" >"$WORK/good-data.json"
+  cp "$WORK/good-data.json" "$WORK/art/image-age-data.json"
+  run fn main validate --in "$WORK/art"
+  [ "$status" -eq 0 ]
+
+  local filter
+  while IFS= read -r filter; do
+    jq "$filter" "$WORK/good-data.json" >"$WORK/art/image-age-data.json"
+    run fn main validate --in "$WORK/art" </dev/null
+    if [ "$status" -eq 0 ]; then
+      echo "accepted: $filter" >&2
+      false
+    fi
+    [[ "$output" == *"::error::"*"image-age-data.json"*"firstSeen"* ]]
+  done <<'EOF'
+del(.rows["quay.io/acme/widget"][0].firstSeen)
+.rows["quay.io/acme/widget"][0].firstSeen = null
+.rows["quay.io/acme/widget"][0].firstSeen = "1790000000"
+.rows["quay.io/acme/widget"][0].firstSeen = "2026-10-23T00:00:00Z"
+.rows["quay.io/acme/widget"][0].firstSeen = 1790000000.5
+.rows["quay.io/acme/widget"][0].firstSeen = -1
+.rows["quay.io/acme/widget"] += [{tag: "v2", digest: "sha256:x", pushedAt: 1}]
+.rows["quay.io/acme/widget"] = 1
+.rows["quay.io/acme/widget"] = ["v1"]
 EOF
 }
 

@@ -359,11 +359,11 @@ stored_unlisted() {
     | [.key, .value.digest, ([(.value.firstSeen | fromdateiso8601), $now] | min)] | @tsv' "$previous"
 }
 
-# listed_at IMAGE TAG DIGEST PREVIOUS: when the previous rows list the tag at the digest, the time the registry made it (epoch seconds, never later than now)
+# listed_at IMAGE TAG DIGEST PREVIOUS: when the previous rows list the tag at the digest, the later of the time the registry made it and the time it was first seen (epoch seconds, never later than now)
 listed_at() {
   local image=$1 tag=$2 digest=$3 previous=$4
   jq -r --arg i "$image" --arg t "$tag" --arg d "$digest" --argjson now "$(now)" '
-    [.rows[$i][]? | select(.tag == $t and .digest == $d) | .pushedAt] | max // empty | [., $now] | min' "$previous"
+    [.rows[$i][]? | select(.tag == $t and .digest == $d) | [.pushedAt, .firstSeen] | max] | max // empty | [., $now] | min' "$previous"
 }
 
 # resolve_unlisted IMAGE ROWS USED PREVIOUS OUT: for each tag in use that ROWS lack, the digest the registry serves now and when it was first seen:
@@ -404,6 +404,7 @@ carry_unlisted() {
 }
 
 # select_rows ROWS USED SKIPS: the tags (and digests) Renovate may use, newest first: the newest KEEP_NEWEST old builds, the newest KEEP_NEWEST of each shape a tag in use has, and the tags in use. USED and SKIPS are space-separated tags.
+# ROWS are tag, digest, push time and first-seen time; a row is old once the later of the two times is 7 days back, and one without a first-seen time is never old.
 select_rows() {
   local rows=$1 used=$2 skips=$3 cut=$(($(now) - MIN_AGE_SECONDS))
   awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" -v skip="$skips" "$SHAPE_AWK"'
@@ -416,8 +417,9 @@ select_rows() {
       }
       n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
     }
-    $3 !~ /^-?[0-9]+$/ { next }
-    $3 > cut || $1 ~ cosign || ($1 in S) { next }
+    $3 !~ /^-?[0-9]+$/ || $4 !~ /^[0-9]+$/ { next }
+    { at = ($4 + 0 > $3 + 0) ? $4 + 0 : $3 + 0 }
+    at > cut || $1 ~ cosign || ($1 in S) { next }
     {
       eligible++
       sh = shape($1)
@@ -427,10 +429,11 @@ select_rows() {
   ' "$rows"
 }
 
-# trim_rows ROWS USED: the rows worth storing: every build younger than 7 days, the newest KEEP_NEWEST older ones, the newest KEEP_NEWEST older ones of each shape a tag in use has, and the tags in use
+# trim_rows ROWS USED [SKIPS]: the rows worth storing: every build younger than 7 days, the newest KEEP_NEWEST older ones, the newest KEEP_NEWEST older ones of each shape a tag in use has, and the tags in use.
+# A skipped tag is stored but takes no place among the newest, so it does not shrink what select_rows can pick.
 trim_rows() {
-  local rows=$1 used=$2 cut=$(($(now) - MIN_AGE_SECONDS))
-  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" "$SHAPE_AWK"'
+  local rows=$1 used=$2 skips=${3:-} cut=$(($(now) - MIN_AGE_SECONDS))
+  awk -F'\t' -v OFS='\t' -v cut="$cut" -v keep="$KEEP_NEWEST" -v cosign="$COSIGN_TAG" -v used="$used" -v skip="$skips" "$SHAPE_AWK"'
     BEGIN {
       n = split(used, u, " ")
       for (i = 1; i <= n; i++) {
@@ -438,9 +441,10 @@ trim_rows() {
         sh = shape(u[i])
         if (sh != "") W[sh] = 1
       }
+      n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
     }
     $1 ~ cosign { next }
-    $3 > cut { print; next }
+    $3 > cut || ($1 in S) { print; next }
     {
       old++
       sh = shape($1)
@@ -652,8 +656,10 @@ fetch_contents() {
 }
 
 # shellcheck disable=SC2016
-ROW_OK='def row_ok: (.tag | type == "string" and test($tag)) and (.digest | type == "string" and test($dig))
-  and (.pushedAt | type == "number" and . >= 0 and . == floor);'
+ROW_OK='def row_base: (.tag | type == "string" and test($tag)) and (.digest | type == "string" and test($dig))
+  and (.pushedAt | type == "number" and . >= 0 and . == floor);
+  def row_ok: row_base and (.firstSeen | type == "number" and . >= 0 and . == floor);
+  def row_unseen: row_base and (has("firstSeen") | not);'
 
 # shellcheck disable=SC2016
 UNLISTED_OK='def entries: if type == "object" then to_entries else [] end;
@@ -689,7 +695,7 @@ previous_data() {
     say "::error::dropped $dropped rows of $image from the previous data"
   done < <(jq -r --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" "$ROW_OK"'
     .rows | to_entries[] | select(.key | test($re))
-    | [.key, ((.value | length) - (.value | map(select(row_ok)) | length))] | select(.[1] > 0) | @tsv' "$raw")
+    | [.key, ((.value | length) - (.value | map(select(row_ok or row_unseen)) | length))] | select(.[1] > 0) | @tsv' "$raw")
   while IFS=$'\t' read -r image dropped; do
     say "::error::dropped $dropped unlisted entries of $image from the previous data"
   done < <(jq -r --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" "$UNLISTED_OK"'
@@ -707,6 +713,64 @@ previous_data() {
 stored_rows() {
   local image=$1 previous=$2 out=$3
   jq -r --arg i "$image" '.rows[$i] // [] | .[] | [.tag, .digest, .pushedAt] | @tsv' "$previous" | LC_ALL=C sort -s -t $'\t' -k3,3nr >"$out"
+}
+
+# first_seen_index IMAGE PREVIOUS: the tag, digest and first-seen time (epoch seconds) of each stored row of IMAGE in the previous data, then of each of its unlisted entries
+first_seen_index() {
+  local image=$1 previous=$2
+  jq -r --arg i "$image" '
+    ((.rows[$i] // [])[] | [.tag, .digest, .firstSeen]),
+    ((.unlisted[$i] // {}) | to_entries[] | [.key, .value.digest, (.value.firstSeen | fromdateiso8601)])
+    | @tsv' "$previous"
+}
+
+# date_rows ROWS INDEX: ROWS with the time image-age first saw each tag at its digest as a fourth column.
+# The first entry of INDEX for the tag and digest gives it, else it is now; no time is later than now.
+date_rows() {
+  local rows=$1 index_file=$2
+  awk -F'\t' -v OFS='\t' -v now="$(now)" -v idx="$index_file" '
+    BEGIN {
+      while ((getline line < idx) > 0) {
+        split(line, f, "\t")
+        if (!((f[1], f[2]) in first)) first[f[1], f[2]] = f[3] + 0
+      }
+    }
+    {
+      at = (($1, $2) in first) ? first[$1, $2] : now + 0
+      print $1, $2, $3, (at > now + 0 ? now + 0 : at)
+    }
+  ' "$rows"
+}
+
+# waiting_notice IMAGE ROWS UNLISTED USED SKIPS: one notice naming the tags whose build is old at the registry but was first seen less than 7 days ago, and the day each is admitted.
+# Only the tags in use and the tags of a shape in use that are newer than the oldest tag in use of that shape are named; ROWS are tag, digest, push time and first-seen time, UNLISTED the entries resolve_unlisted wrote.
+waiting_notice() {
+  local image=$1 rows=$2 unlisted=$3 used=$4 skips=$5 list='' tag at
+  while IFS=$'\t' read -r tag at; do
+    list+="${list:+, }$tag until $(iso "$at")"
+  done < <(awk -F'\t' -v OFS='\t' -v cut="$(($(now) - MIN_AGE_SECONDS))" -v wait="$MIN_AGE_SECONDS" -v used="$used" -v skip="$skips" "$SHAPE_AWK"'
+    BEGIN {
+      n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
+      n = split(skip, s, " "); for (i = 1; i <= n; i++) S[s[i]] = 1
+    }
+    FILENAME == ARGV[1] { ref[$1] = $3 + 0; next }
+    { rows_n++; tag[rows_n] = $1; pushed[rows_n] = $3 + 0; seen[rows_n] = $4 + 0; ref[$1] = $3 + 0 }
+    END {
+      for (t in U) {
+        sh = shape(t)
+        if (sh != "" && (t in ref) && (!(sh in oldest) || ref[t] < oldest[sh])) oldest[sh] = ref[t]
+      }
+      for (i = 1; i <= rows_n; i++) {
+        t = tag[i]
+        if ((t in S) || pushed[i] > cut || seen[i] <= cut) continue
+        sh = shape(t)
+        if ((t in U) || (sh != "" && (sh in oldest) && pushed[i] > oldest[sh])) print t, seen[i] + wait
+      }
+    }
+  ' "$unlisted" "$rows")
+  if [[ -n "$list" ]]; then
+    say "::notice::$image: tags held until 7 days after image-age first saw them at their build: $list"
+  fi
 }
 
 # dated_rules IMAGE INVENTORY SKIPS PREVIOUS WORKDIR: writes the rules for one image to WORKDIR/rules.json, the rows to keep to WORKDIR/stored and the unlisted tags to WORKDIR/unlisted
@@ -731,9 +795,12 @@ dated_rules() {
     return 0
   fi
   resolve_unlisted "$image" "$work/rows" "$used" "$previous" "$work/unlisted"
-  trim_rows "$work/rows" "$used" >"$work/stored"
-  select_rows "$work/rows" "$used" "$skip" >"$work/selected"
-  awk -F'\t' -v OFS='\t' '$4 == 1 { print $1, $2, $3 }' "$work/unlisted" >"$work/seen"
+  trim_rows "$work/rows" "$used" "$skip" >"$work/trimmed"
+  first_seen_index "$image" "$previous" >"$work/first-seen"
+  date_rows "$work/trimmed" "$work/first-seen" >"$work/stored"
+  waiting_notice "$image" "$work/stored" "$work/unlisted" "$used" "$skip"
+  select_rows "$work/stored" "$used" "$skip" >"$work/selected"
+  awk -F'\t' -v OFS='\t' '$4 == 1 { print $1, $2, $3, $3 }' "$work/unlisted" >"$work/seen"
   select_rows "$work/seen" "$used" "$skip" >>"$work/selected"
   if [[ -s "$work/selected" ]]; then
     image_rules "$image" "$work/selected" "$(now)" >"$work/rules.json"
@@ -789,6 +856,8 @@ clock_ok() {
 
 cmd_render() {
   local in=$1 out=$2 work previous skips image count
+  # One clock reading per render, so every 7-day cut agrees
+  IMAGE_AGE_NOW=$(now)
   mkdir -p "$out"
   REPORT="$out/report.txt"
   if [[ -f "$in/report.txt" ]]; then cp "$in/report.txt" "$REPORT"; else : >"$REPORT"; fi
@@ -811,7 +880,7 @@ cmd_render() {
     jq --arg i "$image" --slurpfile r "$work/rules.json" '.[$i] = $r[0]' "$work/by-image.json" >"$work/tmp.json"
     mv "$work/tmp.json" "$work/by-image.json"
     if [[ -s "$work/stored" ]]; then
-      jq --arg i "$image" --slurpfile s <(jq -Rn '[inputs | split("\t") | {tag: .[0], digest: .[1], pushedAt: (.[2] | tonumber)}]' "$work/stored") \
+      jq --arg i "$image" --slurpfile s <(jq -Rn '[inputs | split("\t") | {tag: .[0], digest: .[1], pushedAt: (.[2] | tonumber), firstSeen: (.[3] | tonumber)}]' "$work/stored") \
         '.[$i] = $s[0]' "$work/stored.json" >"$work/tmp.json"
       mv "$work/tmp.json" "$work/stored.json"
     fi
@@ -916,6 +985,9 @@ cmd_validate() {
     bad=1
   elif (($(wc -c <"$state") > MAX_DATA_BYTES)); then
     say "::error::$STATE_FILE is above the $MAX_DATA_BYTES byte limit"
+    bad=1
+  elif ! jq -e '.rows | all(.[]; type == "array" and all(.[]; type == "object" and (.firstSeen | type == "number" and . >= 0 and . == floor)))' "$state" >/dev/null 2>&1; then
+    say "::error::$STATE_FILE: every row needs a firstSeen time in whole epoch seconds"
     bad=1
   elif ! jq -e --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg iso "$ISO_RE" "$UNLISTED_OK"'
       (if has("unlisted") then .unlisted else {} end) | type == "object" and all(to_entries[]; (.key | test($re)) and (.value | type == "object") and all(.value | entries[]; entry_ok))' "$state" >/dev/null 2>&1; then
