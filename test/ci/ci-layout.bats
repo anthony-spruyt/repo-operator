@@ -228,7 +228,7 @@ EOF
   run yq -o=json -I0 '[(.on | keys), .permissions]' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [ "$output" = '[["workflow_call"],{}]' ]
   run yq -r '.jobs["guard-test"].steps[].run | select(. != null)' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
-  [[ "$output" == *"bats -r test/"* ]]
+  [[ "$output" == *"bats "*"-r test/"* ]]
   run yq -r '.jobs["guard-test"].steps[].name' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [[ "$output" == *$'Install actionlint\nInstall jsonata\nRun bats tests'* ]]
 }
