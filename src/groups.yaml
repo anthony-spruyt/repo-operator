@@ -419,6 +419,7 @@ groups:
           description: "Mergify queued"
   private-repo:
     settings:
+      actions: false
       codeScanning: false
       repo:
         allowAutoMerge: false
