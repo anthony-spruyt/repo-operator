@@ -219,6 +219,11 @@ repos:
             images:
               with: *litellm-middleware-with
     settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - sigstore/cosign-installer@*
       repo:
         description: "Custom LiteLLM proxy middleware, shipped as an OCI image."
 
@@ -252,6 +257,7 @@ repos:
         hasWiki: false
       collaborators:
         inherit: false
+        deleteOrphaned: true
         users: []
       labels:
         inherit: false
@@ -407,6 +413,13 @@ repos:
             skip-dirs:
               - talos/clusterconfig
     settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - bmuschko/setup-kubeconform@*
+            - dorny/paths-filter@*
+            - kyverno/action-install-cli@*
       repo:
         allowAutoMerge: false
       labels:
@@ -576,6 +589,11 @@ repos:
               env:
                 CCLSP_CONFIG_PATH: "/workspaces/xfg/.claude/cclsp.json"
     settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - codecov/codecov-action@*
       repo:
         hasDiscussions: true
       labels:

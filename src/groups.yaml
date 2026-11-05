@@ -95,7 +95,13 @@ groups:
                     language: system
                     pass_filenames: false
                     always_run: true
-  cpp: {}
+  cpp:
+    settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - ilammy/msvc-dev-cmd@*
   eslint:
     files:
       eslint.config.js:
@@ -226,6 +232,18 @@ groups:
         schemaUrl: https://raw.githubusercontent.com/SchemaStore/schemastore/master/src/schemas/json/github-workflow.json
         header: See https://github.com/anthony-spruyt/repo-operator/blob/main/src/templates/.github/workflows/pr-title.yaml for template comments
         content: "@templates/.github/workflows/pr-title.yaml"
+    settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - amannn/action-semantic-pull-request@*
+            - astral-sh/setup-uv@*
+            - docker/build-push-action@*
+            - docker/login-action@*
+            - docker/metadata-action@*
+            - docker/setup-buildx-action@*
+            - step-security/harden-runner@*
   image:
     extends:
       - github-ci
@@ -248,6 +266,12 @@ groups:
         header: This file is automatically updated - do not modify directly
         template: true
         content: "@templates/.github/workflows/image-container-retention.yaml"
+    settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - dataaxiom/ghcr-cleanup-action@*
   go-image:
     extends:
       - image
@@ -290,6 +314,12 @@ groups:
       .claude/hookify-plus/warn-trivy-sarif.md:
         content: "@templates/.claude/hookify-plus/warn-trivy-sarif.md"
     settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - aquasecurity/setup-trivy@*
+            - aquasecurity/trivy-action@*
       secrets:
         GHCR_READ_TOKEN:
           env: GHCR_READ_TOKEN
@@ -601,6 +631,12 @@ groups:
           "[terraform]":
             "editor.defaultFormatter": "hashicorp.terraform"
             "editor.formatOnSave": true
+    settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - hashicorp/setup-terraform@*
   typescript:
     files:
       .devcontainer/devcontainer.json:
@@ -904,3 +940,11 @@ conditionalGroups:
               - actorId: 10562 # mergify: merges PRs and manages queue branches; exempt per Mergify rulesets docs
                 actorType: Integration
                 bypassMode: exempt
+  - when:
+      anyOf: [image, release-please]
+    settings:
+      actions:
+        patternsAllowed:
+          $arrayMerge: append
+          $values:
+            - googleapis/release-please-action@*

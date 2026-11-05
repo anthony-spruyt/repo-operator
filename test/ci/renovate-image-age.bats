@@ -210,7 +210,7 @@ json5() {
   run yq -o=json -I0 "$entry | .settings.labels" "$REPOS"
   [ "$output" = '{"inherit":false}' ]
   run yq -o=json -I0 "$entry | .settings.collaborators" "$REPOS"
-  [ "$output" = '{"inherit":false,"users":[]}' ]
+  [ "$output" = '{"inherit":false,"deleteOrphaned":true,"users":[]}' ]
   run yq -r "$entry | (.groups // []) | map(select(. == \"protected-main-branch\" or . == \"private-repo\")) | length" "$REPOS"
   [ "$output" = "0" ]
   run yq -o=json -I0 "$entry | .settings.repo | pick([\"hasDiscussions\", \"hasIssues\", \"hasProjects\", \"hasWiki\"])" "$REPOS"
