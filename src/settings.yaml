@@ -19,6 +19,30 @@ settings:
     users:
       - spruyt-labs-bot
   labels:
+    "agent/auto-approved":
+      color: "#0e8a16"
+      description: "Automatically approved"
+    "agent/fixable":
+      color: "#fbca04"
+      description: "Agent found fixable issues"
+    "agent/fixing":
+      color: "#e4e669"
+      description: "Agent is working on fixes"
+    "agent/needs-human-review":
+      color: "#d93f0b"
+      description: "Needs review by the owner"
+    "agent/needs-triage":
+      color: "#bfd4f2"
+      description: "Queued for agent triage"
+    "agent/revert":
+      color: "#b60205"
+      description: "Automated revert PR"
+    "agent/safe":
+      color: "#0e8a16"
+      description: "Agent approved - safe to merge"
+    "agent/triage":
+      color: "#ededed"
+      description: "Agent is triaging PR"
     "autorelease: pending":
       color: "#ededed"
       description: ""
