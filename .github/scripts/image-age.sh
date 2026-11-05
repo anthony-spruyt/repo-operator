@@ -747,7 +747,7 @@ date_rows() {
 waiting_notice() {
   local image=$1 rows=$2 unlisted=$3 used=$4 skips=$5 list='' tag at
   while IFS=$'\t' read -r tag at; do
-    list+="${list:+, }$tag on $(iso "$at")"
+    list+="${list:+, }$tag until $(iso "$at")"
   done < <(awk -F'\t' -v OFS='\t' -v cut="$(($(now) - MIN_AGE_SECONDS))" -v wait="$MIN_AGE_SECONDS" -v used="$used" -v skip="$skips" "$SHAPE_AWK"'
     BEGIN {
       n = split(used, u, " "); for (i = 1; i <= n; i++) U[u[i]] = 1
@@ -769,7 +769,7 @@ waiting_notice() {
     }
   ' "$unlisted" "$rows")
   if [[ -n "$list" ]]; then
-    say "::notice::$image: admitted 7 days after image-age first saw it at this build: $list"
+    say "::notice::$image: tags held until 7 days after image-age first saw them at their build: $list"
   fi
 }
 
@@ -856,7 +856,7 @@ clock_ok() {
 
 cmd_render() {
   local in=$1 out=$2 work previous skips image count
-  # Every later now() returns this one reading
+  # One clock reading per render, so every 7-day cut agrees
   IMAGE_AGE_NOW=$(now)
   mkdir -p "$out"
   REPORT="$out/report.txt"

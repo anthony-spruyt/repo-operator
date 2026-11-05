@@ -476,7 +476,7 @@ seen_at_push() { awk -F'\t' -v OFS='\t' '{ print $0, $3 }'; }
   [ "$output" = "$(printf 'both-old\tsha256:b\nedge\tsha256:e\nlast\tsha256:l')" ]
 }
 
-@test "select_rows takes the newest 50 rows that are old enough, and a row held by its firstSeen does not use up a place" {
+@test "select_rows on its own takes the newest 50 of the rows it is given that are old enough, and a row held by its firstSeen does not use up one of its places" {
   {
     printf 'held\tsha256:h\t%s\t%s\n' $((NOW - 800000)) $((NOW - 86400))
     for i in $(seq 1 60); do printf 'o%s\tsha256:o%s\t%s\t%s\n' "$i" "$i" $((NOW - 810000 - i)) $((NOW - 810000 - i)); done
@@ -1244,8 +1244,8 @@ D30=2592000
   [ "$status" -eq 0 ]
   [ "$(grep -c '::notice::' <<<"$output")" -eq 1 ]
   notice=$(grep '::notice::' <<<"$output")
-  [[ "$notice" == "::notice::quay.io/acme/widget: "*"v0.15.1 on 2026-10-30T00:00:00Z"* ]]
-  [[ "$notice" == *"v0.16.0 on 2026-10-30T00:00:00Z"* ]]
+  [[ "$notice" == "::notice::quay.io/acme/widget: tags held until 7 days after image-age first saw them at their build: "*"v0.15.1 until 2026-10-30T00:00:00Z"* ]]
+  [[ "$notice" == *"v0.16.0 until 2026-10-30T00:00:00Z"* ]]
   [[ "$notice" != *"v0.14.0"* && "$notice" != *"v0.13.0"* && "$notice" != *"nightly"* ]]
   [ "$(grep -cxF "$notice" "$WORK/out/report.txt")" -eq 1 ]
 }
