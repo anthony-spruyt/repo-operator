@@ -135,8 +135,13 @@ repos:
     groups:
       - claude
       - agent-kit
+      - github-ci
+      - megalinter-flavor
+      - cpp
+      - python
       - release-please
       - renovate
+      - sonar
     files:
       # Fork of oggii/enshrouded-livemap - keeps the upstream MIT license
       LICENSE: false
