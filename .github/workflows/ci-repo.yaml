@@ -18,7 +18,7 @@ jobs:
       - name: Harden Runner
         uses: $/.github/actions/harden-runner
         with:
-          # The apt hosts are for bats
+          # The apt hosts are for bats and parallel
           allowed-endpoints: >-
             archive.ubuntu.com:443
             azure.archive.ubuntu.com:80
@@ -36,7 +36,7 @@ jobs:
           persist-credentials: false
 
       - name: "Install bats"
-        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats"
+        run: "sudo apt-get update -qq && sudo apt-get install -y -qq bats parallel"
 
       - name: "Install actionlint"
         env:
@@ -61,4 +61,5 @@ jobs:
           echo "NODE_PATH=$prefix/node_modules" >>"$GITHUB_ENV"
 
       - name: "Run bats tests"
-        run: "bats -r test/"
+        # Files only: bats waits on in-file parallel slots with `sleep 1`, which is slower than serial for short tests
+        run: 'bats --jobs "$(nproc)" --no-parallelize-within-files -r test/'

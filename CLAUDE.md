@@ -84,7 +84,7 @@ Modular config in `.github/renovate/` is NOT synced to repos - other repos refer
 
 The GitHub Actions workflow (`.github/workflows/ci.yaml`) runs:
 
-1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`. Code tests: one `test/<name>.bats` per script in `.github/scripts/`, per action and per synced script. Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate files. Fixtures
+1. **lint** - MegaLinter validation (skipped on `workflow_dispatch`). **repo** then calls `.github/workflows/ci-repo.yaml`, this repo's own jobs: **guard-test** (`repo / Guard Tests`) runs `bats -r test/`, one test file per CPU at a time. Code tests: one `test/<name>.bats` per script in `.github/scripts/`, per action and per synced script. Guard tests, which keep CI and config wired, sit in `test/ci/` and are gate files. Fixtures
    and helpers go in `test/fixtures/<name>/`. See `docs/ci.md` for the `ci.yaml` / `ci-repo.yaml` split.
 2. **xfg-preview** - Dry-run sync via the [xfg GitHub Action](https://github.com/anthony-spruyt/xfg) with the read-only Plan App, on dispatch from non-`main` refs and on PRs that have the `xfg/plan` label or change `ci.yaml`, `check-xfg-config.sh` or `xfg-preview-needed.sh`; never on merge queue PRs. The config guard runs on every PR. Any other label skips every job. Partial: merge settings and
    ruleset `bypass_actors` show as changes because the Plan App can't read them.
