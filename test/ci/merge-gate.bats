@@ -208,8 +208,17 @@ no_commit_matches() {
 }
 
 @test "the agent/revert and emergency/merge labels stay defined" {
-  run yq -r '.groups.mergify.settings.labels | [has("agent/revert"), has("emergency/merge")] | all' "$SRC/groups.yaml"
+  run yq -r '.settings.labels | has("agent/revert")' "$SRC/settings.yaml"
   [ "$output" = "true" ]
+  run yq -r '.groups.mergify.settings.labels | has("emergency/merge")' "$SRC/groups.yaml"
+  [ "$output" = "true" ]
+}
+
+@test "the agent platform labels are defined for every repo, not in a group, since the platform triages every repo" {
+  run yq -r '[(.groups[], .conditionalGroups[]) | .settings.labels // {} | keys | .[] | select(test("^agent/"))] | length' "$SRC/groups.yaml"
+  [ "$output" = "0" ]
+  run yq -r '[.settings.labels | keys | .[] | select(test("^agent/"))] | length' "$SRC/settings.yaml"
+  [ "$output" -gt 0 ]
 }
 
 @test "pr-rules needs one approval from someone other than the last pusher" {
