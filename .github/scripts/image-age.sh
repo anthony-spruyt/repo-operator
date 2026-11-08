@@ -490,12 +490,14 @@ image_rules() {
 }
 
 # disabling_rule IMAGE AT: holds back every update of an image that could not be dated
+# Scoped to update types: unscoped, Renovate hides the image from the dashboard
 disabling_rule() {
   local image=$1 at=$2
   jq -n --arg image "$image" --arg at "$(iso "$at")" '{
     description: "image-age: \($image) could not be dated, updates held back, \($at)",
     matchDatasources: ["docker"],
     matchPackageNames: [$image],
+    matchUpdateTypes: ["major", "minor", "patch", "digest"],
     enabled: false
   }'
 }
@@ -942,7 +944,8 @@ preset_problems() {
             within(["description", "matchDatasources", "matchPackageNames", "matchUpdateTypes", "matchJsonata", "enabled"])
             and .matchUpdateTypes == types and .enabled == false and (.matchJsonata | type == "array" and length == 1 and (.[0] | digest_expr_ok))
           elif $k == "hold" then
-            within(["description", "matchDatasources", "matchPackageNames", "enabled"]) and .enabled == false
+            within(["description", "matchDatasources", "matchPackageNames", "matchUpdateTypes", "enabled"]) and .enabled == false
+            and ((has("matchUpdateTypes") | not) or .matchUpdateTypes == types)
           elif $k == "catchall" then
             within(["description", "matchDatasources", "matchPackageNames", "enabled"]) and .enabled == false and excl_ok
           elif $k == "stale" then
