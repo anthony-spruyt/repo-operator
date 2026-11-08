@@ -490,14 +490,14 @@ image_rules() {
 }
 
 # disabling_rule IMAGE AT: holds back every update of an image that could not be dated
-# Scoped to update types: unscoped, Renovate hides the image from the dashboard
+# Lists every update type: Renovate keeps the image on the dashboard and holds each update
 disabling_rule() {
   local image=$1 at=$2
   jq -n --arg image "$image" --arg at "$(iso "$at")" '{
     description: "image-age: \($image) could not be dated, updates held back, \($at)",
     matchDatasources: ["docker"],
     matchPackageNames: [$image],
-    matchUpdateTypes: ["major", "minor", "patch", "digest"],
+    matchUpdateTypes: ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"],
     enabled: false
   }'
 }
@@ -519,6 +519,7 @@ assemble_preset() {
   jq -S -n --slurpfile by "$by_image" --argjson excluded "$excluded" --argjson at "$at" --arg when "$(iso "$at")" --argjson stale "$STALE_SECONDS" '
     "/^[^/]+\\.[^/]+\\//" as $host
     | ["major", "minor", "patch", "digest"] as $types
+    | ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"] as $held
     | {
         "$schema": "https://docs.renovatebot.com/renovate-schema.json",
         packageRules: (
@@ -527,6 +528,7 @@ assemble_preset() {
               description: "image-age: registry image not yet dated, picked up on its next run, \($when)",
               matchDatasources: ["docker"],
               matchPackageNames: ([$host] + $excluded + ($by[0] | keys | map("!" + .))),
+              matchUpdateTypes: $held,
               enabled: false
             },
             {
@@ -921,6 +923,7 @@ preset_problems() {
   jq -r --arg re "$IMAGE_RE" --arg tag "$TAG_RE" --arg dig "$DIGEST_RE" --arg pre "$pre" --arg suf "$suf" \
     --arg av '^/\^\(([A-Za-z0-9_.\\-]+)(\|[A-Za-z0-9_.\\-]+)*\)\$/$' --arg stale '^\$toMillis\(\$now\(\)\) > [0-9]+$' '
     def types: ["major", "minor", "patch", "digest"];
+    def held: ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"];
     def host: "/^[^/]+\\.[^/]+\\//";
     def within($allowed): (keys - $allowed) == [];
     def excl_ok: .matchPackageNames[1:] | all(type == "string" and test("^![A-Za-z0-9._*:/-]+$"));
@@ -931,7 +934,7 @@ preset_problems() {
             | type == "object" and all(to_entries[]; (.key | test($tag)) and (.value | test($dig))) and ($pre + tojson + $suf == $e)) catch false);
     def kind:
       if (.matchPackageNames | type) != "array" or (.matchPackageNames | length) == 0 then "unknown"
-      elif .matchPackageNames[0] == host then (if has("matchUpdateTypes") then "stale" else "catchall" end)
+      elif .matchPackageNames[0] == host then (if has("matchJsonata") then "stale" else "catchall" end)
       elif (.matchPackageNames | length) == 1 and (.matchPackageNames[0] | type == "string" and test($re)) then
         (if has("allowedVersions") then "allow" elif has("matchJsonata") then "digest" else "hold" end)
       else "unknown" end;
@@ -945,9 +948,9 @@ preset_problems() {
             and .matchUpdateTypes == types and .enabled == false and (.matchJsonata | type == "array" and length == 1 and (.[0] | digest_expr_ok))
           elif $k == "hold" then
             within(["description", "matchDatasources", "matchPackageNames", "matchUpdateTypes", "enabled"]) and .enabled == false
-            and ((has("matchUpdateTypes") | not) or .matchUpdateTypes == types)
+            and ((has("matchUpdateTypes") | not) or .matchUpdateTypes == held)
           elif $k == "catchall" then
-            within(["description", "matchDatasources", "matchPackageNames", "enabled"]) and .enabled == false and excl_ok
+            within(["description", "matchDatasources", "matchPackageNames", "matchUpdateTypes", "enabled"]) and .enabled == false and excl_ok and .matchUpdateTypes == held
           elif $k == "stale" then
             within(["description", "matchDatasources", "matchPackageNames", "matchUpdateTypes", "matchJsonata", "enabled"])
             and .matchUpdateTypes == types and .enabled == false and excl_ok
