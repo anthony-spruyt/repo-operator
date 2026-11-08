@@ -36,7 +36,7 @@
       // renovate: datasource=github-releases depName=mikefarah/yq
       "yqVersion": "4.54.1",
       // renovate: datasource=github-releases depName=itchyny/gojq
-      "gojqVersion": "0.12.19"
+      "gojqVersion": "0.12.20"
     }
   },
   "initializeCommand": "bash $${localWorkspaceFolder}/.devcontainer/initialize.sh",
