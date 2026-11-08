@@ -334,7 +334,7 @@
       description: ["Annotated CMake GIT_TAG (depName first)."],
       managerFilePatterns: ["/(^|/)(CMakeLists\\.txt|[^/]+\\.cmake)$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,]*)"
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,)]*)"
       ],
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
@@ -344,7 +344,7 @@
       description: ["Annotated CMake GIT_TAG (datasource first)."],
       managerFilePatterns: ["/(^|/)(CMakeLists\\.txt|[^/]+\\.cmake)$/"],
       matchStrings: [
-        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,]*)"
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,)]*)"
       ],
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"

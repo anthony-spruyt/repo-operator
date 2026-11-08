@@ -56,6 +56,19 @@ EOF
   [ "$output" = '[{"depName":"example/widget","datasource":"github-tags","versioning":null,"currentDigest":null,"currentValue":"v1.2.3"}]' ]
 }
 
+@test "a tag followed by the closing parenthesis of the call is not part of the version, in either annotation order" {
+  run captures <<'EOF'
+FetchContent_Declare(widget
+    # renovate: depName=example/widget datasource=github-tags
+    GIT_TAG v1.2.3)
+FetchContent_Declare(gadget
+    # renovate: datasource=github-tags depName=example/gadget
+    GIT_TAG 2.0.1)
+EOF
+  [ "$status" -eq 0 ]
+  [ "$output" = '[{"depName":"example/gadget","datasource":"github-tags","versioning":null,"currentDigest":null,"currentValue":"2.0.1"},{"depName":"example/widget","datasource":"github-tags","versioning":null,"currentDigest":null,"currentValue":"v1.2.3"}]' ]
+}
+
 @test "a sha with no tag comment yields nothing, so a commit is never looked up as a version" {
   run captures <<'EOF'
 FetchContent_Declare(
