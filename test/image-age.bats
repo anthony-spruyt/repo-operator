@@ -1357,7 +1357,7 @@ D30=2592000
   run fn main render --in "$WORK/in" --out "$WORK/out"
   [ "$status" -eq 0 ]
   [[ "$output" == *"::error::quay.io/acme/widget: registry answered 500"* ]]
-  jq -e '.packageRules[0] | .enabled == false and .matchPackageNames == ["quay.io/acme/widget"] and (has("allowedVersions") | not) and (has("matchUpdateTypes") | not)' "$WORK/out/image-age.json"
+  jq -e '.packageRules[0] | .enabled == false and .matchPackageNames == ["quay.io/acme/widget"] and (has("allowedVersions") | not) and .matchUpdateTypes == ["major", "minor", "patch", "digest"]' "$WORK/out/image-age.json"
 
   : >"$FAKE_ROUTES"
   printf '<html>' >"$WORK/html"
@@ -1380,6 +1380,12 @@ D30=2592000
   jq -e '.packageRules[0] | .enabled == false and .matchPackageNames == ["registry.example.com/acme/widget"]' "$WORK/out/image-age.json"
   run grep -q registry.example.com "$FAKE_LOG"
   [ "$status" -ne 0 ]
+}
+
+@test "a held-back image is held by update type, so Renovate still lists it as a dependency" {
+  run fn disabling_rule quay.io/acme/held "$NOW"
+  [ "$status" -eq 0 ]
+  jq -e '.matchPackageNames == ["quay.io/acme/held"] and .enabled == false and .matchUpdateTypes == ["major", "minor", "patch", "digest"]' <<<"$output"
 }
 
 @test "render re-validates the stored data: bad image names and bad rows are dropped with an error" {
