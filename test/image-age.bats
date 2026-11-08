@@ -783,7 +783,7 @@ by_image() {
 @test "assemble_preset catch-all disables unknown registry images but not known, own, moved or Docker Hub ones" {
   by_image ghcr.io/acme/first
   fn assemble_preset "$WORK/by-image.json" "$WORK/preset.json" "$NOW"
-  jq -e '.packageRules[2] | .enabled == false and .matchDatasources == ["docker"] and (has("matchUpdateTypes") | not)
+  jq -e '.packageRules[2] | .enabled == false and .matchDatasources == ["docker"] and .matchUpdateTypes == ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"]
     and (has("matchJsonata") | not) and (.description | contains("not yet dated"))
     and .matchPackageNames[0] == "/^[^/]+\\.[^/]+\\//"' "$WORK/preset.json"
   [ "$(jq -r '.packageRules[2].matchPackageNames[1:][]' "$WORK/preset.json" | sort | paste -sd' ')" = "$(printf '%s\n' \
@@ -1357,7 +1357,7 @@ D30=2592000
   run fn main render --in "$WORK/in" --out "$WORK/out"
   [ "$status" -eq 0 ]
   [[ "$output" == *"::error::quay.io/acme/widget: registry answered 500"* ]]
-  jq -e '.packageRules[0] | .enabled == false and .matchPackageNames == ["quay.io/acme/widget"] and (has("allowedVersions") | not) and .matchUpdateTypes == ["major", "minor", "patch", "digest"]' "$WORK/out/image-age.json"
+  jq -e '.packageRules[0] | .enabled == false and .matchPackageNames == ["quay.io/acme/widget"] and (has("allowedVersions") | not) and .matchUpdateTypes == ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"]' "$WORK/out/image-age.json"
 
   : >"$FAKE_ROUTES"
   printf '<html>' >"$WORK/html"
@@ -1385,7 +1385,7 @@ D30=2592000
 @test "a held-back image is held by update type, so Renovate still lists it as a dependency" {
   run fn disabling_rule quay.io/acme/held "$NOW"
   [ "$status" -eq 0 ]
-  jq -e '.matchPackageNames == ["quay.io/acme/held"] and .enabled == false and .matchUpdateTypes == ["major", "minor", "patch", "digest"]' <<<"$output"
+  jq -e '.matchPackageNames == ["quay.io/acme/held"] and .enabled == false and .matchUpdateTypes == ["major", "minor", "patch", "pin", "digest", "pinDigest", "lockFileMaintenance", "rollback", "replacement"]' <<<"$output"
 }
 
 @test "render re-validates the stored data: bad image names and bad rows are dropped with an error" {
@@ -1918,6 +1918,7 @@ preset_in() {
 .packageRules[0].enabled = false
 .packageRules[1].enabled = true
 .packageRules[1].matchUpdateTypes = ["major"]
+(.packageRules[] | select(.description | contains("not yet dated")) | .matchUpdateTypes) |= map(select(. != "pinDigest"))
 .packageRules[0].allowedVersions = "/^$/"
 .packageRules[0].allowedVersions = "/.*/"
 .packageRules[0].allowedVersions = "/^(a)$/ || true"
