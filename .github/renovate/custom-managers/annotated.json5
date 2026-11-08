@@ -326,6 +326,28 @@
       ],
       datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-releases{{/if}}",
       versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    // CMake: "GIT_TAG <sha> # <tag>" or "GIT_TAG <tag>" under the annotation; Renovate has no CMake manager.
+    // currentValue needs a "." so a sha with no tag comment is never read as a version (RE2 has no lookahead).
+    {
+      customType: "regex",
+      description: ["Annotated CMake GIT_TAG (depName first)."],
+      managerFilePatterns: ["/(^|/)(CMakeLists\\.txt|[^/]+\\.cmake)$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*depName=(?<depName>\\S+)\\s+datasource=(?<datasource>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,)]*)"
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
+    },
+    {
+      customType: "regex",
+      description: ["Annotated CMake GIT_TAG (datasource first)."],
+      managerFilePatterns: ["/(^|/)(CMakeLists\\.txt|[^/]+\\.cmake)$/"],
+      matchStrings: [
+        "#\\s*renovate:\\s*datasource=(?<datasource>\\S+)\\s+depName=(?<depName>\\S+)(?:\\s+versioning=(?<versioning>\\S+))?\\n\\s*GIT_TAG[ \\t]+(?:(?<currentDigest>[a-f0-9]{40})[ \\t]+#[ \\t]*)?(?<currentValue>v?[0-9]+\\.[^\\s,)]*)"
+      ],
+      datasourceTemplate: "{{#if datasource}}{{{datasource}}}{{else}}github-tags{{/if}}",
+      versioningTemplate: "{{#if versioning}}{{{versioning}}}{{else}}semver{{/if}}"
     }
   ]
 }
