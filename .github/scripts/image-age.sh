@@ -4,7 +4,7 @@
 set -euo pipefail
 
 # renovate: depName=renovate datasource=npm
-RENOVATE_VERSION="44.181.10"
+RENOVATE_VERSION="44.199.2"
 
 MIN_AGE_SECONDS=$((7 * 86400))
 KEEP_NEWEST=50
