@@ -27,8 +27,8 @@ devcontainer_json() {
   done
 }
 
-@test "the settings env block leaves the rm prompt switches to the devcontainer" {
-  for key in ${RM_SWITCHES}; do
+@test "the settings env block holds no permission switch Claude Code drops" {
+  for key in ${RM_SWITCHES} CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS; do
     run jq -e --arg k "${key}" '.env | has($k) | not' "${SETTINGS}"
     [ "${status}" -eq 0 ]
   done
