@@ -137,6 +137,7 @@ repos:
       - agent-kit
       - github-ci
       - megalinter-flavor
+      - protected-main-branch
       - cpp
       - python
       - release-please
@@ -155,6 +156,14 @@ repos:
     settings:
       repo:
         description: "Automated fork of oggii/enshrouded-livemap that keeps up with Enshrouded server patches"
+      rulesets:
+        pr-rules:
+          bypassActors:
+            $arrayMerge: append
+            $values:
+              - actorId: 3233443 # agent platform (skynet-rw): its worker squash-merges its own data PRs through the merge API
+                actorType: Integration
+                bypassMode: pull_request
 
   - git: https://github.com/anthony-spruyt/esphome.git
     groups:
