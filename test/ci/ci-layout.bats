@@ -224,6 +224,42 @@ EOF
   [ "$output" = "false" ]
 }
 
+# eval_apply_if <expr> <plan> <run_sync> <event> <lint> <repo> <cancelled> - xfg-apply's if, rewritten to jq; any other function or context fails jq
+eval_apply_if() {
+  local jq_expr
+  jq_expr=$(sed -E -e 's/!cancelled\(\)/($cancelled | not)/g' \
+    -e 's/needs\.xfg-plan\.result/$plan/g' -e 's/needs\.xfg-plan\.outputs\.run_sync/$run_sync/g' \
+    -e 's/needs\.(lint|repo)\.result/$\1/g' -e 's/github\.event_name/$event/g' \
+    -e 's/&&/and/g' -e 's/\|\|/or/g' -e "s/'/\"/g" <<<"$1")
+  jq -n --arg plan "$2" --arg run_sync "$3" --arg event "$4" --arg lint "$5" --arg repo "$6" --argjson cancelled "$7" "$jq_expr"
+}
+
+@test "repo-operator's XFG Apply waits for lint and Guard Tests, so a failed test never offers the production approval" {
+  run yq -r '.jobs["xfg-apply"].needs | (any_c(. == "xfg-plan") and any_c(. == "lint") and any_c(. == "repo"))' "$REPO_ROOT/.github/workflows/ci.yaml"
+  [ "$output" = "true" ]
+  expr=$(yq -r '.jobs["xfg-apply"].if' "$REPO_ROOT/.github/workflows/ci.yaml")
+  while read -r plan run_sync event lint repo cancelled want; do
+    run eval_apply_if "$expr" "$plan" "$run_sync" "$event" "$lint" "$repo" "$cancelled"
+    [ "$output" = "$want" ] || {
+      echo "plan=$plan run_sync=$run_sync event=$event lint=$lint repo=$repo cancelled=$cancelled: got '$output', want $want"
+      return 1
+    }
+  done <<'EOF'
+success true push success success false true
+success true push success failure false false
+success true push success cancelled false false
+success true push success skipped false false
+success true push failure success false false
+success true push skipped success false false
+success false push success success false false
+skipped true push success success false false
+failure true push success success false false
+success true push success success true false
+success true pull_request success success false false
+success true workflow_dispatch skipped skipped false true
+EOF
+}
+
 @test "repo-operator's ci-repo.yaml runs the bats tests" {
   run yq -o=json -I0 '[(.on | keys), .permissions]' "$REPO_ROOT/.github/workflows/ci-repo.yaml"
   [ "$output" = '[["workflow_call"],{}]' ]

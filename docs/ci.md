@@ -451,6 +451,8 @@ A new push to a pull request cancels that PR's older `CI` run. Every other run (
 
 Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true` override, because its `ci.yaml` hosts XFG Plan and Apply. It carries the same `sonar` job by hand, calling `./.github/workflows/_sonar-new-issues.yaml` so a PR checks its own branch of the workflow, and Guard Tests keep it in `summary.needs`.
 
+Its XFG Apply needs `lint` and `repo` as well as XFG Plan and, on a push, runs only when both succeeded, so a failed Guard Test never offers the `production` approval. A dispatch skips `lint` and `repo`, so Apply does not wait for them there.
+
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.
 
 ## PR title check

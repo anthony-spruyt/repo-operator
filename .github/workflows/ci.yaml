@@ -231,12 +231,17 @@ jobs:
     timeout-minutes: 15
     needs:
       - "xfg-plan"
-    # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply
+      - "lint"
+      - "repo"
+    # !cancelled() breaks the transitive skip chain from lint → xfg-plan → xfg-apply, so the if checks lint and repo itself
+    # A dispatch skips lint and repo by design, so only a push waits for them
     if: >-
       !cancelled() &&
       needs.xfg-plan.result == 'success' &&
       needs.xfg-plan.outputs.run_sync == 'true' &&
-      github.event_name != 'pull_request'
+      github.event_name != 'pull_request' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (needs.lint.result == 'success' && needs.repo.result == 'success'))
     environment: "production"
     permissions:
       actions: "read"
