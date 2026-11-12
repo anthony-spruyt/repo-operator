@@ -200,7 +200,7 @@ runs:
     # Logins come after the test so test code runs before any credential is written
     - name: Log in to GHCR
       if: inputs.push == 'true'
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         registry: ghcr.io
         username: ${{ github.actor }}
@@ -208,7 +208,7 @@ runs:
 
     - name: Log in to Docker Hub
       if: inputs.push == 'true' && inputs.dockerhub-namespace != ''
-      uses: docker/login-action@81c6f93d4bc991e510b342a00b419b3bb4efc5c6 # v4.7.0
+      uses: docker/login-action@8aa5831fb8d48d8f76594c7ddde61ae58019f550 # v4.8.0
       with:
         username: ${{ inputs.dockerhub-username || inputs.dockerhub-namespace }}
         password: ${{ inputs.dockerhub-token }}
