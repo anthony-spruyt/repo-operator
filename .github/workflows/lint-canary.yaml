@@ -51,7 +51,7 @@ jobs:
 
       - name: Render planned files
         if: steps.needed.outputs.run == 'true'
-        uses: anthony-spruyt/xfg@eafffe826bcfbf2bae9081160c6281ab0c688506 # v9.0.0
+        uses: anthony-spruyt/xfg@bf4bd07be09ddd0461a1539fa0f8fb5cdfbbff3a # v9.0.1
         with:
           config: ./src
           dry-run: true
