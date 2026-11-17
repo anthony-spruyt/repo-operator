@@ -78,11 +78,11 @@ json5() {
   [ "$output" = $'extract:1\nrender:1\nvalidate:1\npublish:1' ]
   hosts() { yq -r ".jobs.$1.steps[] | select((.uses // \"\") == \"\$/.github/actions/harden-runner\") | .with[\"allowed-endpoints\"]" "$WORKFLOW" | tr -s '[:space:]' '\n' | sed '/^$/d' | sort | tr '\n' ' '; }
   run hosts extract
-  [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
+  [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443 registry.npmjs.org:443 release-assets.githubusercontent.com:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts render
   [ "$output" = "*.blob.core.windows.net:443 *.pkg.dev:443 api.github.com:443 gcr.io:443 ghcr.io:443 github.com:443 mcr.microsoft.com:443 quay.io:443 registry.k8s.io:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts validate
-  [ "$output" = "*.blob.core.windows.net:443 github.com:443 objects.githubusercontent.com:443 registry.npmjs.org:443 results-receiver.actions.githubusercontent.com:443 " ]
+  [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 nodejs.org:443 objects.githubusercontent.com:443 registry.npmjs.org:443 release-assets.githubusercontent.com:443 results-receiver.actions.githubusercontent.com:443 " ]
   run hosts publish
   [ "$output" = "*.blob.core.windows.net:443 api.github.com:443 github.com:443 results-receiver.actions.githubusercontent.com:443 " ]
 }
