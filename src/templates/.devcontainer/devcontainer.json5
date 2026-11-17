@@ -13,7 +13,8 @@
   "remoteUser": "vscode",
   "remoteEnv": {
     "CLAUDE_CODE_DISABLE_INLINE_SHELL_RM_PROMPT": "1",
-    "CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT": "1"
+    "CLAUDE_CODE_DISABLE_SUBSTITUTION_RM_PROMPT": "1",
+    "CLAUDE_CODE_EVEN_MORE_DANGEROUSLY_SKIP_PERMISSIONS": "1"
   },
   "runArgs": [
     "--security-opt",
