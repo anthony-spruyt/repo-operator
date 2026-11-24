@@ -359,7 +359,7 @@ repos:
       lint.sh:
         vars:
           # renovate: datasource=docker depName=ghcr.io/anthony-spruyt/megalinter-spruyt-labs
-          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v3.1.10@sha256:918e7518d2037ab7b38b2d503e14ec2d4cf776cad9630fd60b9d9a9ae0645c8d"
+          megalinterImage: "ghcr.io/anthony-spruyt/megalinter-spruyt-labs:v3.1.11@sha256:d3bc8386bccc5efc71eb4882ccd9623ba3efecd2a09f85c646c39a4726a440bb"
       .devcontainer/devcontainer.json:
         content:
           customizations:
