@@ -63,6 +63,15 @@ docker_hub_layers() {
   done
 }
 
+# xfg_jobs <root> <file>... - prints file:job and 1 or 0 (tab separated) for each job that runs the xfg action: 1 when a step allowlist in the job names the host setup-node downloads Node from
+xfg_jobs() {
+  local root="$1" file
+  shift
+  for file in "$@"; do
+    yq -o=json '.' "$root/$file" | jq -r --arg f "$file" '(.jobs // {}) | to_entries[] | select(.value.steps != null) | select(any(.value.steps[]; (.uses // "") | test("^anthony-spruyt/xfg@"))) | [$f + ":" + .key, (if any(.value.steps[]; ((.with["allowed-endpoints"] // "") | gsub("\\s+"; " ") | split(" ")) | index("release-assets.githubusercontent.com:443")) then "1" else "0" end)] | @tsv'
+  done
+}
+
 workflows() {
   (cd "$1" && find .github/workflows -maxdepth 1 -name '*.y*ml' | sort)
 }
@@ -362,6 +371,57 @@ YAML
   [ -n "$output" ]
   local lists="$output"
   run awk -F'\t' '$2 != 1 { print $1 ": no S3 layer host" }' <<<"$lists"
+  [ -z "$output" ]
+}
+
+@test "the xfg job helper marks a job that runs the xfg action with 1 for the release-asset host in its allowlist and 0 without it, quoted or not, and skips jobs without the action" {
+  mkdir -p "$BATS_TEST_TMPDIR/.github/workflows"
+  cat >"$BATS_TEST_TMPDIR/.github/workflows/x.yaml" <<'YAML'
+jobs:
+  allowed:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: >-
+            github.com:443
+            release-assets.githubusercontent.com:443
+            ${{ inputs.egress }}
+      - uses: "anthony-spruyt/xfg@0123456789abcdef0123456789abcdef01234567" # v1
+  unlisted:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: github.com:443 objects.githubusercontent.com:443
+      - uses: anthony-spruyt/xfg@0123456789abcdef0123456789abcdef01234567 # v1
+  unguarded:
+    steps:
+      - uses: anthony-spruyt/xfg@0123456789abcdef0123456789abcdef01234567 # v1
+  lookalike:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: github.com:443
+      - uses: anthony-spruyt/xfg-other@0123456789abcdef0123456789abcdef01234567 # v1
+  no-xfg:
+    steps:
+      - uses: $/.github/actions/harden-runner
+        with:
+          allowed-endpoints: release-assets.githubusercontent.com:443
+  call:
+    uses: $/.github/workflows/x.yaml
+YAML
+  run xfg_jobs "$BATS_TEST_TMPDIR" .github/workflows/x.yaml
+  [ "$output" = $'.github/workflows/x.yaml:allowed\t1\n.github/workflows/x.yaml:unlisted\t0\n.github/workflows/x.yaml:unguarded\t0' ]
+}
+
+@test "every job that runs the xfg action allows the GitHub release-asset host, which setup-node downloads the Node it installs from" {
+  mapfile -t files < <(all_workflows "$REPO_ROOT")
+  run xfg_jobs "$REPO_ROOT" "${files[@]}"
+  [ "$status" -eq 0 ]
+  [ -n "$output" ]
+  local listed="$output"
+  run awk -F'\t' '$2 != 1 { print $1 ": no release-asset host" }' <<<"$listed"
+  echo "$output"
   [ -z "$output" ]
 }
 
