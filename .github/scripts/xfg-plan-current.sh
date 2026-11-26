@@ -11,8 +11,9 @@ fi
 
 # Equal tree ids mean identical content, whatever order the commits landed in
 src_tree() {
-  git rev-parse --verify --quiet "$1:src" || {
-    echo "Cannot resolve src/ at '$1'" >&2
+  local sha="$1"
+  git rev-parse --verify --quiet "$sha:src" || {
+    echo "Cannot resolve src/ at '$sha'" >&2
     exit 1
   }
 }
