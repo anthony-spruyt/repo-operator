@@ -453,7 +453,7 @@ Only repo-operator keeps its own `ci.yaml`, through a per-repo `createOnly: true
 
 Its XFG Apply needs `lint` and `repo` as well as XFG Plan and, on a push, runs only when both succeeded, so a failed Guard Test never offers the `production` approval. A dispatch skips `lint` and `repo`, so Apply does not wait for them there.
 
-When merges land close together, only a run whose `src/` still matches `main` plans: `XFG Plan (current check)` compares the run's `src/` tree with a fresh fetch of `main` (`.github/scripts/xfg-plan-current.sh`) before Plan joins its concurrency group, so an older run never replaces the newer run's Plan.
+When merges land close together, only a run whose `src/` still matches `main` plans: `XFG Plan (current check)` compares the run's `src/` tree with a fresh fetch of `main` (`.github/scripts/xfg-plan-current.sh`) before Plan joins its concurrency group, so an older run never replaces the newer run's Plan, and Plan repeats the check itself because a re-run reuses the first attempt's result.
 If the newer run fails lint, the next fixed commit plans everything since the last deploy, because Plan diffs against `LAST_XFG_DEPLOY_SHA`. `repo-operator[bot]` sync commits never touch `src/`, so they do not make a run stale.
 
 xfg never touches `ci-repo.yaml` after the seed, and the seed holds no pins (xfg drops comments, so a pin there would carry no `# main`). Jobs a repo adds keep their `# main` comments, and the repo's own Renovate bumps them.

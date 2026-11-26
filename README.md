@@ -18,7 +18,8 @@ A GitHub Repository Operator that manages and standardizes configuration across 
 3. CI runs a **plan/apply** pipeline on push to main:
    - **Lint** — MegaLinter validation
    - **XFG Plan (preview)** — partial dry-run on PRs, using the read-only Plan App. Runs only when the PR has the `xfg/plan` label or changes the plan's workflow or scripts, and never on merge queue PRs
-   - **XFG Plan** — full dry-run on `main`, the plan to read before approving Apply
+   - **XFG Plan (current check)** — compares the run's `src/` with `main`, so only the run holding the newest `src/` plans
+   - **XFG Plan** — full dry-run on `main`, the plan to read before approving Apply; skipped when `src/` is unchanged since the last deploy or `main` has a newer `src/`
    - **XFG Apply** — pushes changes to target repos (requires production environment approval)
    - **Summary** — aggregates results for branch protection
 
