@@ -131,6 +131,50 @@ jobs:
           github-client-id: "${{ vars.PLAN_APP_CLIENT_ID }}"
           github-app-private-key: "${{ secrets.PLAN_APP_PRIVATE_KEY }}"
 
+  # Runs before xfg-plan joins its concurrency group, so a run whose src/ is older than main's never reaches it.
+  # Same if as xfg-plan: a run this skips would have been skipped there too.
+  xfg-current:
+    name: "XFG Plan (current check)"
+    runs-on: "ubuntu-latest"
+    timeout-minutes: 5
+    needs:
+      - "lint"
+    if: >-
+      always() &&
+      github.ref == 'refs/heads/main' &&
+      github.actor != 'repo-operator[bot]' &&
+      (github.event_name == 'workflow_dispatch' ||
+      (github.event_name == 'push' && needs.lint.result == 'success'))
+    permissions:
+      contents: "read"
+    outputs:
+      current: "${{ steps.decide.outputs.current }}"
+    steps:
+      - name: Harden Runner
+        uses: $/.github/actions/harden-runner
+        with:
+          disable-sudo-and-containers: true
+          allowed-endpoints: >-
+            api.github.com:443
+            github.com:443
+            results-receiver.actions.githubusercontent.com:443
+
+      - name: "Checkout"
+        uses: "actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1" # v7
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - name: "Compare src/ with main"
+        id: "decide"
+        run: |
+          git fetch --no-tags --depth=1 origin main
+          current=$(.github/scripts/xfg-plan-current.sh "$GITHUB_SHA" FETCH_HEAD)
+          echo "current=$current" >> "$GITHUB_OUTPUT"
+          if [ "$current" = "false" ]; then
+            echo "::notice::main has newer src/ than this commit, so the newer commit's run plans it"
+          fi
+
   # The plan the owner reads before approving Apply. It needs the write App's key to see every
   # field; plan-main's deployment branch rule (main only, no reviewer) keeps that key from PR refs.
   xfg-plan:
@@ -139,18 +183,21 @@ jobs:
     timeout-minutes: 10
     needs:
       - "lint"
+      - "xfg-current"
     # Skip commits made by the xfg GitHub App to prevent sync → commit → sync loops
     if: >-
       always() &&
       github.ref == 'refs/heads/main' &&
       github.actor != 'repo-operator[bot]' &&
+      needs.xfg-current.outputs.current == 'true' &&
       (github.event_name == 'workflow_dispatch' ||
       (github.event_name == 'push' && needs.lint.result == 'success'))
     environment: "plan-main"
     permissions:
       contents: "read"
     concurrency:
-      group: "xfg-plan-${{ github.ref }}"
+      # A run that is not current gets its own group, so it never cancels or replaces the newer run's Plan
+      group: "xfg-plan-${{ github.ref }}${{ needs.xfg-current.outputs.current != 'true' && format('-{0}', github.sha) || '' }}"
       cancel-in-progress: true
     outputs:
       run_sync: "${{ steps.changes.outputs.run_sync }}"
@@ -324,6 +371,7 @@ jobs:
       - "lint"
       - "repo"
       - "xfg-preview"
+      - "xfg-current"
       - "xfg-plan"
       - "xfg-apply"
       - "sonar"
