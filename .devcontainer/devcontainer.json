@@ -40,7 +40,7 @@
       "gojqVersion": "0.12.20"
     },
     "ghcr.io/devcontainers-extra/features/renovate-cli": {
-      "version": "44.222.5"
+      "version": "44.240.0"
     },
     "ghcr.io/devcontainers-extra/features/npm-package": {
       "package": "jsonata",
